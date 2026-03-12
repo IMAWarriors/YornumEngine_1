@@ -1,0 +1,16 @@
+# VSCode
+.vscode/
+
+# Build output
+*.exe
+*.o
+*.obj
+*.dll
+*.lib
+*.a
+
+# Build folders
+$Trash/
+Debug/
+
+# OS junk
