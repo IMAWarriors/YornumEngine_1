@@ -3,7 +3,7 @@
 #ifndef COMP_INPUTSTATE_H
 #define COMP_INPUTSTATE_H
 
-#include "../../../Engine/Core/GameTypes.h"
+#include "../../../Engine/Core/Overhead/GameTypes.h"
 
 namespace comp {
 

@@ -1,7 +1,7 @@
 // RenderSystem.cpp
 
 #include "RenderSystem.h"
-#include "../../Engine/Rendering/Renderer.h"
+#include "../../Engine/Core/Rendering/Renderer.h"
 
 
 
@@ -9,7 +9,6 @@ void RenderSystem::update (Registry & registry, float deltatime) {
 
     for (Entity entity : registry.view<comp::Transform, comp::CircleRenderer>()) {      // For each iteration of Entity
 
-            
 
             comp::Transform & transform     = registry.get_component<comp::Transform>(entity);
             comp::CircleRenderer & circle = registry.get_component<comp::CircleRenderer>(entity);

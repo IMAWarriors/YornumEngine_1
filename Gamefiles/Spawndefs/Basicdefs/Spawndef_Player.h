@@ -9,7 +9,7 @@
 
 namespace spawndef {
 
-    Entity SpawnPlayer (Registry & registry,  Vec2 position = {200.0f, 200.0f}) {
+    inline Entity SpawnPlayer (Registry & registry,  Vec2 position = {200.0f, 200.0f}) {
 
         Entity entity = registry.create_entity();
 

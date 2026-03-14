@@ -70,3 +70,9 @@ void Window::EndProgram () {
     CloseWindow();
     
 }
+
+bool Window::IsRunning () const {
+
+    return !WindowShouldClose();
+
+}

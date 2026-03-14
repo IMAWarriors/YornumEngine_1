@@ -4,7 +4,9 @@
 #define RENDERER_H
 
 #include "raylib.h"
-#include "../Core/Config.h"
+
+#include "../Overhead/Config.h"
+
 #include <cmath>
 
 class Renderer {
@@ -25,9 +27,6 @@ class Renderer {
         // void rdraw_sprite();
 
         void rdraw_circle (float _x, float _y, float _radius, Color _color);
-
-        
-
 
 
 };

@@ -7,13 +7,15 @@ echo INFO: Project ^>^> Linking and compiling project files...
 
 %COMPILER% ^
 main.cpp ^
-Engine\Window\Window.cpp ^
+Engine\Core\Main\CoreApplication.cpp ^
+Engine\Core\Window\Window.cpp ^
+Engine\Core\Rendering\Renderer.cpp ^
 Engine\Platform\Input\InputManager.cpp ^
 Engine\ECS\EntityManager.cpp ^
 Engine\ECS\Registry.cpp ^
-Engine\Rendering\Renderer.cpp ^
 Gamefiles\Systems\RenderSystem.cpp ^
 Gamefiles\Systems\InputSystem.cpp ^
+Gamefiles\Game\GameEngine.cpp ^
 -o game.exe ^
 -I%RAYLIB_PATH%\include ^
 -L%RAYLIB_PATH%\lib ^

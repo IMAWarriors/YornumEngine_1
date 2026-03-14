@@ -3,7 +3,7 @@
 #ifndef COMP_CIRCLERENDERER_H
 #define COMP_CIRCLERENDERER_H
 
-#include "../../../Engine/Core/GameTypes.h"
+#include "../../../Engine/Core/Overhead/GameTypes.h"
 
 namespace comp {
 
