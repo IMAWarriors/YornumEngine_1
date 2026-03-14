@@ -6,7 +6,7 @@
 #include "ComponentPool.h"
 #include "IPool.h"
 #include "EntityManager.h"
-#include "View.h"
+
 
 #include <cstdint>
 #include <vector>
@@ -158,9 +158,7 @@ class Registry {
 
         }
 
-        template<typename... T_ComponentTypeArgs> View<T_ComponentTypeArgs...> view() {
-            return View<T_ComponentTypeArgs...>(this);
-        }
+        template<typename... T_ComponentTypeArgs> View<T_ComponentTypeArgs...> view();
 
         
 
@@ -180,16 +178,12 @@ class Registry {
 
 
 
+// TO AVOID COMPILER WARNINGS 
+#include "View.h"
 
-
-        
-
-
-        
-
-
-
-
+template<typename... T_ComponentTypeArgs> View<T_ComponentTypeArgs...> Registry::view() {
+    return View<T_ComponentTypeArgs...>(this);
+}
 
 #endif
 
