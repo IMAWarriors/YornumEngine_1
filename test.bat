@@ -15,6 +15,7 @@ Engine\ECS\EntityManager.cpp ^
 Engine\ECS\Registry.cpp ^
 Gamefiles\Systems\RenderSystem.cpp ^
 Gamefiles\Systems\InputSystem.cpp ^
+Gamefiles\Systems\DebugOverlaySystem.cpp ^
 Gamefiles\Game\GameEngine.cpp ^
 -o game.exe ^
 -I%RAYLIB_PATH%\include ^

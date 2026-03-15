@@ -93,3 +93,30 @@ void Renderer::init_canvas (RenderTexture2D & render_texture) {
     SetTextureFilter(render_texture.texture, TEXTURE_FILTER_BILINEAR);
     
 }
+
+
+std::string Renderer::text(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+
+    int size = std::vsnprintf(nullptr, 0, fmt, args) + 1;
+    va_end(args);
+
+    std::vector<char> buffer(size);
+
+    va_start(args, fmt);
+    std::vsnprintf(buffer.data(), size, fmt, args);
+    va_end(args);
+
+    return std::string(buffer.data());
+}
+
+
+
+void Renderer::rdraw_text (const std::string & _text, int _x, int _y, int _size, Color _color) {
+
+    DrawText(_text.c_str(), _x, _y, _size, _color);
+
+}
+
+

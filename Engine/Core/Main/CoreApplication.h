@@ -11,6 +11,7 @@
 #define COREAPPLICATION_H
 
 #include "../Overhead/Config.h"                    // Get the CONFIGURATION CONSTNATS
+#include "../Overhead/DebugStats.h"
 #include "../Window/Window.h"                      // Get the WINDOW APPLICATION ASSETS
 #include "../Rendering/Renderer.h"                 // Get the RENDERER PIPELINE ASSETS
 #include "../../Platform/Input/InputManager.h"     // Get the INPUTS LAYER INFO

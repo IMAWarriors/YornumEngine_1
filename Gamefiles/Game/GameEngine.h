@@ -12,6 +12,7 @@
 #include "../Systems/MovementSystem.h"
 #include "../Systems/PlayerControllerSystem.h"
 #include "../Systems/InputSystem.h"
+#include "../Systems/DebugOverlaySystem.h"
 
 #include "../../Engine/ECS/Enum_SystemPhases.h"
 
@@ -19,6 +20,8 @@
 class Renderer;
 
 class InputManager;
+
+struct DebugStats;
 
 class GameEngine {
 
@@ -36,12 +39,13 @@ class GameEngine {
         // Pointers to CoreApplication Attributes
         Renderer * renderer = nullptr;
         InputManager * input = nullptr;
+        DebugStats * debug = nullptr;
         
     
 
     public:
 
-        void Initialize(Renderer & _renderer, InputManager & _input);
+        void Initialize(Renderer & _renderer, InputManager & _input, DebugStats & _debug);
 
         void TickPhase (Phases phase, float deltatime);
 
