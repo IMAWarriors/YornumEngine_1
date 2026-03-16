@@ -15,10 +15,13 @@
 #include "../../Engine/Core/Rendering/Renderer.h"
 #include "../../Engine/Core/Overhead/DebugStats.h"
 
+#include <string>
+
 
 class DebugOverlaySystem : public System {
 
     private:
+
 
         Renderer & renderer;
 
