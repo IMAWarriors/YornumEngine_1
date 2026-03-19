@@ -28,6 +28,8 @@ void CoreApplication::RunCoreEngine(GameEngine & game) {
     float frame_cps = 0.0f;
     float frame_simulation_ticks = 0.0f;
 
+    float alpha = 0.0f;
+
 
 
 
@@ -51,6 +53,8 @@ void CoreApplication::RunCoreEngine(GameEngine & game) {
         frame_deltatime = std::min(frame_deltatime, config::MAX_FRAME_LAG);
 
         accumulator += frame_deltatime; // Store how much time passed last frame
+
+        
 
         window.ListenFullscreenToggle();
         
@@ -76,6 +80,8 @@ void CoreApplication::RunCoreEngine(GameEngine & game) {
 
         frame_simulation_ticks = simulation_ticks;
 
+        alpha = accumulator / config::FIXED_DELTATIME;
+
         debugInfo.set_frame_stats(frame_deltatime, accumulator, simulation_ticks);
        
         // STEP 2:          TEXTURE | Draw to texture cycle
@@ -84,7 +90,7 @@ void CoreApplication::RunCoreEngine(GameEngine & game) {
         renderer.begin_texture_frame(canvas);
 
         //  Render Logic, VARIABLE TIME
-        game.TickPhase(Phases::RENDERING, frame_deltatime);
+        game.TickPhase(Phases::RENDERING, alpha);
 
         renderer.end_texture_frame();
         renderer.present(canvas);   // Begin Draw -> Draw Pro texture -> End Draw

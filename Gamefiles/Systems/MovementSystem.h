@@ -28,6 +28,8 @@ class MovementSystem : public System {
 
                 comp::Transform & transform = registry.get_component<comp::Transform>(entity);
                 comp::Velocity & velocity = registry.get_component<comp::Velocity>(entity);
+
+                transform.previous_position = transform.position;
                 
                 // Transform
 

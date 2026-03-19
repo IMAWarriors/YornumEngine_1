@@ -14,15 +14,16 @@ void GameEngine::Initialize(Renderer & _renderer, InputManager & _input, DebugSt
     systems.add_system   <InputSystem>               (Phases::INPUT, *input);
     systems.add_system   <PlayerControllerSystem>    (Phases::SIMULATION);
     systems.add_system   <MovementSystem>            (Phases::SIMULATION);
+    systems.add_system   <CameraSystem>              (Phases::SIMULATION, *renderer);
     systems.add_system   <RenderSystem>              (Phases::RENDERING, *renderer);
     systems.add_system   <DebugOverlaySystem>        (Phases::RENDERING, *renderer, *debug);
-    systems.add_system   <CameraSystem>              (Phases::RENDERING, *renderer);
+    
 
 
     // Entities Initialization
     Entity player = spawndef::SpawnPlayer(registry);
 
-    Entity camera = spawndef::SpawnCamera(registry, player);
+    Entity camera = spawndef::SpawnCamera(registry, player, 5.0f);
 
     // Debug watchers
 

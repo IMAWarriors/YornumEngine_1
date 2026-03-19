@@ -13,6 +13,7 @@ namespace comp {
         bool isFrozen;
 
         Vec2 offset;
+        float followSmoothing;
 
     };
 

@@ -15,7 +15,7 @@ namespace spawndef {
 
         registry.apply_component<tag::Player>           (entity, {});
 
-        registry.apply_component<comp::Transform>       (entity,  { position, 0.0f, {1.0f, 1.0f} });
+        registry.apply_component<comp::Transform>       (entity,  { position, position, 0.0f, {1.0f, 1.0f} });
         registry.apply_component<comp::Velocity>        (entity, {0.0f, 0.0f} );
 
         registry.apply_component<comp::CircleRenderer>  (entity, {50.0f , { 255, 0 , 0 , 255 } });

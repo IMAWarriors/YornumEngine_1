@@ -10,6 +10,7 @@ namespace comp {
     struct Transform {
 
         Vec2  position;
+        Vec2  previous_position;
         float rotation;
         Vec2     scale;
         

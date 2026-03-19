@@ -8,6 +8,26 @@
 void RenderSystem::update (Registry & registry, float deltatime) {
 
 
+    // "DELTATIME" is technically i guess an alpha here that we have to use to interpolate
+
+    // Set internal renderer camera position according to interpolation bullshit
+    for (Entity entity : registry.view<comp::Camera, comp::Transform>()) {
+
+        comp::Transform& transform = registry.get_component<comp::Transform>(entity);
+
+        Vec2 camera_interp = {
+            transform.previous_position.x + (transform.position.x - transform.previous_position.x) * deltatime,
+            transform.previous_position.y + (transform.position.y - transform.previous_position.y) * deltatime
+        };
+
+        renderer.set_camera_position(camera_interp);
+
+        break; // assume 1 camera
+    }
+
+
+
+    // Draw all Circles
 
     for (Entity entity : registry.view<comp::Transform, comp::CircleRenderer>()) {      // For each iteration of Entity
 
@@ -23,10 +43,14 @@ void RenderSystem::update (Registry & registry, float deltatime) {
 
 
             Color col = Color({_r, _g, _b, _a});
-            
-            renderer.rdraw_circle(transform.position.x, transform.position.y, circle.radius, col);
+
+            Vec2 interpolation = {transform.previous_position.x + ((transform.position.x-transform.previous_position.x) * deltatime), transform.previous_position.y + ((transform.position.y-transform.previous_position.y) * deltatime)};
+
+            renderer.rdraw_circle(interpolation.x, interpolation.y, circle.radius, col);
 
 
     }
 
 }
+
+
