@@ -1,19 +1,20 @@
 // main.cpp
 
 /**    =======================================================================================================
- *      > MAIN FILE, Version E-Build Alpha 1.0.0
+ *      > MAIN FILE, Version E-Build Alpha 1.0.1
  *      > by IMAWarriors
  *      --------------------------------------
+ *      > LAST STABLE BUILD BEFORE TRYING TO ADD WORLD AND TILE DATA
  *      > Stable working version pushed to Git on 03-19-2029, 2:00 AM 
  * 
  *      >>> Most Recently Added Features
+ *       - Queue for Component/Entity Management
  *       - Stabilized Camera and Render interpolation
  *       - Added debug basic overlay
  *       - Split engine and application dependencies
  * 
  *      >>> Working-in-Progress Features (as of this push, goals/objectives)
- *       - Add queue for consistnent entity / component management WITHOUT view reading sequentially messing things up
- *       - Tilemap...
+ *       - Add scene, world, and tile infrastructure!
  * 
  * 
  *    ======================================================================================================= */
