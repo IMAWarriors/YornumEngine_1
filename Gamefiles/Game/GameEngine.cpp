@@ -48,7 +48,7 @@ void GameEngine::TickPhase (Phases phase, float deltatime) {
 
     if (phase == Phases::SIMULATION) {
 
-        
+        registry.execute_queue_operations();    // Clears queue as well
 
     }
 

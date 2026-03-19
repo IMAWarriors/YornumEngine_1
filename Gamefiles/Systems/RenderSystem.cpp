@@ -15,12 +15,12 @@ void RenderSystem::update (Registry & registry, float deltatime) {
 
         comp::Transform& transform = registry.get_component<comp::Transform>(entity);
 
-        Vec2 camera_interp = {
+        Vec2 camera_interpolation = {
             transform.previous_position.x + (transform.position.x - transform.previous_position.x) * deltatime,
             transform.previous_position.y + (transform.position.y - transform.previous_position.y) * deltatime
         };
 
-        renderer.set_camera_position(camera_interp);
+        renderer.set_camera_position(camera_interpolation);
 
         break; // assume 1 camera
     }

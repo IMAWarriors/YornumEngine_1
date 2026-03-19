@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <vector>
 #include <stdexcept>
+#include <functional>
 
 template<typename... T_ComponentTypeArgs> class View;
 
@@ -29,6 +30,13 @@ class Registry {
 
         bool is_valid(Entity _entity);
 
+        
+
+        std::vector<std::function<void()>> operations_queue;
+
+
+
+
     public:
     
 
@@ -43,6 +51,11 @@ class Registry {
         Entity create_entity (); 
 
         void destroy_entity (Entity _entity);
+
+
+
+
+
 
         // COMPONENT ASSIGNMENT FUNCTIONS
 
@@ -157,6 +170,33 @@ class Registry {
             return static_cast<ComponentPool<T_ComponentType>*>(component_pools[component_pools_index]);
 
         }
+
+
+
+        void queue_operation (std::function<void()> operation) {
+
+            operations_queue.push_back(operation);
+
+        }
+
+        void execute_queue_operations () {
+
+            for (auto& operation : operations_queue) {
+
+                operation();
+
+            }
+
+            operations_queue.clear();
+
+        }
+
+
+
+        // ===============================================================================
+        // Random fucking view forward declaration here so we can i guess use it to check 
+        // entities in our registry right now
+        // ===============================================================================
 
         template<typename... T_ComponentTypeArgs> View<T_ComponentTypeArgs...> view();
 
