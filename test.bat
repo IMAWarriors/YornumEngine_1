@@ -13,6 +13,7 @@ Engine\Core\Rendering\Renderer.cpp ^
 Engine\Platform\Input\InputManager.cpp ^
 Engine\ECS\EntityManager.cpp ^
 Engine\ECS\Registry.cpp ^
+Gamefiles\Systems\CameraSystem.cpp ^
 Gamefiles\Systems\RenderSystem.cpp ^
 Gamefiles\Systems\InputSystem.cpp ^
 Gamefiles\Systems\DebugOverlaySystem.cpp ^

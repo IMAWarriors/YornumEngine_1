@@ -8,11 +8,7 @@
 #include "../../Engine/ECS/ComponentPool.h"               // Get the GENERAL COMPONENT POOL INFORMATION for Component refs
 
 // Get Systems
-#include "../Systems/RenderSystem.h"       
-#include "../Systems/MovementSystem.h"
-#include "../Systems/PlayerControllerSystem.h"
-#include "../Systems/InputSystem.h"
-#include "../Systems/DebugOverlaySystem.h"
+#include "../Systems/Systems.h"
 
 #include "../../Engine/ECS/Enum_SystemPhases.h"
 
@@ -48,6 +44,8 @@ class GameEngine {
         void Initialize(Renderer & _renderer, InputManager & _input, DebugStats & _debug);
 
         void TickPhase (Phases phase, float deltatime);
+
+        
 
 
 

@@ -12,26 +12,31 @@ void CoreApplication::RunCoreEngine(GameEngine & game) {
     // Initialize Raylib Drawing Aspects
     Renderer            renderer;         
     RenderTexture2D     canvas;           // Intialize CANVAS to draw game onto
-    InputManager inputManager;
+    InputManager        inputManager;
+    DebugStats          debugInfo;
 
-    DebugStats debugInfo;
+
 
 
     renderer.init_canvas(canvas);
     game.Initialize(renderer, inputManager, debugInfo);
 
+
+
     float accumulator = 0.0f;   // Time bucket
     float frame_deltatime = 0.0f;
     float frame_cps = 0.0f;
     float frame_simulation_ticks = 0.0f;
-    
 
 
 
-    debugInfo.add_watchport("FPS: ", frame_cps, 0);
-    debugInfo.add_watchport("Frame DT: ", frame_deltatime, 4);
-    debugInfo.add_watchport("Accumulator: ", accumulator, 4);
-    debugInfo.add_watchport("Physics Ticks: ", frame_simulation_ticks, 0);
+
+
+    debugInfo.add_watchport("FPS", frame_cps, 0);
+    debugInfo.add_watchport("Frame DT", frame_deltatime, 4);
+    debugInfo.add_watchport("Accumulator", accumulator, 4);
+    debugInfo.add_watchport("Physics Ticks", frame_simulation_ticks, 0);
+
     
 
 
@@ -57,9 +62,16 @@ void CoreApplication::RunCoreEngine(GameEngine & game) {
         int simulation_ticks = 0;
 
         while (accumulator >= config::FIXED_DELTATIME) {
+
+            // Normal Simulation Tick
+
             game.TickPhase(Phases::SIMULATION, config::FIXED_DELTATIME);
             accumulator -= config::FIXED_DELTATIME;
             simulation_ticks++;
+
+            
+
+
         }
 
         frame_simulation_ticks = simulation_ticks;

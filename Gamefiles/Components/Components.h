@@ -7,6 +7,7 @@
 #include "comp/Velocity.h"
 #include "comp/CircleRenderer.h"
 #include "comp/InputState.h"
+#include "comp/Camera.h"
 
 #include "tag/Tag_Player.h"
 

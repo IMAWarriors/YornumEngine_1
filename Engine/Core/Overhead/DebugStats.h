@@ -39,22 +39,13 @@ struct DebugStats {
             }
         }
 
-        float_ports.push_back({label, &_variable, 25, 40.0f + (35.0f * float_ports.size()), _round});
+        float_ports.push_back({label, &_variable, 25, 25.0f + (20.0f * float_ports.size()), _round});
     }
 
 
 
 
 };
-
-
-
-
-
-
-
-
-
 
 #endif
 

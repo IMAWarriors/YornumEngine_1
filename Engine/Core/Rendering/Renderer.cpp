@@ -18,19 +18,6 @@ void Renderer::end_texture_frame () {
 
 void Renderer::present (RenderTexture2D & canvas) {
 
-
-
-
-
-
-
-
-    //
-
-
-
-
-
     // ========== DRAW PHASE :    Texture to screen =================
     /* START TAG */ BeginDrawing();
     // ==============================================================
@@ -59,30 +46,37 @@ void Renderer::present (RenderTexture2D & canvas) {
     );
 
 
-    // Draw Debuglayer here
+    // UI STUFF WOULD GO HERE I THINK?
 
-    // ClearBackground(Color({255, 255, 255, 255}));       // Flush gameworld window
-    
 
-    
 
-    // DrawText(TextFormat("Screen: %d x %d",      GetScreenWidth(), GetScreenHeight()),        20 , 20, 20 * scaleX, RED);
-    // DrawText(TextFormat("Monitor: %d x %d",     GetMonitorWidth(0), GetMonitorHeight(0)),   20 , 50, 20 * scaleX, RED);
-
-    
-
-    
 
     // ==============================================================
     /* END   TAG */ EndDrawing();
     // =============================================================================================
 }
 
+void Renderer::set_camera_position (Vec2 position) {
 
-void Renderer::rdraw_circle(float _x, float _y, float _radius, Color _color) {
+    camera_position = position;
 
-    DrawCircle((int)_x, (int)_y, _radius, _color);
+}
 
+Vec2 Renderer::get_camera_position () const {
+
+    return camera_position;
+
+}
+
+Vec2 Renderer::world_camera_transform (Vec2 world_coords) {
+
+    const int SCREEN_HALF_WIDTH = config::GAME_WORLD_WIDTH/2;
+    const int SCREEN_HALF_HEIGHT = config::GAME_WORLD_HEIGHT/2;
+
+    Vec2 new_coords = {world_coords.x - camera_position.x, world_coords.y - camera_position.y};
+    new_coords = {new_coords.x + SCREEN_HALF_WIDTH, new_coords.y + SCREEN_HALF_HEIGHT};             // Center camera coords
+
+    return new_coords;
 
 }
 
@@ -91,10 +85,20 @@ void Renderer::init_canvas (RenderTexture2D & render_texture) {
     // Game texture itself setup
     render_texture = LoadRenderTexture(config::GAME_WORLD_WIDTH, config::GAME_WORLD_HEIGHT);
     SetTextureFilter(render_texture.texture, TEXTURE_FILTER_BILINEAR);
+
+    debug_font = LoadFontEx("Gamefiles/Assets/Fonts/consolai.ttf",24,0,0);
     
 }
 
 
+
+
+// ============================================================================ //
+//                          Render Drawing Wrappers                             //
+// ============================================================================ //
+
+//       Wrapping Functions
+// ================================================================
 std::string Renderer::text(const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
@@ -113,10 +117,26 @@ std::string Renderer::text(const char* fmt, ...) {
 
 
 
-void Renderer::rdraw_text (const std::string & _text, int _x, int _y, int _size, Color _color) {
+//       Static Screen Drawings
+// ================================================================
 
-    DrawText(_text.c_str(), _x, _y, _size, _color);
+void Renderer::rdraw_text (const std::string & _text, int _x, int _y, int _size, Color _color) {
+    // This kind of text will be drawn to screenspace for now
+    DrawTextEx(debug_font,_text.c_str(), {(float)_x, (float)_y}, _size, 1, _color);
+}
+
+
+
+//       Game World Drawings
+// ================================================================
+
+void Renderer::rdraw_circle(float _x, float _y, float _radius, Color _color) {
+
+    Vec2 new_coords = world_camera_transform({_x, _y});
+    DrawCircle((int)(new_coords.x), (int)(new_coords.y), _radius, _color);
 
 }
+
+
 
 

@@ -4,7 +4,7 @@
 #define SPAWNDEFS_H
 
 #include "Basicdefs/Spawndef_Player.h"
-
+#include "Basicdefs/Spawndef_Camera.h"
 
 
 

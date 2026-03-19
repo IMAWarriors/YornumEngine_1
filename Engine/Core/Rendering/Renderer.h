@@ -6,6 +6,7 @@
 #include "raylib.h"
 
 #include "../Overhead/Config.h"
+#include "../Overhead/GameTypes.h"
 
 #include <cmath>
 #include <string>
@@ -13,6 +14,13 @@
 #include <vector>
 
 class Renderer {
+
+
+    private:
+
+        Vec2 camera_position = {0.0f, 0.0f};
+
+        Font debug_font;
 
 
     public:
@@ -27,6 +35,7 @@ class Renderer {
 
         
 
+        Vec2 world_camera_transform (Vec2 world_coords);
         // void rdraw_sprite();
 
         void rdraw_circle (float _x, float _y, float _radius, Color _color);
@@ -35,16 +44,25 @@ class Renderer {
 
         std::string text(const char* fmt, ...);
 
+        // =====================
+
+        // Camera Mutators
+
+        void set_camera_position(Vec2 position);
+        Vec2 get_camera_position() const;
+
+
+
+
+
+
+
+
+
+
+
+
 
 };
 
-
-
-
-
-
-
 #endif
-
-
-

@@ -7,6 +7,8 @@
 
 void RenderSystem::update (Registry & registry, float deltatime) {
 
+
+
     for (Entity entity : registry.view<comp::Transform, comp::CircleRenderer>()) {      // For each iteration of Entity
 
 
