@@ -5,6 +5,37 @@
 
 
 
+TileGrid::TileGrid () {
+
+    // Outer Loop, loop over Columns adjusting every X value 
+
+    for (int TILE_COL_IDX = -(gwconst::WORLD_TILEGRID_X_BOUND_MIN_TILE); 
+             TILE_COL_IDX <= gwconst::WORLD_TILEGRID_X_BOUND_MAX_TILE; 
+             TILE_COL_IDX++) {
+
+                // Inner loop, loop over each column's Row values (the Y values in each Column)
+        
+                for (int TILE_ROW_IDX = (gwconst::WORLD_TILEGRID_Y_BOUND_MIN_TILE); 
+                         TILE_ROW_IDX <= gwconst::WORLD_TILEGRID_Y_BOUND_MAX_TILE; 
+                         TILE_ROW_IDX++) {
+
+
+                    get_tile(TILE_COL_IDX, TILE_ROW_IDX) = {-1,-1};
+
+                }
+
+    }
+
+}
+
+
+
+
+
+
+
+
+
 Tile & TileGrid::get_tile (int col, int row) {      
 
     /** GET_TILE 
@@ -38,7 +69,7 @@ Tile & TileGrid::get_tile (int col, int row) {
     if (gwconst::WORLD_TILEGRID_X_BOUND_MIN_TILE <= col && col <= gwconst::WORLD_TILEGRID_X_BOUND_MAX_TILE &&
         gwconst::WORLD_TILEGRID_Y_BOUND_MIN_TILE <= row && row <= gwconst::WORLD_TILEGRID_Y_BOUND_MAX_TILE ) {
 
-            tile_ptr = &tilegrid[col + 320][row + 180];
+            tile_ptr = &tilegrid[col + gwconst::WORLD_TILEGRID_X_BOUND_MAX_TILE][row + gwconst::WORLD_TILEGRID_Y_BOUND_MAX_TILE];
             return *tile_ptr;
 
     } else {
@@ -50,20 +81,34 @@ Tile & TileGrid::get_tile (int col, int row) {
 
 }
 
-TileGrid::TileGrid () {
-    for (int TILE_COL_IDX = -(gwconst::WORLD_TILEGRID_X_BOUND_MIN_TILE); TILE_COL_IDX <= gwconst::WORLD_TILEGRID_X_BOUND_MAX_TILE; TILE_COL_IDX++) {
-        for (int TILE_ROW_IDX = -(gwconst::WORLD_TILEGRID_Y_BOUND_MIN_TILE); TILE_COL_IDX <= gwconst::WORLD_TILEGRID_X_BOUND_MAX_TILE; TILE_COL_IDX++) {
-            get_tile(TILE_COL_IDX, TILE_ROW_IDX) = {0};
-        }
-    }
+
+
+Tile & TileGrid::get_tile_world_pos (Vec2 pos) {
+
+    // Get tile by coordinates
+
+    int column;
+    int row;
+
+    float position_x = pos.x;
+    float position_y = pos.y;
+
+    column = position_x / gwconst::WORLD_TILEGRID_WIDTH;
+    row    = position_y / gwconst::WORLD_TILEGRID_HEIGHT;
+
+    Tile & tile = get_tile (column, row);
+    
+    return tile;
+    
 }
 
+int TileGrid::translate_world_x_col (float world_x) const {
+    return (world_x / gwconst::WORLD_TILEGRID_WIDTH);
+}
 
-
-
-
-
-
+int TileGrid::translate_world_y_row (float world_y) const {
+    return (world_y / gwconst::WORLD_TILEGRID_HEIGHT);
+}
 
 
 

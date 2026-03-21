@@ -16,6 +16,7 @@
 // Get Specific Components
 #include "../Components/Components.h"
 
+class Scene;
 
 class Renderer;
 
@@ -25,10 +26,11 @@ class RenderSystem : public System {
     private:
 
         Renderer & renderer;
+        Scene & scene;
 
     public:
 
-        RenderSystem (Renderer & _renderer) : renderer(_renderer) {}
+        RenderSystem (Renderer & _renderer, Scene & _scene) : renderer(_renderer), scene(_scene) {}
 
         void update (Registry & registry, float deltatime) override;
 

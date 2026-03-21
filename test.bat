@@ -17,6 +17,7 @@ Gamefiles\Systems\CameraSystem.cpp ^
 Gamefiles\Systems\RenderSystem.cpp ^
 Gamefiles\Systems\InputSystem.cpp ^
 Gamefiles\Systems\DebugOverlaySystem.cpp ^
+Gamefiles\World\TileGrid.cpp ^
 Gamefiles\Game\GameEngine.cpp ^
 -o game.exe ^
 -I%RAYLIB_PATH%\include ^

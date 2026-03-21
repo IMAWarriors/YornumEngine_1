@@ -13,6 +13,10 @@
 #include "../../Engine/ECS/Enum_SystemPhases.h"
 
 
+#include "../World/Scene.h"
+
+
+
 class Renderer;
 
 class InputManager;
@@ -31,6 +35,9 @@ class GameEngine {
 
         // Camera    camera;
         Registry registry;
+
+        // Scene?
+        Scene scene;
 
         // Pointers to CoreApplication Attributes
         Renderer * renderer = nullptr;

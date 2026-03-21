@@ -139,4 +139,8 @@ void Renderer::rdraw_circle(float _x, float _y, float _radius, Color _color) {
 
 
 
+void Renderer::rdraw_sprite (Texture2D _texture, Rectangle _crop, Rectangle _paste) {
 
+    DrawTexturePro(_texture, _crop, _paste, {0.0f, 0.0f}, 0.0f, WHITE);
+
+}

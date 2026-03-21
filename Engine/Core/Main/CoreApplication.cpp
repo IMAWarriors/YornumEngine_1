@@ -40,7 +40,7 @@ void CoreApplication::RunCoreEngine(GameEngine & game) {
     debugInfo.add_watchport("Physics Ticks", frame_simulation_ticks, 0);
 
     
-
+    
 
 
     while ( window.IsRunning() ) {

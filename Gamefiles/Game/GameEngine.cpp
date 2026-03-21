@@ -2,6 +2,7 @@
 
 #include "GameEngine.h"
 
+
 // Get Spawndefs
 #include "../Spawndefs/Spawndefs.h"
 
@@ -11,11 +12,14 @@ void GameEngine::Initialize(Renderer & _renderer, InputManager & _input, DebugSt
     input    = &_input;
     debug    = &_debug;
 
+    scene.load_new_tileset(LoadTexture("Gamefiles/Assets/Sprites/Tilesets/tileset_test_1_A.png"),8,4,4);
+    scene.tiles_push_new_layer();       // Pushes automatic test layer
+
     systems.add_system   <InputSystem>               (Phases::INPUT, *input);
     systems.add_system   <PlayerControllerSystem>    (Phases::SIMULATION);
     systems.add_system   <MovementSystem>            (Phases::SIMULATION);
     systems.add_system   <CameraSystem>              (Phases::SIMULATION, *renderer);
-    systems.add_system   <RenderSystem>              (Phases::RENDERING, *renderer);
+    systems.add_system   <RenderSystem>              (Phases::RENDERING, *renderer, scene);
     systems.add_system   <DebugOverlaySystem>        (Phases::RENDERING, *renderer, *debug);
     
 

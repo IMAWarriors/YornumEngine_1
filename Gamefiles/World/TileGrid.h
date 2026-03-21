@@ -4,8 +4,11 @@
 #define TILEGRID_H
 
 #include "Overhead/Gwconst.h"
+#include "../../Engine/Core/Overhead/GameTypes.h"
 #include "Tile.h"
+#include "TileAtlas.h"
 
+#include <vector>
 #include <stdexcept>
 
 class TileGrid {
@@ -14,17 +17,18 @@ class TileGrid {
 
         Tile tilegrid[gwconst::WORLD_TILEGRID_WIDTH][gwconst::WORLD_TILEGRID_HEIGHT];
 
-        Tile & get_tile (int col, int row);
-
-
-
-
 
     public:
 
         TileGrid ();
 
+         Tile & get_tile (int col, int row); // general mutator
 
+        Tile & get_tile_world_pos (Vec2 pos);
+
+
+        int translate_world_x_col (float world_x) const;
+        int translate_world_y_row (float world_y) const;
 
 
 
