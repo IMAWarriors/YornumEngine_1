@@ -11,6 +11,28 @@
 void RenderSystem::update (Registry & registry, float deltatime) {
 
 
+
+     // "DELTATIME" is technically i guess an alpha here that we have to use to interpolate
+
+    // Set internal renderer camera position according to interpolation bullshit
+    for (Entity entity : registry.view<comp::Camera, comp::Transform>()) {
+
+        comp::Transform& transform = registry.get_component<comp::Transform>(entity);
+
+        Vec2 camera_interpolation = {
+            transform.previous_position.x + (transform.position.x - transform.previous_position.x) * deltatime,
+            transform.previous_position.y + (transform.position.y - transform.previous_position.y) * deltatime
+        };
+
+        renderer.set_camera_position(camera_interpolation);
+
+        break; // assume 1 camera
+    }
+
+
+
+
+
     // Going to try to draw tiles here first I guess, assuming the default layer of tiles is BEHIND the player
 
     // DRAWING TILES, UTILIZING THE SCENE, NOT FUCKING ENTITIES BECAUSE THATS STUPID
@@ -18,24 +40,6 @@ void RenderSystem::update (Registry & registry, float deltatime) {
     if (scene.loaded_atlases.size() > 0 && scene.tile_layers.size() > 0) {
 
         Vec2 camera_position = renderer.get_camera_position();      // Top Left of Camera
-
-        // Don't get confused looking back at this a layer is just a layer of tile grid which is a bunch of
-        // tiles and using item 0 of tile_lalyers just lets me use functions relating to general gameworld size
-        // and position in the gameworld, not doing anything else really
-        //
-        // ... lowkey shitty way to get camera size too but idk
-
-
-
-        // JUST TEST DEBUG VALUES THAT WE CAN USE TO SEE IF WE ARE RENDERING TO THE EXPECTED NUMBER OF ROWS AND COLUMNS
-        // UNUSED VARIABLES BASICALLY
-
-        int left_viewport_tileCol = scene.tile_layers[0].translate_world_x_col(camera_position.x);
-        int right_viewport_tileCol = scene.tile_layers[0].translate_world_x_col(camera_position.x + config::GAME_WORLD_WIDTH);
-        int upper_viewport_tileRow = scene.tile_layers[0].translate_world_y_row(camera_position.y);
-        int lower_viewport_tileRow = scene.tile_layers[0].translate_world_y_row(camera_position.y + config::GAME_WORLD_HEIGHT);
-
-        // Later for doing the mod x offset I guess  I really should do this for the biggest tile tehre is in all atlassess
 
         int camera_mod_x_offset = (int)(camera_position.x) % scene.loaded_atlases[0].tile_size;
         int camera_mod_y_offset = (int)(camera_position.y) % scene.loaded_atlases[0].tile_size;
@@ -53,12 +57,14 @@ void RenderSystem::update (Registry & registry, float deltatime) {
 
             // Pretty much all of this is unadjusted for CAMERA ZOOM
 
-            int start_x = -camera_mod_x_offset;
-            int start_y = -camera_mod_y_offset;
+            int start_x = (int)(camera_position.x);
+            int start_y = (int)(camera_position.y);
 
-            int end_x = config::GAME_WORLD_WIDTH;
-            int end_y = config::GAME_WORLD_HEIGHT;
+            int end_x = start_x + config::GAME_WORLD_WIDTH;
+            int end_y = start_y + config::GAME_WORLD_HEIGHT;
 
+            start_x = start_x - camera_mod_x_offset;
+            start_y = start_y - camera_mod_y_offset;
 
             int drawcursor_x = start_x;
             int drawcursor_y = start_y;
@@ -90,11 +96,9 @@ void RenderSystem::update (Registry & registry, float deltatime) {
             // Outer loop, draw until the cursor x gets to the end past end x which is like the end of the screen ig like past where we care abt rendering right
             while (drawcursor_y < end_y) {
 
-                int world_cam_tilesize_px;
-
                 while (drawcursor_x < end_x) {
 
-                
+                    // Remember layer is just a tile_grid 
                     int world_column = layer.translate_world_x_col(drawcursor_x);
                     int world_row    = layer.translate_world_y_row(drawcursor_y);
 
@@ -111,22 +115,19 @@ void RenderSystem::update (Registry & registry, float deltatime) {
                             scene.loaded_atlases[tile_to_draw.atlas_idx].tiles_per_row - 1, 
                             scene.loaded_atlases[tile_to_draw.atlas_idx].tiles_per_col - 1);
 
-                        world_cam_tilesize_px = scene.loaded_atlases[tile_to_draw.atlas_idx].tile_size;     // Not adjusting right now for Camera zoom or anything,
-                                                                                                            // Just assuming this one static size which ig is kinda bad
-                                                                                                            // But idk how i wanna handle zoom yet kinda scared of that so...
-                        
+
                         if (0 <= tile_to_draw.tile_idx && tile_to_draw.tile_idx <= atlasMaxIndex) {  // Just means to not draw anything if there is a tile idx tryna be gotten not in teh atlas                                                                        
                             renderer.rdraw_sprite(scene.loaded_atlases[tile_to_draw.atlas_idx].image_sheet_source, 
                                 scene.loaded_atlases[tile_to_draw.atlas_idx].getRect(tile_to_draw.tile_idx), 
-                                {(float)drawcursor_x, (float)drawcursor_y, (float)world_cam_tilesize_px, (float)world_cam_tilesize_px});
+                                {(float)drawcursor_x - camera_position.x, (float)drawcursor_y - camera_position.y, (float)gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS, (float)gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS});
                         }
 
                     }
 
-                    iterate_drawcursor_x(world_cam_tilesize_px);
+                    iterate_drawcursor_x(gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS);
                 }
 
-                iterate_drawcursor_y(world_cam_tilesize_px);
+                iterate_drawcursor_y(gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS);
                 
             }
         }
@@ -153,23 +154,7 @@ void RenderSystem::update (Registry & registry, float deltatime) {
 
 
 
-    // "DELTATIME" is technically i guess an alpha here that we have to use to interpolate
-
-    // Set internal renderer camera position according to interpolation bullshit
-    for (Entity entity : registry.view<comp::Camera, comp::Transform>()) {
-
-        comp::Transform& transform = registry.get_component<comp::Transform>(entity);
-
-        Vec2 camera_interpolation = {
-            transform.previous_position.x + (transform.position.x - transform.previous_position.x) * deltatime,
-            transform.previous_position.y + (transform.position.y - transform.previous_position.y) * deltatime
-        };
-
-        renderer.set_camera_position(camera_interpolation);
-
-        break; // assume 1 camera
-    }
-
+   
 
 
     // Draw all Circles

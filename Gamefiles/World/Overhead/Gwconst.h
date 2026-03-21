@@ -3,6 +3,8 @@
 #ifndef GWCONST_H
 #define GWCONST_H
 
+#include "../../../Engine/Core/Overhead/Config.h"
+
 namespace gwconst {
 
     const int WORLD_TILEGRID_X_BOUND_MIN_TILE = -320; // Range of X is  { -320, 0, 320 }, all inclusive, but the 0 is used for segmenting
@@ -18,6 +20,10 @@ namespace gwconst {
 
     
 
+    const int SCREEN_WIDTH_GAMEPIXELS = config::GAME_WORLD_WIDTH;
+    const int SCREEN_HEIGHT_GAMEPIXELS = config::GAME_WORLD_HEIGHT;
+
+    const int SCREEN_BASE_TILESIZE_GAMEPIXELS = 32;
 
 
 }
