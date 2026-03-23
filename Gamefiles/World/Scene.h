@@ -66,7 +66,7 @@ class Scene {
         }
 
 
-        void load_new_tileset (Texture2D _image, size_t _tile_px_size, size_t _tiles_per_row, size_t _tiles_per_col) {
+        void load_new_tileset (Texture2D & _image, size_t _tile_px_size, size_t _tiles_per_row, size_t _tiles_per_col) {
             
             loaded_atlases.push_back(TileAtlas(_image, _tile_px_size, _tiles_per_row, _tiles_per_col));
 

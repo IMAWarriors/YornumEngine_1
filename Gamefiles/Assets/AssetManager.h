@@ -51,6 +51,7 @@ class AssetManager {
         // Utility Functions
 
         std::vector<std::string> GetTilesetFilenames (const std::string & _path);
+        std::vector<std::string> GetTilesetPaths (const std::string & _path);
 
 
 };

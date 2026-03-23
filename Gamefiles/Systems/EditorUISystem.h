@@ -19,6 +19,8 @@ class Scene;
 
 class Renderer;
 
+class AssetManager;
+
 
 class EditorUISystem : public System {
 
@@ -26,11 +28,12 @@ class EditorUISystem : public System {
 
         Renderer & renderer;
         Scene & scene;
+        AssetManager & assets;
 
 
     public: 
 
-        EditorUISystem (Renderer & _renderer, Scene & _scene) : renderer(_renderer), scene(_scene) {}
+        EditorUISystem (Renderer & _renderer, Scene & _scene, AssetManager & _assets) : renderer(_renderer), scene(_scene), assets(_assets) {}
         
     
         void update (Registry & registry, float deltatime) override;

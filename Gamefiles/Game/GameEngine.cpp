@@ -30,7 +30,7 @@ void GameEngine::Initialize(Renderer & _renderer, InputManager & _input, DebugSt
     systems.add_system   <DebugOverlaySystem>        (Phases::RENDERING, *renderer, *debug);
 
     if (RUNNING_EDITOR) {
-        systems.add_system<EditorUISystem>(Phases::EDITORUI, *renderer, scene);
+        systems.add_system<EditorUISystem>(Phases::EDITORUI, *renderer, scene, assets);
     }    
 
 

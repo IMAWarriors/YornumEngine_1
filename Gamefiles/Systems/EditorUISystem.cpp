@@ -8,6 +8,7 @@
 #include "../../Gamefiles/World/Scene.h"
 #include "../../Gamefiles/World/Tile.h"
 #include "../../Gamefiles/World/Overhead/Gwconst.h"
+#include "../../Gamefiles/Assets/AssetManager.h"
 
 #include "../../External/rlimgui/rlImGui.h"
 #include "../../External/imgui/imgui.h"
@@ -87,11 +88,13 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                 ImGui::Text("________________");
 
-                static std::vector<std::string> items = {
-                    "Grassy_Tileset_1", "Grassy_Tileset_2", "Grassy_Village_Tileset_1", "Grassy_Stone_Mountain_Tileset_1", "Grassy_Bank_Water_Tileset_1"
-                };
+                static std::vector<std::string> items = assets.GetTilesetFilenames("Gamefiles/Assets/Sprites/Tilesets/");
+                static std::vector<std::string> itempaths = assets.GetTilesetPaths("Gamefiles/Assets/Sprites/Tilesets/");
 
                 static int selectedIndex = -1;
+
+                bool tilesetToPreview = false;
+                std::string path;
 
                 // Left side: scrollable list
 
@@ -104,14 +107,16 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f); // thickness
 
                 if (fullscreen) {
-                    ImGui::BeginChild("ItemListPanel", ImVec2(230 * fullscreenScale.x, 145 * fullscreenScale.y), true);
+                    ImGui::BeginChild("ItemListPanel", ImVec2(220 * fullscreenScale.x, 145 * fullscreenScale.y), true);
                 } else {
-                    ImGui::BeginChild("ItemListPanel", ImVec2(230 * fullscreenScale.x, 110 * fullscreenScale.y), true);
+                    ImGui::BeginChild("ItemListPanel", ImVec2(220 * fullscreenScale.x, 110 * fullscreenScale.y), true);
                 }
 
                 for (int i = 0; i < items.size(); i++) {
                     if (ImGui::Selectable(items[i].c_str(), selectedIndex == i)) {
                         selectedIndex = i;
+                        tilesetToPreview = true;
+                        path = itempaths[i];
                     }
                 }
 
@@ -127,20 +132,28 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                 // Tileset & Tileatlas Manager
 
-                UIPos(240, 558, 240, 542);
+                UIPos(260, 558, 240, 542);
                 ImGui::Text("Preview");
 
-                UIPos(235, 563, 235, 547);
+                UIPos(255, 563, 235, 547);
 
                 ImGui::Text("________________");
 
                 // Left side: scrollable list
 
                 // (Small Screen) (Fullscreen)
-                UIPos(240, 595, 240, 565);
+                UIPos(260, 595, 240, 565);
                 
-                
+                if (tilesetToPreview) {
+                    
+                    Texture2D & texture = assets.LoadTilesetTexture(path);
 
+                    float scale = std::min(200.0f / texture.width, 200.0f / texture.height);
+                    ImVec2 size = ImVec2(texture.width * scale, texture.height * scale);
+
+                    ImGui::Image((ImTextureID)texture.id, size);
+
+                }
 
                 
                 ImGui::EndTabItem();
