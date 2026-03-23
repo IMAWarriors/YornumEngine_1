@@ -36,9 +36,12 @@ class PlayerControllerSystem : public System {
 
                 float target_player_velocity_x = 0.0f;
 
+                float target_player_velocity_y = 0.0f; //temp
 
                 target_player_velocity_x = MAX_VELOCITY_X * input.horz_axis;
+                target_player_velocity_y = MAX_VELOCITY_X * input.vert_axis;
            
+                // If (user trying to speed up?) else, (user target for player vel_x is now 0)
                 if (std::abs(target_player_velocity_x) > 0) {
                     if ( (target_player_velocity_x > 0 && player_velocity.magnitude.x < 0) || (target_player_velocity_x < 0 && player_velocity.magnitude.x > 0) ) {
                         // Handle quick turn around for movement option with most velocity
@@ -52,25 +55,49 @@ class PlayerControllerSystem : public System {
                 } else {
 
                     if (player_velocity.magnitude.x > 0) {
-
                         player_velocity.magnitude.x -= FRICTION * deltatime;
                         if (player_velocity.magnitude.x <= 0) {
                             player_velocity.magnitude.x = 0.0f;
                         }
-
                     } else if (player_velocity.magnitude.x < 0) {
-
                         player_velocity.magnitude.x += FRICTION * deltatime;
                         if (player_velocity.magnitude.x >= 0) {
                             player_velocity.magnitude.x = 0.0f;
                         }
+                    }
+                }
 
+                // Handle EDITOR Y GOD MPDE (for flying in yhe Y direction)
+
+                if (std::abs(target_player_velocity_y) > 0) {
+                    if ( (target_player_velocity_y > 0 && player_velocity.magnitude.y < 0) || 
+                         (target_player_velocity_y < 0 && player_velocity.magnitude.y > 0) ) {
+
+                        player_velocity.magnitude.y += input.vert_axis * ( fmax(FRICTION, ACCELERATION) * deltatime);
+                    } else {
+                        player_velocity.magnitude.y += input.vert_axis * (ACCELERATION * deltatime);
                     }
 
+                } else {
+
+                    if (player_velocity.magnitude.y > 0) {
+                        
+                        player_velocity.magnitude.y -= FRICTION * deltatime;
+                        if (player_velocity.magnitude.y <= 0) { player_velocity.magnitude.y = 0.0f; }
+
+                    } else if (player_velocity.magnitude.y < 0) {
+                        
+                        player_velocity.magnitude.y += FRICTION * deltatime;
+                        if (player_velocity.magnitude.y >= 0) { player_velocity.magnitude.y = 0.0f; }
+
+                    }
                 }
-                
+        
                 if (player_velocity.magnitude.x > MAX_VELOCITY_X)  {    player_velocity.magnitude.x =  MAX_VELOCITY_X; }
                 if (player_velocity.magnitude.x < -MAX_VELOCITY_X) {    player_velocity.magnitude.x = -MAX_VELOCITY_X; }
+
+                if (player_velocity.magnitude.y > MAX_VELOCITY_X) {player_velocity.magnitude.y=MAX_VELOCITY_X;}
+                if (player_velocity.magnitude.y < -MAX_VELOCITY_X) {player_velocity.magnitude.y=-MAX_VELOCITY_X;}
     
 
                 // Velocity should be updated at this point

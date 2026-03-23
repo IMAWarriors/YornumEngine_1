@@ -43,10 +43,16 @@ class GameEngine {
         Renderer * renderer = nullptr;
         InputManager * input = nullptr;
         DebugStats * debug = nullptr;
-        
-    
 
+        bool RUNNING_EDITOR = false;
+        
+     
     public:
+
+
+        bool IsRunningEditor();
+
+        void SetEditorMode();
 
         void Initialize(Renderer & _renderer, InputManager & _input, DebugStats & _debug);
 

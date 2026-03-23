@@ -27,10 +27,13 @@ class RenderSystem : public System {
 
         Renderer & renderer;
         Scene & scene;
+        bool renderSceneEditorUI = false;
 
     public:
 
         RenderSystem (Renderer & _renderer, Scene & _scene) : renderer(_renderer), scene(_scene) {}
+
+        RenderSystem (Renderer & _renderer, Scene & _scene, bool _editor) : renderer(_renderer), scene(_scene), renderSceneEditorUI(_editor) {} 
 
         void update (Registry & registry, float deltatime) override;
 

@@ -93,8 +93,8 @@ Tile & TileGrid::get_tile_world_pos (Vec2 pos) {
     float position_x = pos.x;
     float position_y = pos.y;
 
-    column = std::floor(position_x / gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS);
-    row    = std::floor(position_y / gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS);
+    column = (int)(std::floor(position_x / gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS));
+    row    = (int)(std::floor(position_y / gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS));
 
     Tile & tile = get_tile (column, row);
     
@@ -103,11 +103,11 @@ Tile & TileGrid::get_tile_world_pos (Vec2 pos) {
 }
 
 int TileGrid::translate_world_x_col (float world_x) const {
-    return std::floor(world_x / gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS);
+    return (int)(std::floor(world_x / gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS));
 }
 
 int TileGrid::translate_world_y_row (float world_y) const {
-    return std::floor(world_y / gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS);
+    return (int)(std::floor(world_y / gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS));
 }
 
 

@@ -4,10 +4,16 @@ set RAYLIB_PATH=C:\Raylib\
 set COMPILER=g++
 
 echo INFO: Project ^>^> Linking and compiling project files...
+echo INFO: Project ^>^> Configuring EDITOR build version...
 
 %COMPILER% ^
-main.cpp ^
-Engine\Core\Main\Main_CoreApplication.cpp ^
+Tools\Main\Editor.cpp ^
+External\rlimgui\rlImGui.cpp ^
+External\imgui\imgui.cpp ^
+External\imgui\imgui_draw.cpp ^
+External\imgui\imgui_widgets.cpp ^
+External\imgui\imgui_tables.cpp ^
+Engine\Core\Main\Editor_CoreApplication.cpp ^
 Engine\Core\Window\Window.cpp ^
 Engine\Core\Rendering\Renderer.cpp ^
 Engine\Platform\Input\InputManager.cpp ^
@@ -20,7 +26,9 @@ Gamefiles\Systems\DebugOverlaySystem.cpp ^
 Gamefiles\Systems\EngineManagerSystem.cpp ^
 Gamefiles\World\TileGrid.cpp ^
 Gamefiles\Game\GameEngine.cpp ^
--o game.exe ^
+-IExternal\imgui ^
+-IExternal\rlimgui ^
+-o editor.exe ^
 -I%RAYLIB_PATH%\include ^
 -L%RAYLIB_PATH%\lib ^
 -lraylib ^
@@ -40,7 +48,7 @@ if %ERRORLEVEL% neq 0 (
 echo INFO: Project ^>^> Files successfully compiled!
 echo INFO: Project ^>^> Running main executable...
 
-game.exe
+editor.exe
 
 echo INFO: Project ^>^> Executable protocol finished!
 

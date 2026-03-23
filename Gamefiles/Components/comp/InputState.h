@@ -10,6 +10,7 @@ namespace comp {
     struct InputState {
 
         int horz_axis;
+        int vert_axis;
         bool jump_key;
 
         

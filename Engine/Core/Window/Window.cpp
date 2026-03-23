@@ -46,6 +46,7 @@ void Window::ListenFullscreenToggle() {
 Window::Window (const char * title) {
 
     // SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+    fullscreen = false;
 
     // Window setup
     SetConfigFlags(FLAG_VSYNC_HINT);

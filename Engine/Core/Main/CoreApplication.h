@@ -36,7 +36,7 @@ class CoreApplication {
 
         void RunCoreEngine (GameEngine & game);
 
-
+        void RunCoreEngineMainEditor (GameEngine & game);
 
 
 

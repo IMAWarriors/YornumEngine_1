@@ -10,6 +10,7 @@
 #include "../Systems/InputSystem.h"
 #include "../Systems/DebugOverlaySystem.h"
 #include "../Systems/CameraSystem.h"
+#include "../Systems/EngineManagerSystem.h"
 
 #endif
 

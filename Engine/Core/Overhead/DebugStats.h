@@ -23,12 +23,15 @@ struct DebugStats {
     float frame_accumulator;
     int frame_simulation_ticks;
 
+    float frames_per_second;
+
     std::vector<FloatPort> float_ports;
 
-    void set_frame_stats (float f_dt, float f_a, int f_s_t) {
+    void set_frame_stats (float f_dt, float f_a, int f_s_t, float fps) {
         frame_deltatime = f_dt;
         frame_accumulator = f_a;
         frame_simulation_ticks = f_s_t;
+        frames_per_second = fps;
     }
 
     void add_watchport (std::string label, float &_variable, int _round) {

@@ -8,9 +8,10 @@
 #include "comp/CircleRenderer.h"
 #include "comp/InputState.h"
 #include "comp/Camera.h"
+#include "comp/MouseTracker.h"
+#include "comp/FramerateTracker.h"
 
 #include "tag/Tag_Player.h"
-
 
 
 

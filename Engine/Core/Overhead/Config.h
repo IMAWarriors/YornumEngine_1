@@ -5,6 +5,8 @@
 
 namespace config {
 
+
+
     // Constants
     constexpr int GAME_WORLD_WIDTH  = 1280;      // Width
     constexpr int GAME_WORLD_HEIGHT =  720;      // Height
