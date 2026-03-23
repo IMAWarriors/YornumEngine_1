@@ -49,21 +49,31 @@ void GameEngine::Initialize(Renderer & _renderer, InputManager & _input, DebugSt
     float & acc = registry.get_component<comp::FramerateTracker>(engine).accumulator;
 
     debug->add_watchport("FPS",fps,0);
+
+    /*
     debug->add_watchport("DT",dt,4);
     debug->add_watchport("Acc",acc,4);
     debug->add_watchport("Ticks",ticks,0);
     
     debug->add_watchport("Player X",player_transform.position.x,0);
     debug->add_watchport("Player Y",player_transform.position.y,0);
-    debug->add_watchport("Camera X",camera_transform.position.x,0);
-    debug->add_watchport("Camera Y",camera_transform.position.y,0);
 
-    debug->add_watchport("Mouse X",screen_mouse.x,0);
-    debug->add_watchport("Mouse Y",screen_mouse.y,0);
+    */
 
-    debug->add_watchport("World Mouse X",world_mouse.x,0);
-    debug->add_watchport("World Mouse Y",world_mouse.y,0);
+    if (RUNNING_EDITOR) {
 
+        debug->set_watchport_list_position({25.0f, 35.0f});
+
+        debug->add_watchport("Camera X",camera_transform.position.x,0);
+        debug->add_watchport("Camera Y",camera_transform.position.y,0);
+
+        debug->add_watchport("Screen Mouse X",screen_mouse.x,0);
+        debug->add_watchport("Screen Mouse Y",screen_mouse.y,0);
+
+        debug->add_watchport("World Mouse X",world_mouse.x,0);
+        debug->add_watchport("World Mouse Y",world_mouse.y,0);
+    }
+    
 
 }
 

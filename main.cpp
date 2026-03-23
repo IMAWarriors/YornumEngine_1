@@ -1,20 +1,20 @@
 // main.cpp
 
 /**    =======================================================================================================
- *      > MAIN FILE, Version E-Build Alpha 1.0.1
+ *      > MAIN FILE, Version E-Build Alpha 1.1.1
  *      > by IMAWarriors
  *      --------------------------------------
- *      > LAST STABLE BUILD BEFORE TRYING TO ADD WORLD AND TILE DATA
- *      > Stable working version pushed to Git on 03-19-2029, 2:00 AM 
+ *      > Stable working version pushed to Git on 03-22-2026, 10:35 PM 
  * 
  *      >>> Most Recently Added Features
+ *       - Imported Dear ImGui and rlImGui
+ *       - Fixed debug components
+ *       - Added Tileset and Atlas splitting capabilities
  *       - Queue for Component/Entity Management
  *       - Stabilized Camera and Render interpolation
- *       - Added debug basic overlay
- *       - Split engine and application dependencies
  * 
  *      >>> Working-in-Progress Features (as of this push, goals/objectives)
- *       - Add scene, world, and tile infrastructure!
+ *       - Trying to add more editor related features for easy debug/expansion
  * 
  * 
  *    ======================================================================================================= */
