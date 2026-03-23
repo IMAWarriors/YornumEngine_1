@@ -43,7 +43,7 @@ void CoreApplication::RunCoreEngineMainEditor (GameEngine & game) {
         // STEP 1:          LOGIC  | Update logic and game frame state
         // ==========================================
     
-        rlImGuiBegin();
+        
 
         frame_cps = (float)(GetFPS());
         frame_deltatime = GetFrameTime();
@@ -78,9 +78,9 @@ void CoreApplication::RunCoreEngineMainEditor (GameEngine & game) {
         game.TickPhase(Phases::RENDERING, alpha);
 
         renderer.end_texture_frame();
-        renderer.present(canvas);   // Begin Draw -> Draw Pro texture -> End Draw
+        renderer.present(canvas, game, alpha);   // Begin Draw -> Draw Pro texture -> End Draw
 
-        rlImGuiEnd();
+        
 
     }
 
@@ -99,5 +99,6 @@ void CoreApplication::RunCoreEngineMainEditor (GameEngine & game) {
 void CoreApplication::RunCoreEngine(GameEngine & game) {
 
     // Do nothing
-    
+
 }
+

@@ -43,7 +43,7 @@ struct DebugStats {
         position = newpos;
         for (FloatPort & float_port : float_ports) {
             float_port.x = position.x;
-            float_port.y = position.y + (20.0f * (float)(float_port.id));
+            float_port.y = position.y + (15.0f * (float)(float_port.id));
         }
     }
 
@@ -55,7 +55,7 @@ struct DebugStats {
             }
         }
 
-        float_ports.push_back({label, &_variable, position.x, position.y + (20.0f * (float)next_id), _round, next_id});
+        float_ports.push_back({label, &_variable, position.x, position.y + (15.0f * (float)next_id), _round, next_id});
         next_id++;
     }
 

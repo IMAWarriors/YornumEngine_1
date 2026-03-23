@@ -17,9 +17,9 @@ void DebugOverlaySystem::update (Registry & registry, float deltatime)  {
 
     for (auto port : debug_info.float_ports) {
         if (port.rounding == 0) {
-            renderer.rdraw_text(renderer.text("%s: %.0f", port.label.c_str(), *(port.data)), (int)(port.x), (int)(port.y), 25, WHITE);
+            renderer.rdraw_text(renderer.text("%s: %.0f", port.label.c_str(), *(port.data)), (int)(port.x), (int)(port.y), 16, WHITE);
         } else if (port.rounding == 4) {
-            renderer.rdraw_text(renderer.text("%s: %.4f", port.label.c_str(), *(port.data)), (int)(port.x), (int)(port.y), 25, WHITE);
+            renderer.rdraw_text(renderer.text("%s: %.4f", port.label.c_str(), *(port.data)), (int)(port.x), (int)(port.y), 16, WHITE);
         } 
     }
     

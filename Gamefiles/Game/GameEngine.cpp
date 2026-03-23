@@ -12,7 +12,7 @@ void GameEngine::Initialize(Renderer & _renderer, InputManager & _input, DebugSt
     input    = &_input;
     debug    = &_debug;
 
-    scene.load_new_tileset(LoadTexture("Gamefiles/Assets/Sprites/Tilesets/cave_tileset.png"),32,10,7);
+    scene.load_new_tileset(assets.LoadTilesetTexture("Gamefiles/Assets/Sprites/Tilesets/cave_tileset.png"),32,10,7);
     scene.tiles_push_new_layer();       // Pushes automatic test layer
 
     systems.add_system   <InputSystem>               (Phases::INPUT, *input);
@@ -26,8 +26,12 @@ void GameEngine::Initialize(Renderer & _renderer, InputManager & _input, DebugSt
     } else {
         systems.add_system<RenderSystem>(Phases::RENDERING, *renderer, scene);
     }
-    systems.add_system   <DebugOverlaySystem>        (Phases::RENDERING, *renderer, *debug);
     
+    systems.add_system   <DebugOverlaySystem>        (Phases::RENDERING, *renderer, *debug);
+
+    if (RUNNING_EDITOR) {
+        systems.add_system<EditorUISystem>(Phases::EDITORUI, *renderer, scene);
+    }    
 
 
     // Entities Initialization
@@ -62,7 +66,7 @@ void GameEngine::Initialize(Renderer & _renderer, InputManager & _input, DebugSt
 
     if (RUNNING_EDITOR) {
 
-        debug->set_watchport_list_position({25.0f, 35.0f});
+        debug->set_watchport_list_position({10.0f, 35.0f});
 
         debug->add_watchport("Camera X",camera_transform.position.x,0);
         debug->add_watchport("Camera Y",camera_transform.position.y,0);

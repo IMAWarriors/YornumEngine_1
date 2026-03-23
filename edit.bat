@@ -19,11 +19,13 @@ Engine\Core\Rendering\Renderer.cpp ^
 Engine\Platform\Input\InputManager.cpp ^
 Engine\ECS\EntityManager.cpp ^
 Engine\ECS\Registry.cpp ^
+Gamefiles\Assets\AssetManager.cpp ^
 Gamefiles\Systems\CameraSystem.cpp ^
 Gamefiles\Systems\RenderSystem.cpp ^
 Gamefiles\Systems\InputSystem.cpp ^
 Gamefiles\Systems\DebugOverlaySystem.cpp ^
 Gamefiles\Systems\EngineManagerSystem.cpp ^
+Gamefiles\Systems\EditorUISystem.cpp ^
 Gamefiles\World\TileGrid.cpp ^
 Gamefiles\Game\GameEngine.cpp ^
 -IExternal\imgui ^

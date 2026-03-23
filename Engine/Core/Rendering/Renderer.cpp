@@ -2,6 +2,9 @@
 
 #include "Renderer.h"
 
+#include "../../../Gamefiles/Game/GameEngine.h"
+
+#include "../../../External/rlimgui/rlImGui.h"
 
 void Renderer::begin_texture_frame (RenderTexture2D & canvas) {
     // ======================= DRAW ===========================
@@ -16,7 +19,7 @@ void Renderer::end_texture_frame () {
     // ========================================================
 }
 
-void Renderer::present (RenderTexture2D & canvas) {
+void Renderer::present (RenderTexture2D & canvas, GameEngine & game, float alpha) {
 
     // ========== DRAW PHASE :    Texture to screen =================
     /* START TAG */ BeginDrawing();
@@ -48,12 +51,24 @@ void Renderer::present (RenderTexture2D & canvas) {
 
     // UI STUFF WOULD GO HERE I THINK?
 
+    rlImGuiBegin();
 
+    game.TickPhase(Phases::EDITORUI, alpha);
+
+    rlImGuiEnd();
 
 
     // ==============================================================
     /* END   TAG */ EndDrawing();
     // =============================================================================================
+
+
+
+
+
+
+
+
 }
 
 void Renderer::set_camera_position (Vec2 position) {

@@ -11,6 +11,7 @@
 #include "../Systems/DebugOverlaySystem.h"
 #include "../Systems/CameraSystem.h"
 #include "../Systems/EngineManagerSystem.h"
+#include "../Systems/EditorUISystem.h"
 
 #endif
 

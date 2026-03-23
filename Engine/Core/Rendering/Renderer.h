@@ -11,6 +11,8 @@
 #include <cstdarg>
 #include <vector>
 
+class GameEngine;
+
 class Renderer {
 
 
@@ -23,7 +25,7 @@ class Renderer {
 
     public:
 
-        void present(RenderTexture2D & canvas);
+        void present(RenderTexture2D & canvas, GameEngine & game, float alpha);
 
         void begin_texture_frame (RenderTexture2D & canvas);
 

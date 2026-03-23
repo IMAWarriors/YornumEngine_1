@@ -23,7 +23,7 @@ namespace gwconst {
     const int SCREEN_WIDTH_GAMEPIXELS = config::GAME_WORLD_WIDTH;
     const int SCREEN_HEIGHT_GAMEPIXELS = config::GAME_WORLD_HEIGHT;
 
-    const int SCREEN_BASE_TILESIZE_GAMEPIXELS = 32;
+    const int SCREEN_BASE_TILESIZE_GAMEPIXELS = 64;
 
 
 }

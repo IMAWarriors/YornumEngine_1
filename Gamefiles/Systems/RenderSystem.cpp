@@ -144,7 +144,7 @@ void RenderSystem::update (Registry & registry, float deltatime) {
                         // Quick little check
                         // If we get to this point, it means that the tile is also a valid tile in the index so we're good to draw
 
-                        renderer.rdraw_sprite(scene.loaded_atlases[tile_to_draw.atlas_idx].image_sheet_source, 
+                        renderer.rdraw_sprite(*(scene.loaded_atlases[tile_to_draw.atlas_idx].image_sheet_source), 
                             scene.loaded_atlases[tile_to_draw.atlas_idx].getRect(tile_to_draw.tile_idx), 
                                {screen_x, 
                                 screen_y, 

@@ -5,6 +5,7 @@
 
 // Get Engine Tools
 #include "../../Engine/ECS/SystemManager.h"
+#include "../Assets/AssetManager.h"
 #include "../../Engine/ECS/ComponentPool.h"               // Get the GENERAL COMPONENT POOL INFORMATION for Component refs
 
 // Get Systems
@@ -38,6 +39,8 @@ class GameEngine {
 
         // Scene?
         Scene scene;
+
+        AssetManager assets;
 
         // Pointers to CoreApplication Attributes
         Renderer * renderer = nullptr;

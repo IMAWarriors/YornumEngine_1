@@ -8,6 +8,7 @@ enum class Phases {
     INPUT = 0,
     SIMULATION,
     RENDERING,
+    EDITORUI,
     SIZE
 
 };

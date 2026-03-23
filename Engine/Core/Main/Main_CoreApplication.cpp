@@ -68,7 +68,7 @@ void CoreApplication::RunCoreEngine(GameEngine & game) {
         game.TickPhase(Phases::RENDERING, alpha);
 
         renderer.end_texture_frame();
-        renderer.present(canvas);   // Begin Draw -> Draw Pro texture -> End Draw
+        renderer.present(canvas, game, alpha);   // Begin Draw -> Draw Pro texture -> End Draw
 
     }
 
