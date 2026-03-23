@@ -64,7 +64,7 @@ void RenderSystem::update (Registry & registry, float deltatime) {
         //
         // ========================================================================================================
 
-        for (TileGrid layer : scene.tile_layers) {
+        for (TileGrid & layer : scene.tile_layers) {
 
             // Pretty much all of this is unadjusted for CAMERA ZOOM
 

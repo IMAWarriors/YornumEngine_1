@@ -93,8 +93,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                 static int selectedIndex = -1;
 
-                bool tilesetToPreview = false;
-                std::string path;
+                static bool tilesetToPreview = false;
+                static std::string path;
 
                 // Left side: scrollable list
 
@@ -142,15 +142,39 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 // Left side: scrollable list
 
                 // (Small Screen) (Fullscreen)
-                UIPos(260, 595, 240, 565);
+                
                 
                 if (tilesetToPreview) {
-                    
+
                     Texture2D & texture = assets.LoadTilesetTexture(path);
 
-                    float scale = std::min(200.0f / texture.width, 200.0f / texture.height);
-                    ImVec2 size = ImVec2(texture.width * scale, texture.height * scale);
+                    // Custom UI cursor Positioning function I have where first two coords are position in non-fullscreen, and last two are for fullscreen
+                    
+                    ImVec2 size;
 
+                    float img_aspect = (float)texture.height / (float)texture.width;
+
+                    if (texture.width > texture.height && !(texture.height > 130)) {
+                        Vec2 scale;
+                        scale = {225.0f, 225.0f*img_aspect};
+                        size = ImVec2(scale.x * fullscreenScale.x, scale.y * fullscreenScale.y);
+
+                        UIPos(240, 695, 240, 695);
+                        ImGui::Text("%.0fpx by %.0fpx", (float)texture.width, (float)texture.height);
+
+                    } else {
+                        // For weird vertical tilesets
+                        // Or square
+                        
+                        Vec2 scale;
+                        scale = {100.0f/img_aspect, 100.0f};
+                        size = ImVec2(scale.x * fullscreenScale.x, scale.y * fullscreenScale.y);
+
+                        UIPos(240, 695, 240, 695);
+                        ImGui::Text("%.0fpx by %.0fpx", (float)texture.width, (float)texture.height);
+                    }
+
+                    UIPos(260, 595, 240, 565);
                     ImGui::Image((ImTextureID)texture.id, size);
 
                 }

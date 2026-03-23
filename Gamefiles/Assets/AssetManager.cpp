@@ -45,8 +45,8 @@ vector<string> AssetManager::GetTilesetPaths (const string & _path) {
 }
 
 void AssetManager::UnloadAllAssets() {
-    for (Texture2D & tileset : loaded_tilesets) {
-        UnloadTexture(tileset);
+    for (auto & tileset : loaded_tilesets) {
+        UnloadTexture(*tileset);
     }
     loaded_tilesets_paths.clear();
     loaded_tilesets.clear();
@@ -60,10 +60,9 @@ Texture2D & AssetManager::LoadTilesetTexture (const string & _path) {
 
     int new_tileset_index = loaded_tilesets.size();
 
-    loaded_tilesets.push_back(LoadTexture(_path.c_str()));
+    loaded_tilesets.push_back(std::make_unique<Texture2D>(LoadTexture(_path.c_str())));
     loaded_tilesets_paths.push_back(_path);
 
-    Texture2D & tileset = loaded_tilesets[new_tileset_index];
-    return tileset;
+    return *(loaded_tilesets[new_tileset_index]);
 
 }

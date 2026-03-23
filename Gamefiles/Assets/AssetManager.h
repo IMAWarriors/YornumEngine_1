@@ -6,6 +6,8 @@
 #include <filesystem>
 #include <string>
 #include <vector>
+#include <memory>
+#include <stdexcept>
 
 #include "raylib.h"
 
@@ -15,7 +17,7 @@ class AssetManager {
 
         // LOADED ASSETS
         std::vector<std::string> loaded_tilesets_paths;
-        std::vector<Texture2D> loaded_tilesets;
+        std::vector<std::unique_ptr<Texture2D>> loaded_tilesets;
 
         bool DoesTilesetWithPathExist (const std::string & _path) {
             for (const std::string & pathname : loaded_tilesets_paths) {
@@ -30,10 +32,11 @@ class AssetManager {
             int index = 0;
             for (const std::string & pathname : loaded_tilesets_paths) {
                 if (pathname == _path) {
-                    return loaded_tilesets[index];
+                    return *(loaded_tilesets[index]);
                 }
                 index++;
             }
+            throw std::runtime_error("Tileset not found: " + _path);
         }
     
 

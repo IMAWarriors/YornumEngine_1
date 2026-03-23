@@ -1,12 +1,14 @@
 // main.cpp
 
 /**    =======================================================================================================
- *      > MAIN FILE, Version E-Build Alpha 1.1.1
+ *      > MAIN FILE, Version E-Build Alpha 1.2.0
  *      > by IMAWarriors
  *      --------------------------------------
- *      > Stable working version pushed to Git on 03-22-2026, 10:35 PM 
+ *      > Stable working version pushed to Git on 03-23-2026, 6:05 PM 
  * 
  *      >>> Most Recently Added Features
+ *       - Added asset manager
+ *       - Began editor build template
  *       - Imported Dear ImGui and rlImGui
  *       - Fixed debug components
  *       - Added Tileset and Atlas splitting capabilities
@@ -14,7 +16,7 @@
  *       - Stabilized Camera and Render interpolation
  * 
  *      >>> Working-in-Progress Features (as of this push, goals/objectives)
- *       - Trying to add more editor related features for easy debug/expansion
+ *       - Still trying to add more editor related features for easy debug/expansion
  * 
  * 
  *    ======================================================================================================= */
