@@ -18,20 +18,12 @@ namespace gwconst {
     const int WORLD_TILEGRID_WIDTH  =   (WORLD_TILEGRID_X_BOUND_MAX_TILE - WORLD_TILEGRID_X_BOUND_MIN_TILE) + 1;    // 641 tile rows total (-320, 320 inclusive)
     const int WORLD_TILEGRID_HEIGHT =   (WORLD_TILEGRID_Y_BOUND_MAX_TILE - WORLD_TILEGRID_Y_BOUND_MIN_TILE) + 1;    // 361 tile rows total (-180, 180 inclusive)
 
-    
-
     const int SCREEN_WIDTH_GAMEPIXELS = config::GAME_WORLD_WIDTH;
     const int SCREEN_HEIGHT_GAMEPIXELS = config::GAME_WORLD_HEIGHT;
 
     const int SCREEN_BASE_TILESIZE_GAMEPIXELS = 64;
 
-
 }
-
-
-
-
-
 
 
 #endif

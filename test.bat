@@ -10,6 +10,7 @@ main.cpp ^
 Engine\Core\Main\Main_CoreApplication.cpp ^
 Engine\Core\Window\Window.cpp ^
 Engine\Core\Rendering\Renderer.cpp ^
+Engine\Core\Rendering\Func_RendererPresentDef.cpp ^
 Engine\Platform\Input\InputManager.cpp ^
 Engine\ECS\EntityManager.cpp ^
 Engine\ECS\Registry.cpp ^
@@ -20,6 +21,7 @@ Gamefiles\Systems\InputSystem.cpp ^
 Gamefiles\Systems\DebugOverlaySystem.cpp ^
 Gamefiles\Systems\EngineManagerSystem.cpp ^
 Gamefiles\World\TileGrid.cpp ^
+Gamefiles\Game\Func_GEAddEditorSystems.cpp ^
 Gamefiles\Game\GameEngine.cpp ^
 -o game.exe ^
 -I%RAYLIB_PATH%\include ^

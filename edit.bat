@@ -16,6 +16,7 @@ External\imgui\imgui_tables.cpp ^
 Engine\Core\Main\Editor_CoreApplication.cpp ^
 Engine\Core\Window\Window.cpp ^
 Engine\Core\Rendering\Renderer.cpp ^
+Engine\Core\Rendering\Func_ERendererPresentDef.cpp ^
 Engine\Platform\Input\InputManager.cpp ^
 Engine\ECS\EntityManager.cpp ^
 Engine\ECS\Registry.cpp ^
@@ -27,6 +28,7 @@ Gamefiles\Systems\DebugOverlaySystem.cpp ^
 Gamefiles\Systems\EngineManagerSystem.cpp ^
 Gamefiles\Systems\EditorUISystem.cpp ^
 Gamefiles\World\TileGrid.cpp ^
+Gamefiles\Game\Func_EGEAddEditorSystems.cpp ^
 Gamefiles\Game\GameEngine.cpp ^
 -IExternal\imgui ^
 -IExternal\rlimgui ^

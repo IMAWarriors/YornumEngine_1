@@ -12,6 +12,7 @@
 #include <vector>
 #include <array>
 #include <cstdint>
+#include <string>
 
 #include <cstdlib>   // for rand(), srand()
 #include <ctime>
@@ -19,6 +20,8 @@
 class Scene {
 
     public:
+
+        std::string loaded_scene_name;
 
         std::vector<TileAtlas> loaded_atlases;
         
@@ -66,9 +69,9 @@ class Scene {
         }
 
 
-        void load_new_tileset (Texture2D & _image, size_t _tile_px_size, size_t _tiles_per_row, size_t _tiles_per_col) {
+        void load_new_tileset (const std::string & _name, Texture2D & _image, size_t _tile_px_size, size_t _tiles_per_row, size_t _tiles_per_col) {
             
-            loaded_atlases.push_back(TileAtlas(_image, _tile_px_size, _tiles_per_row, _tiles_per_col));
+            loaded_atlases.push_back(TileAtlas(_name, _image, _tile_px_size, _tiles_per_row, _tiles_per_col));
 
         }
 

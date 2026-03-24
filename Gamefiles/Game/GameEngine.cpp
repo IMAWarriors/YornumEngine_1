@@ -12,7 +12,7 @@ void GameEngine::Initialize(Renderer & _renderer, InputManager & _input, DebugSt
     input    = &_input;
     debug    = &_debug;
 
-    scene.load_new_tileset(assets.LoadTilesetTexture("Gamefiles/Assets/Sprites/Tilesets/cave_tileset.png"),32,10,7);
+    scene.load_new_tileset("Cave Tileset", assets.LoadTilesetTexture("Gamefiles/Assets/Sprites/Tilesets/cave_tileset.png"),32,10,7);
     scene.tiles_push_new_layer();       // Pushes automatic test layer
 
     systems.add_system   <InputSystem>               (Phases::INPUT, *input);
@@ -30,7 +30,7 @@ void GameEngine::Initialize(Renderer & _renderer, InputManager & _input, DebugSt
     systems.add_system   <DebugOverlaySystem>        (Phases::RENDERING, *renderer, *debug);
 
     if (RUNNING_EDITOR) {
-        systems.add_system<EditorUISystem>(Phases::EDITORUI, *renderer, scene, assets);
+        AddEditorSystems();
     }    
 
 

@@ -3,6 +3,12 @@
 #ifndef GAMETYPES_H
 #define GAMETYPES_H
 
+
+#include <string>
+
+#include "raylib.h"
+
+
 struct Vec2 {
     float x;
     float y;
@@ -14,10 +20,6 @@ struct ColorRGBA {
     unsigned char b;
     unsigned char a;
 };
-
-
-
-
 
 
 

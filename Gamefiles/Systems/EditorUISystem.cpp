@@ -82,19 +82,19 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 // Tileset & Tileatlas Manager
 
                 UIPos(10, 558, 10, 542);
-                ImGui::Text("Tileset Manager");
+                ImGui::Text("Loaded Tilesets:");
 
                 UIPos(10, 563, 10, 547);
 
                 ImGui::Text("________________");
 
-                static std::vector<std::string> items = assets.GetTilesetFilenames("Gamefiles/Assets/Sprites/Tilesets/");
-                static std::vector<std::string> itempaths = assets.GetTilesetPaths("Gamefiles/Assets/Sprites/Tilesets/");
+                //static std::vector<std::string> items = scenes.
+                //static std::vector<std::string> itempaths = assets.GetTilesetPaths("Gamefiles/Assets/Sprites/Tilesets/");
 
                 static int selectedIndex = -1;
 
                 static bool tilesetToPreview = false;
-                static std::string path;
+                static Texture2D * path = nullptr;
 
                 // Left side: scrollable list
 
@@ -112,72 +112,222 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     ImGui::BeginChild("ItemListPanel", ImVec2(220 * fullscreenScale.x, 110 * fullscreenScale.y), true);
                 }
 
-                for (int i = 0; i < items.size(); i++) {
-                    if (ImGui::Selectable(items[i].c_str(), selectedIndex == i)) {
-                        selectedIndex = i;
+                
+                for (int i = 0; i < scene.loaded_atlases.size(); i++) {
+                    if (ImGui::Selectable(scene.loaded_atlases[i].name.c_str(), selectedIndex == i)) {
+                        if (selectedIndex == i) {
+                            selectedIndex = -1;
+                        } else {
+                            selectedIndex = i;
+                        }
                         tilesetToPreview = true;
-                        path = itempaths[i];
+                        path = (scene.loaded_atlases[i].image_sheet_source);
                     }
                 }
+                
 
                 ImGui::EndChild();
                 ImGui::PopStyleColor(3);
                 ImGui::PopStyleVar();
 
+                
+                // =============================
+                // ( + ) Add Tileset Button
+                // -- Tileset Manager Button
+                // ............
+                // .......
 
-
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f,0.4f,0,1)); // 
+                UIPos(240, 595, 240, 600 - 35);
+                if (fullscreen) {
+                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 1*fullscreenScale.y));
+                } else {
+                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 0));
+                }
+                ImGui::Button("+", ImVec2(30*fullscreenScale.x,(25.0f*fullscreenScale.y)));
+                
+                ImGui::PopStyleVar();
+                ImGui::PopStyleColor();
 
                 // ------------------------------> 
+
+                // =============================
+                // ( - ) Delete Tileset Button
+                // -- Tileset Manager Button
+                // ............
+                // .......
+
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f,0.1f,0,1)); // 
+                UIPos(240, 595.0f + 28.0f, 240, (600 - 35) + (30.0f));
+                if (fullscreen) {
+                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 1*fullscreenScale.y));
+                } else {
+                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 0));
+                }
+                ImGui::Button("-", ImVec2(30*fullscreenScale.x,(25.0f*fullscreenScale.y)));
+                
+                ImGui::PopStyleVar();
+                ImGui::PopStyleColor();
+
+
+
+
+
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.1f,0.9f,0,1)); // 
+                UIPos(240, 595.0f + 56.0f, 240, (600 - 35) + (60.0f));
+                if (fullscreen) {
+                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 1*fullscreenScale.y));
+                } else {
+                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 0));
+                }
+                ImGui::Button("<", ImVec2(30*fullscreenScale.x,(25.0f*fullscreenScale.y)));
+                
+                ImGui::PopStyleVar();
+                ImGui::PopStyleColor();
+
+
+
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f,0.05f,0.8f,0.5f)); // 
+                UIPos(240, 595.0f + 84.0f, 240, (600 - 35) + (90.0f));
+                if (fullscreen) {
+                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 1*fullscreenScale.y));
+                } else {
+                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 0));
+                }
+                ImGui::Button("%", ImVec2(30*fullscreenScale.x,(25.0f*fullscreenScale.y)));
+                
+                ImGui::PopStyleVar();
+                ImGui::PopStyleColor();
+
+
+
+
+
+
+                
 
 
                 // Tileset & Tileatlas Manager
 
-                UIPos(260, 558, 240, 542);
-                ImGui::Text("Preview");
+                
 
-                UIPos(255, 563, 235, 547);
+                if (selectedIndex != -1) {
+                    UIPos(290, 558, 290, 542);
+                    ImGui::Text("%s", scene.loaded_atlases[selectedIndex].name.c_str());
 
-                ImGui::Text("________________");
+                    UIPos(285, 563, 285, 547);
+                    ImGui::Text("___________");
+
+                }
+
+                
 
                 // Left side: scrollable list
 
                 // (Small Screen) (Fullscreen)
-                
-                
-                if (tilesetToPreview) {
 
-                    Texture2D & texture = assets.LoadTilesetTexture(path);
-
-                    // Custom UI cursor Positioning function I have where first two coords are position in non-fullscreen, and last two are for fullscreen
+                if (selectedIndex != -1) {
                     
-                    ImVec2 size;
+                    // DRAW PREVIEW PANE
+                    if (tilesetToPreview && path != nullptr) {
 
-                    float img_aspect = (float)texture.height / (float)texture.width;
+                        Texture2D & texture = *path;
 
-                    if (texture.width > texture.height && !(texture.height > 130)) {
-                        Vec2 scale;
-                        scale = {225.0f, 225.0f*img_aspect};
-                        size = ImVec2(scale.x * fullscreenScale.x, scale.y * fullscreenScale.y);
-
-                        UIPos(240, 695, 240, 695);
-                        ImGui::Text("%.0fpx by %.0fpx", (float)texture.width, (float)texture.height);
-
-                    } else {
-                        // For weird vertical tilesets
-                        // Or square
+                        // Custom UI cursor Positioning function I have where first two coords are position in non-fullscreen, and last two are for fullscreen
                         
-                        Vec2 scale;
-                        scale = {100.0f/img_aspect, 100.0f};
-                        size = ImVec2(scale.x * fullscreenScale.x, scale.y * fullscreenScale.y);
+                        ImVec2 size;
 
-                        UIPos(240, 695, 240, 695);
-                        ImGui::Text("%.0fpx by %.0fpx", (float)texture.width, (float)texture.height);
+                        float img_aspect = (float)texture.height / (float)texture.width;
+
+                        if (texture.width > texture.height && !(texture.height > 130)) {
+                            Vec2 scale;
+                            scale = {225.0f, 225.0f*img_aspect};
+                            size = ImVec2(scale.x * fullscreenScale.x, scale.y * fullscreenScale.y);
+
+                            UIPos(290, 695, 290, 695);
+                            ImGui::Text("%.0fpx by %.0fpx", (float)texture.width, (float)texture.height);
+
+                        } else {
+                            // For weird vertical tilesets
+                            // Or square
+                            
+                            Vec2 scale;
+                            scale = {100.0f/img_aspect, 100.0f};
+                            size = ImVec2(scale.x * fullscreenScale.x, scale.y * fullscreenScale.y);
+
+                            UIPos(290, 695, 290, 695);
+                            ImGui::Text("%.0fpx by %.0fpx", (float)texture.width, (float)texture.height);
+                        }
+
+                        UIPos(290, 595, 290, 565);
+                        ImGui::Image((ImTextureID)texture.id, size);
+
                     }
 
-                    UIPos(260, 595, 240, 565);
-                    ImGui::Image((ImTextureID)texture.id, size);
+
+                    UIPos(500, 558, 500, 542);
+                    ImGui::Text("Settings:");
+
+                    UIPos(490, 563, 490, 547);
+                    ImGui::Text("________________");
+
+
+                    ImGui::PushItemWidth(85 * fullscreenScale.x);
+                    
+
+                    UIPos(480, 600, 480, 600 - 30);
+                    static int tilesize = 5;
+                    ImGui::SliderInt("Tiles Size (px)", &tilesize, 1, 64);
+
+                    UIPos(480, 640, 480, 640 - 30);
+                    static int column = 5;
+                    ImGui::SliderInt("Tiles Per Column", &column, 1, 32);
+
+                    UIPos(480, 680, 480, 680 - 30);
+                    static int row = 5;
+                    ImGui::SliderInt("Tiles Per Row", &row, 1, 32);
+
+                    ImGui::PopItemWidth();
+
+
+
+
+
+
+
+
+
+                    // DESELECT BUTTON
+                
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.3f,0.1f,0.9f,1)); // 
+                    UIPos(1240, 685, 1240, 685);
+                    if (fullscreen) {
+                        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 1*fullscreenScale.y));
+                    } else {
+                        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 0));
+                    }
+                    if (ImGui::Button("*", ImVec2(30*fullscreenScale.x,(25.0f*fullscreenScale.y)))) {
+                        selectedIndex = -1;
+                    }
+                    
+                    ImGui::PopStyleVar();
+                    ImGui::PopStyleColor();
 
                 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
                 
                 ImGui::EndTabItem();

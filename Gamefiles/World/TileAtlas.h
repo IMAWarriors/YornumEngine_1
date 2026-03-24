@@ -9,6 +9,7 @@
 #include "raylib.h"
 
 #include <cstdint>
+#include <string>
 
 
 
@@ -20,7 +21,9 @@ struct TileAtlas {
 
     // ... ../Assets/Sprites/Tilesets/tilset_test_1_A.png
 
+    std::string name;
     Texture2D * image_sheet_source;
+
     // std::vector<TileImageSlice> tile_images; // not really any reason to store this data cuz we can do this math on the fly
 
     size_t tile_atlas_width; // Px
@@ -38,9 +41,10 @@ struct TileAtlas {
     //  TILES PER COL:  How many tiles you should expect per column
     //  IMAGE        :  The actual image source we wanna store i guess too bc we gotta split it up
 
-    TileAtlas (Texture2D & _image, size_t _tile_px_size, size_t _tiles_per_row, size_t _tiles_per_col) {
+    TileAtlas (const std::string & _name, Texture2D & _image, size_t _tile_px_size, size_t _tiles_per_row, size_t _tiles_per_col) {
         // Placeholder for actual image storage
         image_sheet_source = &_image;
+        name = _name;
 
         tile_size = _tile_px_size;
         tiles_per_row = _tiles_per_row;

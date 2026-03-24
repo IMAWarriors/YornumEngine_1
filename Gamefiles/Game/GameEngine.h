@@ -61,7 +61,7 @@ class GameEngine {
 
         void TickPhase (Phases phase, float deltatime);
 
-        
+        void AddEditorSystems();
 
 
 
