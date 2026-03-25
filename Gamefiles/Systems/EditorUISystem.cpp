@@ -382,6 +382,10 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         }
                     }
                 }
+
+                scene.EDITOR_ONLY_SELECTED_ATLAS = selectedAtlas;
+                
+
                 
 
                 ImGui::EndChild();
@@ -484,6 +488,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             uv0, 
                             uv1)) {
                                 selectedTileIndex = row * total_cols + col;
+                                
                             }
                            
                             lowerQueue.push_back({ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), 0, 0, 0, 255, 2.0f});
@@ -563,6 +568,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         selectedTileIndex = -1;
                     }
                 }
+
+                scene.EDITOR_ONLY_SELECTED_PALLET_TILE = selectedTileIndex;
+
                 ImGui::PopStyleColor(2);
                 ImGui::PopStyleVar();
 
@@ -591,6 +599,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
         }
     }
     ImGui::End();
+
+    
 
 }
 

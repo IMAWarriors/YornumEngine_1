@@ -44,6 +44,8 @@ class Renderer {
 
         void rdraw_sprite(Texture2D _image, Rectangle _crop, Rectangle _paste);
 
+        void rdraw_sprite_col (Texture2D _texture, Rectangle _crop, Rectangle _paste, Color _color);
+
         std::string text(const char* fmt, ...);
 
         // =====================

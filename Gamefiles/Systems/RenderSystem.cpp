@@ -84,12 +84,15 @@ void RenderSystem::update (Registry & registry, float deltatime) {
             // Before commencing main loop, if we are in editor mode,
             // Lets check to see what tile would be highlighted in the current viewport
 
+            
+
+            //                                 EDITOR ONLY CODE 
+            // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
             bool mouseHover = false;
             int hoverWorldCol = 0;
             int hoverWorldRow = 0;
 
-            //                                 EDITOR ONLY CODE 
-            // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             if (renderSceneEditorUI) {
         
                 Vec2 mouse_position = winstats::ScreenMousePosition();
@@ -127,49 +130,90 @@ void RenderSystem::update (Registry & registry, float deltatime) {
 
                     // If the world area we are accessing is in normal grid bounds, then draw
                     Tile tile_to_draw = layer.get_tile(world_column, world_row);
+                    bool is_empty_tile = false;
 
                     // Lets actually just put a rectangle or smth around where the mouse is ig
 
 
+                    
 
-
-                    size_t atlasMaxIndex = scene.loaded_atlases[tile_to_draw.atlas_idx].getTileIdx(
+                    size_t atlasMaxIndex;
+                    if (tile_to_draw.atlas_idx >= 0 && tile_to_draw.tile_idx >= 0) {
+                        atlasMaxIndex = scene.loaded_atlases[tile_to_draw.atlas_idx].getTileIdx(
                         scene.loaded_atlases[tile_to_draw.atlas_idx].tiles_per_row - 1, 
                         scene.loaded_atlases[tile_to_draw.atlas_idx].tiles_per_col - 1);
 
+                        if (tile_to_draw.tile_idx >= atlasMaxIndex) {
+                            is_empty_tile = true;
+                            atlasMaxIndex = 9999;
+                        }
+                    } else {
+                        is_empty_tile = true;
+                        atlasMaxIndex = 9999;
+                    }
 
-                        // Draw tile
-                    if (0 <= tile_to_draw.tile_idx && tile_to_draw.tile_idx <= atlasMaxIndex) {  // Just means to not draw anything if there is a tile idx tryna be gotten not in teh atlas                                                                        
-                        
-                        // Quick little check
-                        // If we get to this point, it means that the tile is also a valid tile in the index so we're good to draw
+                
+                    // Quick little check
+                    // If we get to this point, it means that the tile is also a valid tile in the index so we're good to draw
 
+                    if (!is_empty_tile) {
                         renderer.rdraw_sprite(*(scene.loaded_atlases[tile_to_draw.atlas_idx].image_sheet_source), 
                             scene.loaded_atlases[tile_to_draw.atlas_idx].getRect(tile_to_draw.tile_idx), 
-                               {screen_x, 
+                            {screen_x, 
                                 screen_y, 
                                 (float)gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS, 
                                 (float)gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS}
                             );
+                    }
 
-                       
-                        
-                        if (mouseHover) {
 
-                            Vec2 mousepos = winstats::ScreenMousePosition();
-                            Rectangle mouserect = {mousepos.x - 5.0f, mousepos.y - 5.0f, 5.0f, 5.0f};
+                    //                                 EDITOR ONLY CODE 
+                    // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-                            DrawRectangleLinesEx(mouserect, 3.0f, YELLOW);
+                    // renderSceneEditorUI check is reduntant, but reminds that this is ediotr only code
+                    if (renderSceneEditorUI && mouseHover) {
 
+                        bool hoveringTileGrid = false;
+
+                        Vec2 mousepos = winstats::ScreenMousePosition();
+                        Rectangle mouserect = {mousepos.x - 5.0f, mousepos.y - 5.0f, 5.0f, 5.0f};
+
+                        if (mousepos.y < 520.0f) {
+                            hoveringTileGrid = true;
+                        }
+
+                        DrawRectangleLinesEx(mouserect, 3.0f, YELLOW);
+
+                        if (hoveringTileGrid) {
                             if (world_column == hoverWorldCol && world_row == hoverWorldRow) {
                                 Rectangle thisTileDestination = {screen_x, screen_y, (float)gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS, (float)gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS};
-                                DrawRectangleLinesEx(thisTileDestination, 3.0f, RED);
+                                
+                                if (scene.EDITOR_ONLY_SELECTED_ATLAS >= 0 && scene.EDITOR_ONLY_SELECTED_PALLET_TILE >= 0) {
+                                    renderer.rdraw_sprite_col(*(scene.loaded_atlases[scene.EDITOR_ONLY_SELECTED_ATLAS].image_sheet_source), 
+                                        scene.loaded_atlases[scene.EDITOR_ONLY_SELECTED_ATLAS].getRect(scene.EDITOR_ONLY_SELECTED_PALLET_TILE), thisTileDestination, {255,255,255,185}
+                                    );
+                                }
 
+                                DrawRectangleLinesEx(thisTileDestination, 3.0f, RED);
                             }
+
+                            if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) && world_column == hoverWorldCol && world_row == hoverWorldRow) {
+                                if (scene.EDITOR_ONLY_SELECTED_ATLAS < 0 || scene.EDITOR_ONLY_SELECTED_PALLET_TILE < 0) {
+                                    layer.get_tile(world_column, world_row) = {-1,-1};
+                                } else {
+                                    layer.get_tile(world_column, world_row) = {scene.EDITOR_ONLY_SELECTED_ATLAS, scene.EDITOR_ONLY_SELECTED_PALLET_TILE};
+                                }
+                            }
+
                         }
-                   
-                   
                     }
+
+                    // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+                   
+                   
+                    
 
                 
                 }

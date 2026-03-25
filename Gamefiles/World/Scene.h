@@ -21,14 +21,13 @@ class Scene {
 
     public:
 
+        int EDITOR_ONLY_SELECTED_ATLAS = -1;
+        int EDITOR_ONLY_SELECTED_PALLET_TILE = -1;
+
+
         std::string loaded_scene_name;
-
         std::vector<TileAtlas> loaded_atlases;
-        
         std::vector<TileGrid> tile_layers;
-
-
-
 
         Tile get_tile (size_t layer, int column, int row);
         void set_tile (size_t layer, int column, int row, Tile newtile);
