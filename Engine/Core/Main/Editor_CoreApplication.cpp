@@ -13,7 +13,7 @@ void CoreApplication::RunCoreEngineMainEditor (GameEngine & game) {
     game.SetEditorMode();
 
     // Initialize window and program
-    Window window("Old Sun Scene Editor & Manager // Editor Build v1.0");
+    Window window("Scene Editor & Manager");
 
     // Initialize for GUI drawing
     rlImGuiSetup(true);

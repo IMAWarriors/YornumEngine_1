@@ -24,6 +24,8 @@ class Scene {
         int EDITOR_ONLY_SELECTED_ATLAS = -1;
         int EDITOR_ONLY_SELECTED_PALLET_TILE = -1;
 
+        bool EDITOR_ONLY_ACTIVE_TAEDITOR = false;
+
 
         std::string loaded_scene_name;
         std::vector<TileAtlas> loaded_atlases;

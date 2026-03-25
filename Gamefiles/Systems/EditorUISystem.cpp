@@ -24,6 +24,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
     bool fullscreen = GetScreenWidth() > config::INIT_WINDOW_DISPLAY_WIDTH;
 
+    static bool showTileAtlasEditor = false;
+    static int selectedIndex = -1; // FOR line: if(ImGui::BeginTabItem("Tileset")) {...  // serves to give show selected tile atlas for tile atlas editor
+
     ImGui::GetStyle().WindowMinSize = ImVec2(2.0,2.0);
     ImGui::GetStyle().WindowPadding = ImVec2(0,0);
 
@@ -37,6 +40,173 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
     };
 
+    // =========================================================================================
+    //      Tile Atlas Editor: Resizable Movable Window
+    // -----------------------------------------------------
+    // ** FEATURES **
+    //  - Adjusting tile collisions
+    //  - Resplitting tile atlas
+    // =========================================================================================
+
+    auto DrawTileAtlasEditor = [&] () {
+
+        ImGui::SetNextWindowPos({240 * fullscreenScale.x, (50) * fullscreenScale.y}, ImGuiCond_Once); // below your top bar
+        ImGui::SetNextWindowSize({900 * fullscreenScale.x, 350 * fullscreenScale.y}, ImGuiCond_Once);
+
+        ImGui::PushStyleColor(ImGuiCol_TitleBg, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0,0,0.745f,1)); // active color
+        ImGui::PushStyleColor(ImGuiCol_TitleBgCollapsed, ImVec4(0,0,0.445f,1));
+
+        if (ImGui::Begin("Tile Atlas Editor")) {
+
+            // ********************* TILE ATLAS EDITOR WINDOW CODE ******************************
+
+            scene.EDITOR_ONLY_ACTIVE_TAEDITOR = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
+
+            ImVec2 window_size = ImGui::GetWindowSize();
+            ImVec2 window_position = ImGui::GetWindowPos();
+
+            ImVec2 content = ImGui::GetContentRegionAvail();
+
+            // position relative inside window
+            ImGui::SetCursorPos(ImVec2(
+                content.x * 0.05f,
+                content.y * 0.1f + 20.0f
+            ));
+
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.2f,0.2f,0.2f,0.7f));
+            ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0,0,0,1)); // black
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f); // thickness
+
+            ImVec2 avail = ImGui::GetContentRegionAvail();
+            ImGui::BeginChild("TileGrid", ImVec2(avail.x * 0.5f, avail.y * 0.8f), true);
+
+            if (selectedIndex != -1) {
+
+                Texture2D & tileset_texture = *scene.loaded_atlases[selectedIndex].image_sheet_source;
+                int total_cols = (int)(scene.loaded_atlases[selectedIndex].tiles_per_row);
+                int total_rows = (int)(scene.loaded_atlases[selectedIndex].tiles_per_col);
+                
+                float tile_drawsize = 32.0f;
+
+                ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
+
+                struct RectDraw {
+                    ImVec2 min;
+                    ImVec2 max;
+                    int r;
+                    int g;
+                    int b;
+                    int a;
+                    float thickness;
+                };
+                
+
+                std::vector<RectDraw> drawQueue;
+                std::vector<RectDraw> lowerQueue;
+
+                for (int row = 0; row < total_rows; row++) {
+                    for (int col = 0; col < total_cols; col++) {
+
+                        Rectangle tile_slice = scene.loaded_atlases[selectedIndex].getRectCR(col, row);
+
+                        ImVec2 uv0 = ImVec2(
+                            tile_slice.x / (float)tileset_texture.width,
+                            tile_slice.y / (float)tileset_texture.height
+                        );
+
+                        ImVec2 uv1 = ImVec2(
+                            (tile_slice.x + tile_slice.width) / (float)tileset_texture.width,
+                            (tile_slice.y + tile_slice.height) / (float)tileset_texture.height
+                        );
+                        
+                        ImGui::PushID(row * total_cols + col);
+
+                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0,0,0,0));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0,0,0,0.3f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0,0,0,0.2f));
+                        
+                        if (ImGui::ImageButton("tile", (ImTextureID)tileset_texture.id, 
+                        {tile_drawsize, tile_drawsize}, 
+                        uv0, 
+                        uv1)) {
+                            // What to do when someone selects a tile
+                            
+                        }
+                        
+                        lowerQueue.push_back({ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), 0, 0, 0, 255, 2.0f});
+
+
+                        if (ImGui::IsItemHovered()) {
+                            drawQueue.push_back({ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), 0, 0, 225, 255, 2.0f});   
+                        }
+
+                        /*handle seelcting
+                        if (selectedTileIndex == row * total_cols + col) {
+                            drawQueue.push_back({ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), 0, 0, 190, 255, 3.0f});
+                        }
+                            */
+                        
+                        ImGui::PopID();
+
+                        if (col < total_cols-1) {
+                            ImGui::SameLine();
+                        }
+
+
+
+
+
+                        
+                        ImGui::PopStyleColor(3);
+                    }
+
+            
+                }
+
+                for (RectDraw draw : lowerQueue) {
+                    ImDrawList* rdraw = ImGui::GetWindowDrawList();
+                    rdraw->AddRect(draw.min, draw.max, IM_COL32(draw.r, draw.g, draw.b, draw.a), 0.0f, 0, draw.thickness);
+                }
+
+                for (RectDraw draw : drawQueue) {
+                    ImDrawList* rdraw = ImGui::GetWindowDrawList();
+                    rdraw->AddRect(draw.min, draw.max, IM_COL32(draw.r, draw.g, draw.b, draw.a), 0.0f, 0, draw.thickness);
+                }
+
+                drawQueue.clear();
+                ImGui::PopStyleVar(2);
+
+            }
+            
+            ImGui::PopStyleColor(2);
+            ImGui::PopStyleVar();
+
+            ImGui::EndChild();
+
+
+
+
+
+
+
+
+            // ***********************************************************************************
+
+
+            
+
+        }
+
+        ImGui::PopStyleColor(3);
+
+        ImGui::End();
+
+    };
+
+
+    // <------------------------------------------- Tile Atlas Editor
     
 
     // Upper Title Bar
@@ -44,6 +214,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
     // ..........................
     // .............
 
+    /*
     ImGui::SetNextWindowPos({0 * fullscreenScale.x, 0 * fullscreenScale.y});
     ImGui::SetNextWindowSize({1280 * fullscreenScale.x, 30 * fullscreenScale.y});
 
@@ -53,6 +224,38 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
     ImGui::Text("Scene Editor & Manager");
 
     ImGui::End();
+    */
+
+    ImGui::GetStyle().FramePadding = ImVec2(4, 4);
+
+    if (ImGui::BeginMainMenuBar()) {
+        if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("New")) {}
+            if (ImGui::MenuItem("Open")) {}
+            if (ImGui::MenuItem("Save")) {}
+            ImGui::Separator();
+            if (ImGui::MenuItem("Exit")) {}
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Edit")) {
+            if (ImGui::MenuItem("Undo", "CTRL+Z")) {}
+            if (ImGui::MenuItem("Redo", "CTRL+Y")) {}
+            ImGui::EndMenu();
+        }
+
+        ImGui::EndMainMenuBar();
+    }
+
+    ImGui::GetStyle().FramePadding = ImVec2(4, 4);
+
+    
+    if (showTileAtlasEditor) {
+        DrawTileAtlasEditor();
+    }
+
+
+
 
 
 
@@ -93,7 +296,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 //static std::vector<std::string> items = scenes.
                 //static std::vector<std::string> itempaths = assets.GetTilesetPaths("Gamefiles/Assets/Sprites/Tilesets/");
 
-                static int selectedIndex = -1;
+               
 
                 static bool tilesetToPreview = false;
                 static Texture2D * path = nullptr;
@@ -182,7 +385,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 } else {
                     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 0));
                 }
-                ImGui::Button("<", ImVec2(30*fullscreenScale.x,(25.0f*fullscreenScale.y)));
+                if (ImGui::Button("<", ImVec2(30*fullscreenScale.x,(25.0f*fullscreenScale.y)))) {
+                    showTileAtlasEditor = !showTileAtlasEditor;
+                }
                 
                 ImGui::PopStyleVar();
                 ImGui::PopStyleColor();
@@ -414,17 +619,50 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                 
                 ImGui::PushItemWidth(125 * fullscreenScale.x);
-                    
                 static int tdisplaysize = 32;
                 ImGui::SliderInt("Tiles Size (px)", &tdisplaysize, 4, 64);
                 ImGui::PopItemWidth();
+
+                UIPos(1050, 563, 1050, 547);
+                ImGui::Text("________");
+
+                UIPos(1050, 558, 1050, 542);
+                ImGui::Text("Tile Settings:         ");
+
+                
+
+                // Below the text...?
+
+                if (selectedTileIndex != -1) {
+
+                    ImGui::PushItemWidth(80 * fullscreenScale.x);
+
+                    UIPos(1050, 595, 1050, 565);
+                    static int anim_frames = 1;
+                    ImGui::SliderInt("Anim Frms", &anim_frames, 1, 8);
+
+                    UIPos(1050, 635, 1050, 605);
+                    static float frame_time = 15.0;
+                    ImGui::SliderFloat("Frm Time", &frame_time, 1.0, 128.0);
+
+                    
+
+                    ImGui::PopItemWidth();
+
+                    UIPos(1050, 675, 1050, 655);
+                    if (ImGui::Button("Apply Changes", ImVec2(200*fullscreenScale.x,(35.0f*fullscreenScale.y)))) {
+                        
+                    }
+
+                
+                }
 
 
                 
 
 
                 // ----------------------------------->
-                //
+                // Draw Tile window
                 //
 
                 UIPos(240, 605, 240, 570);
@@ -553,7 +791,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 if (fullscreen) {
 
                     ImGui::SetCursorPos(ImVec2(
-                        childSize.x - 30.0*fullscreenScale.x - 10.0,
+                        childSize.x - 35.0*fullscreenScale.x - 10.0,
                         childSize.y - 25.0f*fullscreenScale.y - 10.0
                     ));
                     if (ImGui::Button("-", ImVec2(30*fullscreenScale.x,(25.0f*fullscreenScale.y)))) {

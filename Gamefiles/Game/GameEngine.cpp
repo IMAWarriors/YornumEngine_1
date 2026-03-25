@@ -69,7 +69,7 @@ void GameEngine::Initialize(Renderer & _renderer, InputManager & _input, DebugSt
 
     if (RUNNING_EDITOR) {
 
-        debug->set_watchport_list_position({10.0f, 35.0f});
+        debug->set_watchport_list_position({10.0f, 45.0f});
 
         debug->add_watchport("Camera X",camera_transform.position.x,0);
         debug->add_watchport("Camera Y",camera_transform.position.y,0);

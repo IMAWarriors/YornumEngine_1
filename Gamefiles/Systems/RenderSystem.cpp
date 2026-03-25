@@ -179,7 +179,7 @@ void RenderSystem::update (Registry & registry, float deltatime) {
                     // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
                     // renderSceneEditorUI check is reduntant, but reminds that this is ediotr only code
-                    if (renderSceneEditorUI && mouseHover) {
+                    if (renderSceneEditorUI && mouseHover && !scene.EDITOR_ONLY_ACTIVE_TAEDITOR) {
 
                         bool hoveringTileGrid = false;
 
