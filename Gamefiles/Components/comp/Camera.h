@@ -15,6 +15,12 @@ namespace comp {
         Vec2 offset;
         float followSmoothing;
 
+        float zoom;
+        float maxZoom;
+        float minZoom;
+
+        float previous_zoom;
+
     };
 
 

@@ -1,13 +1,16 @@
 // EngineManagerSystem.cpp
 
 #include "EngineManagerSystem.h"
+#include "../../Engine/Core/Overhead/Config.h"
 
 void EngineManagerSystem::update (Registry & registry, float deltatime) {
 
     Vec2 camera_position = {0.0f, 0.0f};
+    float camera_zoom = 1.0f;
 
     for (Entity entity : registry.view<comp::Camera>()) {
         camera_position = registry.get_component<comp::Transform>(entity).position;
+        camera_zoom = registry.get_component<comp::Camera>(entity).zoom;
         break;
     }
 
@@ -31,7 +34,10 @@ void EngineManagerSystem::update (Registry & registry, float deltatime) {
         // Transform
 
         screen_position = winstats::ScreenMousePosition();
-        world_position = {camera_position.x + screen_position.x, camera_position.y + screen_position.y};
+        world_position = {
+            camera_position.x + ((screen_position.x - (config::GAME_WORLD_WIDTH * 0.5f)) / camera_zoom),
+            camera_position.y + ((screen_position.y - (config::GAME_WORLD_HEIGHT * 0.5f)) / camera_zoom)
+        };
 
 
         // frames_per_second

@@ -23,13 +23,17 @@ void RenderSystem::update (Registry & registry, float deltatime) {
     for (Entity entity : registry.view<comp::Camera, comp::Transform>()) {
 
         comp::Transform& transform = registry.get_component<comp::Transform>(entity);
+        comp::Camera & camera = registry.get_component<comp::Camera>(entity);
 
         Vec2 camera_interpolation = {
             transform.previous_position.x + (transform.position.x - transform.previous_position.x) * deltatime,
             transform.previous_position.y + (transform.position.y - transform.previous_position.y) * deltatime
         };
 
+        float zoom_interpolation = camera.previous_zoom + (camera.zoom - camera.previous_zoom) * deltatime;
+
         renderer.set_camera_position(camera_interpolation);
+        renderer.set_camera_zoom(zoom_interpolation);
 
         break; // assume 1 camera
     }
@@ -44,18 +48,23 @@ void RenderSystem::update (Registry & registry, float deltatime) {
     
     if (scene.loaded_atlases.size() > 0 && scene.tile_layers.size() > 0) {
 
-        Vec2 camera_position = renderer.get_camera_position();      // Top Left of Camera
+        Vec2 camera_position = renderer.get_camera_position();      // Center of camera in world space
+        float camera_zoom = renderer.get_camera_zoom();
+        const float half_world_width = (config::GAME_WORLD_WIDTH * 0.5f) / camera_zoom;
+        const float half_world_height = (config::GAME_WORLD_HEIGHT * 0.5f) / camera_zoom;
+        const float world_left = camera_position.x - half_world_width;
+        const float world_top = camera_position.y - half_world_height;
 
-        int first_column = (int)(std::floor(camera_position.x / gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS));
-        int first_row    = (int)(std::floor(camera_position.y / gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS));
+        int first_column = (int)(std::floor(world_left / gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS));
+        int first_row    = (int)(std::floor(world_top / gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS));
 
         // Get first place we will show X and Y rendering physically on the screen (little past top left corner)
         // by utilizing the first column and row and dividing camera position based on where we wknow howt o be the row
-        float first_tile_screen_x = (float)(first_column * gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS) - camera_position.x;
-        float first_tile_screen_y = (float)(first_row * gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS) - camera_position.y;
+        float first_tile_screen_x = ((float)(first_column * gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS) - world_left) * camera_zoom;
+        float first_tile_screen_y = ((float)(first_row * gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS) - world_top) * camera_zoom;
 
-        int visible_cols = config::GAME_WORLD_WIDTH / gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS + 2;
-        int visible_rows = config::GAME_WORLD_HEIGHT / gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS + 2;
+        int visible_cols = (int)std::ceil((config::GAME_WORLD_WIDTH / camera_zoom) / gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS) + 2;
+        int visible_rows = (int)std::ceil((config::GAME_WORLD_HEIGHT / camera_zoom) / gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS) + 2;
 
         // ========================================================================================================
         // MAIN TILESET LAYERS DRAWINGS SYSTEM
@@ -97,9 +106,8 @@ void RenderSystem::update (Registry & registry, float deltatime) {
         
                 Vec2 mouse_position = winstats::ScreenMousePosition();
 
-
-                float worldMouseX = mouse_position.x + camera_position.x;
-                float worldMouseY = mouse_position.y + camera_position.y;
+                float worldMouseX = camera_position.x + ((mouse_position.x - (config::GAME_WORLD_WIDTH * 0.5f)) / camera_zoom);
+                float worldMouseY = camera_position.y + ((mouse_position.y - (config::GAME_WORLD_HEIGHT * 0.5f)) / camera_zoom);
 
                 hoverWorldCol = (int)(std::floor(worldMouseX/(gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS)));
                 hoverWorldRow = (int)(std::floor(worldMouseY/(gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS)));
@@ -119,8 +127,8 @@ void RenderSystem::update (Registry & registry, float deltatime) {
                     int world_column = first_column + col_offset;
                     int world_row    = first_row + row_offset;
 
-                    float screen_x = first_tile_screen_x + (col_offset * gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS);
-                    float screen_y = first_tile_screen_y + (row_offset * gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS);
+                    float screen_x = first_tile_screen_x + (col_offset * gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS * camera_zoom);
+                    float screen_y = first_tile_screen_y + (row_offset * gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS * camera_zoom);
 
 
 
@@ -157,12 +165,12 @@ void RenderSystem::update (Registry & registry, float deltatime) {
                     // If we get to this point, it means that the tile is also a valid tile in the index so we're good to draw
 
                     if (!is_empty_tile) {
-                        renderer.rdraw_sprite(*(scene.loaded_atlases[tile_to_draw.atlas_idx].image_sheet_source), 
-                            scene.loaded_atlases[tile_to_draw.atlas_idx].getRect(tile_to_draw.tile_idx), 
-                            {screen_x, 
-                                screen_y, 
-                                (float)gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS, 
-                                (float)gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS}
+                        renderer.rdraw_sprite(*(scene.loaded_atlases[tile_to_draw.atlas_idx].image_sheet_source),
+                            scene.loaded_atlases[tile_to_draw.atlas_idx].getRect(tile_to_draw.tile_idx),
+                            {screen_x,
+                                screen_y,
+                                (float)gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS * camera_zoom,
+                                (float)gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS * camera_zoom}
                             );
                     }
 
@@ -186,7 +194,12 @@ void RenderSystem::update (Registry & registry, float deltatime) {
 
                         if (hoveringTileGrid) {
                             if (world_column == hoverWorldCol && world_row == hoverWorldRow) {
-                                Rectangle thisTileDestination = {screen_x, screen_y, (float)gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS, (float)gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS};
+                                Rectangle thisTileDestination = {
+                                    screen_x,
+                                    screen_y,
+                                    (float)gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS * camera_zoom,
+                                    (float)gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS * camera_zoom
+                                };
                                 
                                 if (scene.EDITOR_ONLY_SELECTED_ATLAS >= 0 && scene.EDITOR_ONLY_SELECTED_PALLET_TILE >= 0) {
                                     renderer.rdraw_sprite_col(*(scene.loaded_atlases[scene.EDITOR_ONLY_SELECTED_ATLAS].image_sheet_source), 

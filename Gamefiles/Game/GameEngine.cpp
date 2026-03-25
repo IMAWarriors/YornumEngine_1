@@ -45,6 +45,7 @@ void GameEngine::Initialize(Renderer & _renderer, InputManager & _input, DebugSt
 
     comp::Transform & player_transform = registry.get_component<comp::Transform>(player);
     comp::Transform & camera_transform = registry.get_component<comp::Transform>(camera);
+    comp::Camera    & camera_details = registry.get_component<comp::Camera>(camera);
     
     Vec2 & screen_mouse = registry.get_component<comp::MouseTracker>(engine).screen_mouse_position;
     Vec2 & world_mouse = registry.get_component<comp::MouseTracker>(engine).world_mouse_position;
@@ -72,6 +73,7 @@ void GameEngine::Initialize(Renderer & _renderer, InputManager & _input, DebugSt
 
         debug->add_watchport("Camera X",camera_transform.position.x,0);
         debug->add_watchport("Camera Y",camera_transform.position.y,0);
+        debug->add_watchport("Camera Zoom", camera_details.zoom, 4);
 
         debug->add_watchport("Screen Mouse X",screen_mouse.x,0);
         debug->add_watchport("Screen Mouse Y",screen_mouse.y,0);

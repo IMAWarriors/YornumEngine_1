@@ -20,6 +20,8 @@ class Renderer {
 
         Vec2 camera_position = {0.0f, 0.0f};
 
+        float camera_zoom = 1.0f;
+
         Font debug_font;
 
 
@@ -55,6 +57,8 @@ class Renderer {
         void set_camera_position(Vec2 position);
         Vec2 get_camera_position() const;
 
+        void set_camera_zoom(float zoom);
+        float get_camera_zoom() const;
 
 
 

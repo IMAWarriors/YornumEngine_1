@@ -32,12 +32,22 @@ Vec2 Renderer::get_camera_position () const {
 
 }
 
+void Renderer::set_camera_zoom (float zoom) {
+    camera_zoom = zoom;
+}
+
+float Renderer::get_camera_zoom () const {
+    return camera_zoom;
+}
+
+
 Vec2 Renderer::world_camera_transform (Vec2 world_coords) {
 
     const int SCREEN_HALF_WIDTH = config::GAME_WORLD_WIDTH/2;
     const int SCREEN_HALF_HEIGHT = config::GAME_WORLD_HEIGHT/2;
 
-    Vec2 new_coords = {world_coords.x - camera_position.x, world_coords.y - camera_position.y};
+    Vec2 new_coords = {     (world_coords.x - camera_position.x) * camera_zoom,
+                            (world_coords.y - camera_position.y) * camera_zoom};
     new_coords = {new_coords.x + SCREEN_HALF_WIDTH, new_coords.y + SCREEN_HALF_HEIGHT};             // Center camera coords
 
     return new_coords;
@@ -97,7 +107,7 @@ void Renderer::rdraw_text (const std::string & _text, int _x, int _y, int _size,
 void Renderer::rdraw_circle(float _x, float _y, float _radius, Color _color) {
 
     Vec2 new_coords = world_camera_transform({_x, _y});
-    DrawCircle((int)(new_coords.x), (int)(new_coords.y), _radius, _color);
+    DrawCircle((int)(new_coords.x), (int)(new_coords.y), _radius * camera_zoom, _color);
 
 }
 

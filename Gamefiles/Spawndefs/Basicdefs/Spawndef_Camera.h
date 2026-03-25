@@ -13,7 +13,7 @@ namespace spawndef {
 
         Entity camera = registry.create_entity();
 
-        registry.apply_component<comp::Camera>          (camera, {target, false, {0.0f, 0.0f}, smoothing}); 
+        registry.apply_component<comp::Camera>          (camera, {target, false, {0.0f, 0.0f}, smoothing, 1.0f, 0.2f, 4.0f, 1.0f}); 
         registry.apply_component<comp::Transform>       (camera,  { {0.0f, 0.0f}, {0.0f, 0.0f}, 0.0f, {1.0f, 1.0f} });
        
         // registry.apply_component<comp::Velocity>        (camera, {0.0f, 0.0f} );
