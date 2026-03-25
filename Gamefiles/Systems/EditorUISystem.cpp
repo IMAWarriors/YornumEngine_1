@@ -13,6 +13,8 @@
 #include "../../External/rlimgui/rlImGui.h"
 #include "../../External/imgui/imgui.h"
 
+#include <vector>
+
 void EditorUISystem::update (Registry & registry, float deltatime) {
 
     Vec2 fullscreenScale = {
@@ -80,7 +82,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
             if (ImGui::BeginTabItem("Tileset")) {
 
                 // Tileset & Tileatlas Manager
-
+                
                 UIPos(10, 558, 10, 542);
                 ImGui::Text("Loaded Tilesets:");
 
@@ -296,7 +298,6 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
 
 
-
                     // DESELECT BUTTON
                 
                     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.3f,0.1f,0.9f,1)); // 
@@ -333,7 +334,245 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 ImGui::EndTabItem();
             }
 
-            if (ImGui::BeginTabItem("Layer")) {
+            if (ImGui::BeginTabItem("Pallet")) {
+
+                static int selectedTileIndex = -1;
+
+                
+
+                // Loaded tileset manager so we can swap pallets
+
+                // Tileset & Tileatlas Manager
+                
+                UIPos(10, 558, 10, 542);
+                ImGui::Text("Loaded Tilesets:");
+
+                UIPos(10, 563, 10, 547);
+
+                ImGui::Text("________________");
+
+                //static std::vector<std::string> items = scenes.
+                //static std::vector<std::string> itempaths = assets.GetTilesetPaths("Gamefiles/Assets/Sprites/Tilesets/");
+
+                static int selectedAtlas = -1;
+
+                // Left side: scrollable list
+
+                // (Small Screen) (Fullscreen)
+                UIPos(10, 595, 10, 565);
+                ImGui::GetStyle().WindowPadding = ImVec2(6,6);
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f,0.0f,0.0f,1.0f));
+                ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(1,1,1,1));
+                ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0,0,0,1)); // black
+                ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f); // thickness
+
+                if (fullscreen) {
+                    ImGui::BeginChild("ItemListPanel", ImVec2(220 * fullscreenScale.x, 145 * fullscreenScale.y), true);
+                } else {
+                    ImGui::BeginChild("ItemListPanel", ImVec2(220 * fullscreenScale.x, 110 * fullscreenScale.y), true);
+                }
+
+                
+                for (int i = 0; i < scene.loaded_atlases.size(); i++) {
+                    if (ImGui::Selectable(scene.loaded_atlases[i].name.c_str(), selectedAtlas == i)) {
+                        if (selectedAtlas == i) {
+                            selectedAtlas = -1;
+                        } else {
+                            selectedAtlas = i;
+                        }
+                    }
+                }
+                
+
+                ImGui::EndChild();
+                ImGui::PopStyleColor(3);
+                ImGui::PopStyleVar();
+
+                // -----------------------------------------------------
+
+
+
+
+
+
+
+
+
+                
+                
+                UIPos(240, 563, 240, 547);
+                ImGui::Text("________");
+
+                UIPos(240, 558, 240, 542);
+                ImGui::Text("Pallet:         ");
+
+                ImGui::SameLine();
+
+                
+                ImGui::PushItemWidth(125 * fullscreenScale.x);
+                    
+                static int tdisplaysize = 32;
+                ImGui::SliderInt("Tiles Size (px)", &tdisplaysize, 4, 64);
+                ImGui::PopItemWidth();
+
+
+                
+
+
+                // ----------------------------------->
+                //
+                //
+
+                UIPos(240, 605, 240, 570);
+                ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.2f,0.2f,0.2f,0.7f));
+                ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0,0,0,1)); // black
+                ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f); // thickness
+
+                if (fullscreen) {
+                    ImGui::BeginChild("TileGrid", ImVec2(800 * fullscreenScale.x, 135 * fullscreenScale.y), true);
+                } else {
+                    ImGui::BeginChild("TileGrid", ImVec2(800 * fullscreenScale.x, 110 * fullscreenScale.y), true);
+                }
+
+                if (selectedAtlas != -1) {
+
+                    Texture2D & tileset_texture = *scene.loaded_atlases[selectedAtlas].image_sheet_source;
+                    int total_cols = (int)(scene.loaded_atlases[selectedAtlas].tiles_per_row);
+                    int total_rows = (int)(scene.loaded_atlases[selectedAtlas].tiles_per_col);
+                    
+                    int tile_drawsize = tdisplaysize * fullscreenScale.x;
+
+                    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
+
+                    struct RectDraw {
+                        ImVec2 min;
+                        ImVec2 max;
+                        int r;
+                        int g;
+                        int b;
+                        int a;
+                        float thickness;
+                    };
+
+                    std::vector<RectDraw> drawQueue;
+                    std::vector<RectDraw> lowerQueue;
+
+                    for (int row = 0; row < total_rows; row++) {
+                        for (int col = 0; col < total_cols; col++) {
+
+                            Rectangle tile_slice = scene.loaded_atlases[selectedAtlas].getRectCR(col, row);
+
+                            ImVec2 uv0 = ImVec2(
+                                tile_slice.x / (float)tileset_texture.width,
+                                tile_slice.y / (float)tileset_texture.height
+                            );
+
+                            ImVec2 uv1 = ImVec2(
+                                (tile_slice.x + tile_slice.width) / (float)tileset_texture.width,
+                                (tile_slice.y + tile_slice.height) / (float)tileset_texture.height
+                            );
+                            
+                            ImGui::PushID(row * total_cols + col);
+
+                            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0,0,0,0));
+                            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0,0,0,0.3f));
+                            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0,0,0,0.2f));
+                            
+                            if (ImGui::ImageButton("tile", (ImTextureID)tileset_texture.id, 
+                            {(float)tile_drawsize, (float)tile_drawsize}, 
+                            uv0, 
+                            uv1)) {
+                                selectedTileIndex = row * total_cols + col;
+                            }
+                           
+                            lowerQueue.push_back({ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), 0, 0, 0, 255, 2.0f});
+
+
+                            if (ImGui::IsItemHovered()) {
+                                drawQueue.push_back({ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), 0, 0, 225, 255, 2.0f});   
+                            }
+
+                            if (selectedTileIndex == row * total_cols + col) {
+                                drawQueue.push_back({ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), 0, 0, 190, 255, 3.0f});
+                            }
+                            
+                            ImGui::PopID();
+
+                            if (ImGui::GetItemRectMax().x < 1000*fullscreenScale.x) {
+                                ImGui::SameLine();
+                            }
+
+
+
+
+
+                            
+                            ImGui::PopStyleColor(3);
+                        }
+
+                
+                    }
+
+                    for (RectDraw draw : lowerQueue) {
+                        ImDrawList* rdraw = ImGui::GetWindowDrawList();
+                        rdraw->AddRect(draw.min, draw.max, IM_COL32(draw.r, draw.g, draw.b, draw.a), 0.0f, 0, draw.thickness);
+                    }
+
+                    for (RectDraw draw : drawQueue) {
+                        ImDrawList* rdraw = ImGui::GetWindowDrawList();
+                        rdraw->AddRect(draw.min, draw.max, IM_COL32(draw.r, draw.g, draw.b, draw.a), 0.0f, 0, draw.thickness);
+                    }
+
+                    drawQueue.clear();
+                    ImGui::PopStyleVar(2);
+
+                }
+                
+                ImGui::PopStyleColor(2);
+                ImGui::PopStyleVar();
+
+                ImVec2 childSize = ImGui::GetWindowSize();
+
+                
+                
+                if (selectedTileIndex == -1) {
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f,0.1f,0,1));
+                    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0,0,0.745f,1)); 
+                    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 3.0f); // thickness
+                } else {
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f,0.2f,0.2f,1));
+                    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0,0,0,1)); // black
+                    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f); // thickness
+                }
+                if (fullscreen) {
+
+                    ImGui::SetCursorPos(ImVec2(
+                        childSize.x - 30.0*fullscreenScale.x - 10.0,
+                        childSize.y - 25.0f*fullscreenScale.y - 10.0
+                    ));
+                    if (ImGui::Button("-", ImVec2(30*fullscreenScale.x,(25.0f*fullscreenScale.y)))) {
+                        selectedTileIndex = -1;
+                    }
+                } else {
+                    ImGui::SetCursorPos(ImVec2(
+                        childSize.x - 30.0  *   fullscreenScale.x - 25.0,
+                        childSize.y - 35.0f *   fullscreenScale.y - 5.0
+                    ));
+                    if (ImGui::Button("-", ImVec2(45*fullscreenScale.x,(35.0f*fullscreenScale.y)))) {
+                        selectedTileIndex = -1;
+                    }
+                }
+                ImGui::PopStyleColor(2);
+                ImGui::PopStyleVar();
+
+
+                ImGui::EndChild();
+                
+                
+
+                //ImGui::ImageButton( (void*)(intptr_t)index, textureID, ImVec2(32, 32), uv0, uv1);
+
                 // EMPTY
                 ImGui::EndTabItem();
             }

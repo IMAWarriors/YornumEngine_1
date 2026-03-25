@@ -64,7 +64,7 @@ class Scene {
             tile_layers.push_back(TileGrid());
             // For now just garbage data them when loading too
 
-            tiles_load_garbagedata(tile_layers.size()-1, 0);
+            tiles_load_garbagedata(0, 0);
 
         }
 
