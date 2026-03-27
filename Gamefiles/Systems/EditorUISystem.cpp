@@ -27,6 +27,11 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
     static bool showTileAtlasEditor = false;
     static int selectedIndex = -1; // FOR line: if(ImGui::BeginTabItem("Tileset")) {...  // serves to give show selected tile atlas for tile atlas editor
 
+    static bool animParamsMatch = true;
+
+    static int anim_frames = 1;
+    static float frame_time = 15.0;
+
     ImGui::GetStyle().WindowMinSize = ImVec2(2.0,2.0);
     ImGui::GetStyle().WindowPadding = ImVec2(0,0);
 
@@ -131,6 +136,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         {tile_drawsize, tile_drawsize}, 
                         uv0, 
                         uv1)) {
+
                             // What to do when someone selects a tile
                             
                         }
@@ -633,26 +639,68 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                 // Below the text...?
 
+                
+
                 if (selectedTileIndex != -1) {
 
                     ImGui::PushItemWidth(80 * fullscreenScale.x);
 
                     UIPos(1050, 595, 1050, 565);
-                    static int anim_frames = 1;
-                    ImGui::SliderInt("Anim Frms", &anim_frames, 1, 8);
+                    
+
+                    if (anim_frames != scene.loaded_atlases[selectedAtlas].tile_data[selectedTileIndex].anim_frame_count) {
+                        ImGui::PushStyleColor(ImGuiCol_SliderGrab, IM_COL32(0, 255, 0, 255));       // yellow grab
+                        ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(0, 255, 0, 255));       
+                    } else {
+                        ImGui::PushStyleColor(ImGuiCol_SliderGrab, IM_COL32(255, 255, 0, 255));       // yellow grab
+                        ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(255, 255, 0, 255));    
+                    }
+
+                    ImGui::SliderInt("Anim Frms", &anim_frames, 0, 16);
+
+                    ImGui::PopStyleColor(2);
+
+                    
 
                     UIPos(1050, 635, 1050, 605);
-                    static float frame_time = 15.0;
-                    ImGui::SliderFloat("Frm Time", &frame_time, 1.0, 128.0);
+                    
+
+                    if (frame_time != scene.loaded_atlases[selectedAtlas].tile_data[selectedTileIndex].anim_frame_speed) {
+                        ImGui::PushStyleColor(ImGuiCol_SliderGrab, IM_COL32(0, 255, 0, 255));       // yellow grab
+                        ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(0, 255, 0, 255));       
+                    } else {
+                        ImGui::PushStyleColor(ImGuiCol_SliderGrab, IM_COL32(255, 255, 0, 255));       // yellow grab
+                        ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(255, 255, 0, 255));    
+                    }
+
+                    ImGui::SliderFloat("Frm Time", &frame_time, 0.0f, 128.0f);
+
+                    ImGui::PopStyleColor(2);
 
                     
 
                     ImGui::PopItemWidth();
 
-                    UIPos(1050, 675, 1050, 655);
-                    if (ImGui::Button("Apply Changes", ImVec2(200*fullscreenScale.x,(35.0f*fullscreenScale.y)))) {
+                    if (frame_time == scene.loaded_atlases[selectedAtlas].tile_data[selectedTileIndex].anim_frame_speed && anim_frames == scene.loaded_atlases[selectedAtlas].tile_data[selectedTileIndex].anim_frame_count) {
+                        animParamsMatch = true;
                         
+                    } else {
+                        animParamsMatch = false;
+
+                        UIPos(1050, 675, 1050, 655);
+                        if (ImGui::Button("Apply Changes", ImVec2(200*fullscreenScale.x,(35.0f*fullscreenScale.y)))) {
+                            
+                            if (scene.loaded_atlases[selectedAtlas].are_anim_params_valid(selectedTileIndex, anim_frames, frame_time)) {
+                                scene.loaded_atlases[selectedAtlas].assign_tile_animation(selectedTileIndex, anim_frames, frame_time);
+                                animParamsMatch = true;
+                            }
+
+                        }
                     }
+
+                    
+
+                    
 
                 
                 }
@@ -695,13 +743,19 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         int b;
                         int a;
                         float thickness;
+                        bool filled;
                     };
+
 
                     std::vector<RectDraw> drawQueue;
                     std::vector<RectDraw> lowerQueue;
 
                     for (int row = 0; row < total_rows; row++) {
                         for (int col = 0; col < total_cols; col++) {
+
+                            if (scene.loaded_atlases[selectedAtlas].tile_data[row * total_cols + col].anim_parent_index != -1) {
+                                continue;
+                            }
 
                             Rectangle tile_slice = scene.loaded_atlases[selectedAtlas].getRectCR(col, row);
 
@@ -721,23 +775,31 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0,0,0,0.3f));
                             ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0,0,0,0.2f));
                             
-                            if (ImGui::ImageButton("tile", (ImTextureID)tileset_texture.id, 
-                            {(float)tile_drawsize, (float)tile_drawsize}, 
-                            uv0, 
-                            uv1)) {
+                            if (ImGui::ImageButton("tile", (ImTextureID)tileset_texture.id, {(float)tile_drawsize, (float)tile_drawsize}, uv0, uv1)) {
                                 selectedTileIndex = row * total_cols + col;
-                                
-                            }
-                           
-                            lowerQueue.push_back({ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), 0, 0, 0, 255, 2.0f});
 
+                                anim_frames = scene.loaded_atlases[selectedAtlas].tile_data[selectedTileIndex].anim_frame_count;
+                                frame_time = scene.loaded_atlases[selectedAtlas].tile_data[selectedTileIndex].anim_frame_speed;
+
+                                animParamsMatch = true;
+                            }
+
+
+                           
+                            lowerQueue.push_back({ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), 0, 0, 0, 255, 2.0f, false});
+
+                            if (animParamsMatch != true) {
+                                if (selectedTileIndex + anim_frames > row * total_cols + col && row * total_cols + col > selectedTileIndex) {
+                                    drawQueue.push_back({ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), 255, 0, 0, 40, 2.0f, true});   
+                                }
+                            }
 
                             if (ImGui::IsItemHovered()) {
-                                drawQueue.push_back({ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), 0, 0, 225, 255, 2.0f});   
+                                drawQueue.push_back({ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), 0, 0, 225, 255, 2.0f, false});   
                             }
 
                             if (selectedTileIndex == row * total_cols + col) {
-                                drawQueue.push_back({ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), 0, 0, 190, 255, 3.0f});
+                                drawQueue.push_back({ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), 0, 0, 190, 255, 3.0f, false});
                             }
                             
                             ImGui::PopID();
@@ -757,15 +819,24 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 
                     }
 
+                    
+
                     for (RectDraw draw : lowerQueue) {
                         ImDrawList* rdraw = ImGui::GetWindowDrawList();
                         rdraw->AddRect(draw.min, draw.max, IM_COL32(draw.r, draw.g, draw.b, draw.a), 0.0f, 0, draw.thickness);
                     }
 
                     for (RectDraw draw : drawQueue) {
-                        ImDrawList* rdraw = ImGui::GetWindowDrawList();
-                        rdraw->AddRect(draw.min, draw.max, IM_COL32(draw.r, draw.g, draw.b, draw.a), 0.0f, 0, draw.thickness);
+                        if (draw.filled) {
+                            ImDrawList* rdraw = ImGui::GetWindowDrawList();
+                            rdraw->AddRectFilled(draw.min, draw.max, IM_COL32(draw.r, draw.g, draw.b, draw.a));
+                        } else {
+                            ImDrawList* rdraw = ImGui::GetWindowDrawList();
+                            rdraw->AddRect(draw.min, draw.max, IM_COL32(draw.r, draw.g, draw.b, draw.a), 0.0f, 0, draw.thickness);
+                        }
                     }
+
+                    
 
                     drawQueue.clear();
                     ImGui::PopStyleVar(2);

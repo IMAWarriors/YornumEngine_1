@@ -15,6 +15,7 @@ namespace spawndef {
         registry.apply_component<comp::MouseTracker>(engineManager, {{0.0f,0.0f},{0.0f,0.0f}});
         registry.apply_component<comp::FramerateTracker>(engineManager, {0.0f,0.0f,0.0f,0.0f});
         registry.apply_component<comp::WorldAnimationState>(engineManager, {0.0f});
+        registry.apply_component<tag::EngineManager>(engineManager, {});
 
         return engineManager;
 
