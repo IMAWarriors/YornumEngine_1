@@ -21,9 +21,9 @@ class Scene {
 
     public:
 
+        // Editor Wiring
         int EDITOR_ONLY_SELECTED_ATLAS = -1;
         int EDITOR_ONLY_SELECTED_PALLET_TILE = -1;
-
         bool EDITOR_ONLY_ACTIVE_TAEDITOR = false;
 
 

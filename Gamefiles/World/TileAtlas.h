@@ -7,95 +7,278 @@
 #include "../../Engine/Core/Overhead/GameTypes.h"
 
 #include "raylib.h"
+#include <utility>
 
 #include <cstdint>
 #include <string>
+#include <vector>
+
+enum class CollisionType {
+    COLL_EMPTY = 0,
+    COLL_FULL_SOLID,
+    COLL_PSLOPE1_SOLID,
+    COLL_NSLOPE1_SOLID,
+    COLL_FULL_SEMISOLID
+};
+
+
+struct TileData {
+
+    int             anim_parent_index;
+    bool            is_anim_tile;
+    int             anim_frame_count;
+    float           anim_frame_speed;
+    CollisionType   collision_data;
+};
+
 
 
 
 struct TileAtlas {
 
-    // Don't really know how to store this yet but the tilepage will basically hold a vector
-    // of all the images that we could have for all the tiles of this particular tilepage
-    // We also have to hold just hte actual original source image i think idk how that works either
-
-    // ... ../Assets/Sprites/Tilesets/tilset_test_1_A.png
+    
 
     std::string name;
-    Texture2D * image_sheet_source;
-
-    // std::vector<TileImageSlice> tile_images; // not really any reason to store this data cuz we can do this math on the fly
-
-    size_t tile_atlas_width; // Px
-    size_t tile_atlas_height; // Px
-
-    size_t tile_size; // Px?, starting in top left hand corner i think
+    Texture2D * image_sheet_source = nullptr;
+    std::vector<TileData> tile_data;
+    size_t tile_atlas_width;        // Px
+    size_t tile_atlas_height;       // Px
+    size_t tile_size;               // Px?, starting in top left hand corner i think
     size_t tile_count;
+    size_t tiles_per_row;           // Width of page in tiles
+    size_t tiles_per_col;           // Height of page in tiles
 
-    size_t tiles_per_row;   // Width of page in tiles
-    size_t tiles_per_col;   // Height of page in tiles
 
-    // Input type for each TileAtlas should be (in terms of important designer details):
-    //  TILE SIZE:      How big are the tiles
-    //  TILES PER ROW:  How many tiles you expect per row
-    //  TILES PER COL:  How many tiles you should expect per column
-    //  IMAGE        :  The actual image source we wanna store i guess too bc we gotta split it up
+    TileAtlas () {
+        image_sheet_source = nullptr;
+    }
 
-    TileAtlas (const std::string & _name, Texture2D & _image, size_t _tile_px_size, size_t _tiles_per_row, size_t _tiles_per_col) {
-        // Placeholder for actual image storage
-        image_sheet_source = &_image;
+    TileAtlas (const std::string & _name, Texture2D & _img, size_t _tsize, size_t _tpr, size_t _tpc) {
+
         name = _name;
+        split_tileset(_img, _tsize, _tpr, _tpc);
+        
+    }
 
+    // Has empty tile data?
+    bool is_empty () {
+        if (image_sheet_source == nullptr) {
+            return true;
+        }
+        return false;
+    }
+
+
+    // Check if split is valid
+    bool is_split_valid (Texture2D & _image_sheet_source, size_t _tile_px_size, size_t _tiles_per_row, size_t _tiles_per_col) {
+
+        image_sheet_source = &_image_sheet_source;
+
+        tile_atlas_width = image_sheet_source->width;
+        tile_atlas_height = image_sheet_source->height;
+
+        bool valid_tsize = (256 >= _tile_px_size && _tile_px_size > 0);
+        bool valid_width = tile_atlas_width >= (_tiles_per_row * _tile_px_size);
+        bool valid_height = tile_atlas_height >= (_tiles_per_col * _tile_px_size);
+
+        if (!(valid_tsize && valid_width && valid_height)) {
+            image_sheet_source = nullptr;
+        }
+
+        return (valid_tsize && valid_width && valid_height);
+    }
+
+    // Attempt to split and return if it was successful
+    bool split_tileset (Texture2D & _image_sheet_source, size_t _tile_px_size, size_t _tiles_per_row, size_t _tiles_per_col) {
+        if (!is_split_valid(_image_sheet_source, _tile_px_size, _tiles_per_row, _tiles_per_col)) {
+            return false;
+        }
+        
         tile_size = _tile_px_size;
         tiles_per_row = _tiles_per_row;
         tiles_per_col = _tiles_per_col;
-
-        // Predicted values (might not be right with incorrect image sizing, must check validity somehow)
-        // some point but calculations should be accurate if images are loaded correctly
-        // 
-        // Also techinically tile count is just measuring max tile count cuz some of the last tiles in the set
-        // could be gagrbage or smth, but we'll just ignore those tiles and not use them in levels in that case
-
-        tile_atlas_width = tile_size * tiles_per_row;
-        tile_atlas_height = tile_size * tiles_per_col;
         tile_count = tiles_per_row * tiles_per_col;
+
+        tile_data.clear();
+        tile_data.resize( tile_count, {-1, false, 0, 0.0f, CollisionType::COLL_EMPTY} );
+
+        return true;
     }
 
-    //
-    //  Pretty self explanatory, but remember Tile Size is measured in pixels
-    //  Tiles per row/col are measured in Tiles (which are thereby kinda measured in pixels you can imagine)
-    //
-    //  Basically instructions for primitive tileslicer where all tilesheets must be strictly defined where every
-    //  tile is the same size, starts at the top left hand corner going down to the right
-    //
-    //  Tile page width and height i guess would just be calcluated by the program of the image size orwtv when we get the image
-    //  and we process if theres an issue loading the tiles, i.e. the tilepage's width or height is NOT the congruent or consistent
-    //  with the tile size we expect to clip or the tile count per row / col.
+    void set_tile_collision_data (size_t _tile_idx, CollisionType _coll_data) {
+        tile_data[_tile_idx].collision_data = _coll_data;
+    }
 
-    // Little helper function to just plug in the tiles' unique index in the tilepage according to Column and Row
-    // WILL PRODUCE OUTPUT -1 WITH NONSENSE COLUMN AND ROW INPUTS
+    CollisionType get_tile_collision_data (size_t _tile_idx) {
+        return tile_data[_tile_idx].collision_data;
+    }
+
+    bool is_tile_animated (size_t _tile_idx) {
+        return tile_data[_tile_idx].is_anim_tile;
+    }
+
+    bool is_tile_animation_child(size_t idx) const {
+        return tile_data[idx].anim_parent_index >= 0 && tile_data[idx].anim_parent_index != (int)idx;
+    }
+
+    void reset_all_tile_animation () {
+        for (TileData & data : tile_data) {
+            data.is_anim_tile = false;
+            data.anim_parent_index = -1;
+            data.anim_frame_count = 0;
+            data.anim_frame_speed = 0.0f;
+        }
+    }
+
+    void clear_tile_animation (size_t _tile_idx) {
+
+        // Store the Parent Tile of Animation
+        TileData & tempdata = tile_data[_tile_idx];
+
+        // Cycle through Child Tiles in the animation and free them from animation binding
+        size_t cursor = _tile_idx + 1;
+
+        size_t max_frames = std::min(
+            (size_t)tempdata.anim_frame_count,
+            tile_data.size() - (_tile_idx + 1)
+        );
+
+
+        for (size_t i = 0; i < max_frames; i++) {
+            // Force clear for safety
+            tile_data[cursor].anim_parent_index = -1; // Releases tile's role as an intermediate animation
+            tile_data[cursor].anim_frame_count = 0;
+            tile_data[cursor].anim_frame_speed = 0.0f;
+            tile_data[cursor].is_anim_tile = false;
+            
+            cursor++;
+        }
+
+        tile_data[_tile_idx] = {-1, false, 0, 0.0f, tempdata.collision_data}; // Releases Parent Tile's role as Parent Tile Animation
+
+        
+    }
+
+    bool are_anim_params_valid (size_t _tile_idx, uint32_t _total_anim_frames, float _anim_frametime) {
+
+        if (_anim_frametime <= 0) { return false; }
+
+        if (_tile_idx + _total_anim_frames > tile_data.size()) { return false; }
+
+        size_t cursor = _tile_idx;
+        for (int i = 0; i < _total_anim_frames; i++) {
+            if (tile_data[cursor].is_anim_tile) {
+                return false;
+            } else {
+                cursor++;
+            }
+        }
+
+        return true;
+
+    }
+
+    void assign_tile_animation (size_t _tile_idx, uint32_t _total_anim_frames, float _anim_frametime) {
+
+        tile_data[_tile_idx].is_anim_tile     = true;
+        tile_data[_tile_idx].anim_frame_count = _total_anim_frames;
+        tile_data[_tile_idx].anim_frame_speed = _anim_frametime;
+
+        size_t cursor = _tile_idx + 1;
+
+        for (int i = 1; i < _total_anim_frames; i++) {
+
+            if (tile_data[cursor].anim_parent_index != -1 || tile_data[cursor].is_anim_tile) {
+                return; // or assert
+            }
+
+            tile_data[cursor].anim_parent_index = _tile_idx;
+            tile_data[cursor].anim_frame_count = 0;
+            tile_data[cursor].anim_frame_speed = 0.0f;
+            cursor++;
+        }
+    }
+
+    
+
+    
     int getTileIdx (int _c, int _r) const {
         if (0 > _c || _c >= tiles_per_row) { return -1; }
         if (0 > _r || _r >= tiles_per_col) { return -1; }
         return _c + (_r * tiles_per_row);
     }
     
-
-
-    // Gets the source rectangle on the tilesheet of where we want the tile based on basically just index
-
     
         
     Rectangle getRectCR (int _c, int _r) const {
-
         float x = (float)_c * (float)tile_size;
         float y = (float)_r * (float)tile_size;
 
         float width = (float)tile_size;
         float height = (float)tile_size;
 
-
         return {x,y,width,height};
+    }
+    
+    Rectangle getRectCR (float current_tile_frame_time, int _c, int _r) const {
+
+        int index = getTileIdx(_c, _r);
+
+        if (index < 0 || index >= (int)tile_data.size()) {
+            return {0,0,0,0}; // or assert
+        }
+        
+        if (tile_data[index].is_anim_tile == false) {
+
+            float x = (float)_c * (float)tile_size;
+            float y = (float)_r * (float)tile_size;
+
+            float width = (float)tile_size;
+            float height = (float)tile_size;
+
+            return {x,y,width,height};
+        } else {
+
+            const TileData& data = tile_data[index];
+
+            float max_frame_time_anim = data.anim_frame_count * data.anim_frame_speed;
+
+            if (data.anim_frame_count <= 0 || data.anim_frame_speed <= 0.0f) {
+                // Invalid animation → just render base tile
+                return getRectCR(_c, _r);
+            }
+
+            float frame_time = current_tile_frame_time;
+            while (frame_time > max_frame_time_anim) {
+                frame_time -= max_frame_time_anim;
+            }
+
+            float anim_progress;
+            if (max_frame_time_anim > 0.0f) {
+                anim_progress = (frame_time / max_frame_time_anim) * data.anim_frame_count;
+            } else {
+                anim_progress = 0.0f;
+            }
+
+            int tile_anim_frame = (int)anim_progress;
+
+            if (tile_anim_frame >= data.anim_frame_count) {
+                tile_anim_frame = data.anim_frame_count - 1;
+            }
+
+            index += tile_anim_frame;
+
+            int src_column = index % tiles_per_row;
+            int src_row    = index / tiles_per_row;
+
+            float x = (float)src_column * (float)tile_size;
+            float y = (float)src_row * (float)tile_size;
+
+            float width = (float)tile_size;
+            float height = (float)tile_size;
+
+            return {x,y,width,height};
+        }
 
     }
 
@@ -107,6 +290,25 @@ struct TileAtlas {
         return getRectCR (src_column, src_row);
 
     }
+
+    Rectangle getRect (float current_tile_frame_time, int _index) const {
+
+        int src_column = _index % tiles_per_row;
+        int src_row    = _index / tiles_per_row;
+
+        return getRectCR (current_tile_frame_time, src_column, src_row);
+
+    }
+
+    
+        
+
+
+
+        
+    
+
+    
     
 
 };

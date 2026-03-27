@@ -10,8 +10,10 @@
 #include "comp/Camera.h"
 #include "comp/MouseTracker.h"
 #include "comp/FramerateTracker.h"
+#include "comp/WorldAnimationState.h"
 
 #include "tag/Tag_Player.h"
+#include "tag/Tag_EngineManager.h"
 
 
 

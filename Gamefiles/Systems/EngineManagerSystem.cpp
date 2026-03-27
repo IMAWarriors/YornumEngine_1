@@ -16,7 +16,7 @@ void EngineManagerSystem::update (Registry & registry, float deltatime) {
 
     
 
-    for (Entity entity : registry.view<comp::MouseTracker, comp::FramerateTracker>()) {      // For each iteration of Entity
+    for (Entity entity : registry.view<tag::EngineManager>()) {      // For each iteration of Entity
 
 
         // To get to this point, we have confirmed this entity has both VELOCITY and TRANSFORM, so should be valid to get component
@@ -29,6 +29,8 @@ void EngineManagerSystem::update (Registry & registry, float deltatime) {
         float & frame_deltatime = registry.get_component<comp::FramerateTracker>(entity).frame_deltatime;
         float & accumulator = registry.get_component<comp::FramerateTracker>(entity).accumulator;
         float & frame_simulation_ticks = registry.get_component<comp::FramerateTracker>(entity).frame_simulation_ticks;
+
+        float & current_tile_animation_frame = registry.get_component<comp::WorldAnimationState>(entity).current_tile_animation_frame;
 
     
         // Transform
@@ -46,6 +48,18 @@ void EngineManagerSystem::update (Registry & registry, float deltatime) {
         frame_deltatime = debugInfo.frame_deltatime;
         accumulator = debugInfo.frame_accumulator;
         frame_simulation_ticks = debugInfo.frame_simulation_ticks;
+        
+        // Aniamation frame
+        
+        current_tile_animation_frame += deltatime;
+
+        while (current_tile_animation_frame > 1024.0f) {
+            current_tile_animation_frame -= 1024.0f;
+        }
+
+        if (current_tile_animation_frame < 0) {
+            current_tile_animation_frame = 0.0f;
+        }
 
 
     }
