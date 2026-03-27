@@ -46,6 +46,12 @@ void RenderSystem::update (Registry & registry, float deltatime) {
 
     // DRAWING TILES, UTILIZING THE SCENE, NOT FUCKING ENTITIES BECAUSE THATS STUPID
     
+    float current_tile_animation_frame = 0.0f;
+    for (Entity entity : registry.view<tag::EngineManager, comp::WorldAnimationState>()) {
+        current_tile_animation_frame = registry.get_component<comp::WorldAnimationState>(entity).current_tile_animation_frame;
+        break;
+    }
+
     if (scene.loaded_atlases.size() > 0 && scene.tile_layers.size() > 0) {
 
         Vec2 camera_position = renderer.get_camera_position();      // Center of camera in world space
@@ -145,15 +151,29 @@ void RenderSystem::update (Registry & registry, float deltatime) {
 
                     
 
-                    size_t atlasMaxIndex;
+                    size_t atlasMaxIndex = 0;
                     if (tile_to_draw.atlas_idx >= 0 && tile_to_draw.tile_idx >= 0) {
-                        atlasMaxIndex = scene.loaded_atlases[tile_to_draw.atlas_idx].getTileIdx(
-                        scene.loaded_atlases[tile_to_draw.atlas_idx].tiles_per_row - 1, 
-                        scene.loaded_atlases[tile_to_draw.atlas_idx].tiles_per_col - 1);
-
-                        if (tile_to_draw.tile_idx >= atlasMaxIndex) {
+                        if (!scene.is_valid_atlas_index(tile_to_draw.atlas_idx)) {
                             is_empty_tile = true;
-                            atlasMaxIndex = 9999;
+                        }
+
+                        if (!is_empty_tile) {
+                            tile_to_draw.tile_idx = scene.normalize_tile_to_animation_parent(tile_to_draw.atlas_idx, tile_to_draw.tile_idx);
+                            if (tile_to_draw.tile_idx < 0) {
+                                is_empty_tile = true;
+                            }
+                        }
+
+                        if (!is_empty_tile) {
+                            atlasMaxIndex = scene.loaded_atlases[tile_to_draw.atlas_idx].getTileIdx(
+                            scene.loaded_atlases[tile_to_draw.atlas_idx].tiles_per_row - 1,
+                            scene.loaded_atlases[tile_to_draw.atlas_idx].tiles_per_col - 1);
+
+                            if (tile_to_draw.tile_idx >= atlasMaxIndex) {
+                                is_empty_tile = true;
+                                atlasMaxIndex = 9999;
+                            }
+                            
                         }
                     } else {
                         is_empty_tile = true;
@@ -166,7 +186,7 @@ void RenderSystem::update (Registry & registry, float deltatime) {
 
                     if (!is_empty_tile) {
                         renderer.rdraw_sprite(*(scene.loaded_atlases[tile_to_draw.atlas_idx].image_sheet_source),
-                            scene.loaded_atlases[tile_to_draw.atlas_idx].getRect(tile_to_draw.tile_idx),
+                            scene.loaded_atlases[tile_to_draw.atlas_idx].getRect(current_tile_animation_frame, tile_to_draw.tile_idx),
                             {screen_x,
                                 screen_y,
                                 (float)gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS * camera_zoom,
@@ -202,19 +222,22 @@ void RenderSystem::update (Registry & registry, float deltatime) {
                                 };
                                 
                                 if (scene.EDITOR_ONLY_SELECTED_ATLAS >= 0 && scene.EDITOR_ONLY_SELECTED_PALLET_TILE >= 0) {
+                                     int preview_tile = scene.normalize_tile_to_animation_parent(scene.EDITOR_ONLY_SELECTED_ATLAS, scene.EDITOR_ONLY_SELECTED_PALLET_TILE);
                                     renderer.rdraw_sprite_col(*(scene.loaded_atlases[scene.EDITOR_ONLY_SELECTED_ATLAS].image_sheet_source), 
-                                        scene.loaded_atlases[scene.EDITOR_ONLY_SELECTED_ATLAS].getRect(scene.EDITOR_ONLY_SELECTED_PALLET_TILE), thisTileDestination, {255,255,255,185}
+                                        scene.loaded_atlases[scene.EDITOR_ONLY_SELECTED_ATLAS].getRect(current_tile_animation_frame, preview_tile), thisTileDestination, {255,255,255,185}
                                     );
                                 }
 
                                 DrawRectangleLinesEx(thisTileDestination, 3.0f, RED);
                             }
 
+                            
                             if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) && world_column == hoverWorldCol && world_row == hoverWorldRow) {
                                 if (scene.EDITOR_ONLY_SELECTED_ATLAS < 0 || scene.EDITOR_ONLY_SELECTED_PALLET_TILE < 0) {
                                     layer.get_tile(world_column, world_row) = {-1,-1};
                                 } else {
-                                    layer.get_tile(world_column, world_row) = {scene.EDITOR_ONLY_SELECTED_ATLAS, scene.EDITOR_ONLY_SELECTED_PALLET_TILE};
+                                    int selected_parent_tile = scene.normalize_tile_to_animation_parent(scene.EDITOR_ONLY_SELECTED_ATLAS, scene.EDITOR_ONLY_SELECTED_PALLET_TILE);
+                                    layer.get_tile(world_column, world_row) = {scene.EDITOR_ONLY_SELECTED_ATLAS, selected_parent_tile};
                                 }
                             }
 

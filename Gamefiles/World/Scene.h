@@ -76,6 +76,66 @@ class Scene {
 
         }
 
+        bool is_valid_atlas_index (int atlas_idx) const {
+            return atlas_idx >= 0 && atlas_idx < (int)loaded_atlases.size();
+        }
+
+        int normalize_tile_to_animation_parent (int atlas_idx, int tile_idx) const {
+            if (!is_valid_atlas_index(atlas_idx)) {
+                return -1;
+            }
+
+            return loaded_atlases[atlas_idx].get_animation_parent_index(tile_idx);
+        }
+
+        void remap_layer_tiles_to_animation_parent (int atlas_idx, int animation_parent_idx, uint32_t animation_frame_count) {
+            if (!is_valid_atlas_index(atlas_idx)) {
+                return;
+            }
+            if (animation_frame_count <= 1) {
+                return;
+            }
+
+            const int first_child = animation_parent_idx + 1;
+            const int last_child = animation_parent_idx + ((int)animation_frame_count - 1);
+
+            for (TileGrid & layer : tile_layers) {
+                for (int row = gwconst::WORLD_TILEGRID_Y_BOUND_MIN_TILE; row <= gwconst::WORLD_TILEGRID_Y_BOUND_MAX_TILE; row++) {
+                    for (int col = gwconst::WORLD_TILEGRID_X_BOUND_MIN_TILE; col <= gwconst::WORLD_TILEGRID_X_BOUND_MAX_TILE; col++) {
+                        Tile & tile = layer.get_tile(col, row);
+
+                        if (tile.atlas_idx != atlas_idx) {
+                            continue;
+                        }
+
+                        if (tile.tile_idx >= first_child && tile.tile_idx <= last_child) {
+                            tile.tile_idx = animation_parent_idx;
+                        }
+                    }
+                }
+            }
+        }
+
+        bool apply_tile_animation (int atlas_idx, int tile_idx, uint32_t animation_frame_count, float animation_frametime) {
+            if (!is_valid_atlas_index(atlas_idx)) {
+                return false;
+            }
+
+            TileAtlas & atlas = loaded_atlases[atlas_idx];
+            if (!atlas.is_valid_tile_index(tile_idx)) {
+                return false;
+            }
+
+            if (!atlas.are_anim_params_valid(tile_idx, animation_frame_count, animation_frametime)) {
+                return false;
+            }
+
+            atlas.assign_tile_animation(tile_idx, animation_frame_count, animation_frametime);
+            remap_layer_tiles_to_animation_parent(atlas_idx, tile_idx, animation_frame_count);
+            return true;
+        }
+
+
 
 
 

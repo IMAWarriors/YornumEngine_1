@@ -588,8 +588,10 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     if (ImGui::Selectable(scene.loaded_atlases[i].name.c_str(), selectedAtlas == i)) {
                         if (selectedAtlas == i) {
                             selectedAtlas = -1;
+                            selectedTileIndex = -1;
                         } else {
                             selectedAtlas = i;
+                            selectedTileIndex = -1;
                         }
                     }
                 }
@@ -641,7 +643,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                 
 
-                if (selectedTileIndex != -1) {
+                bool selectedAtlasValid = (selectedAtlas >= 0 && selectedAtlas < (int)scene.loaded_atlases.size());
+
+                if (selectedTileIndex != -1 && selectedAtlasValid && selectedTileIndex < (int)scene.loaded_atlases[selectedAtlas].tile_data.size()) {
 
                     ImGui::PushItemWidth(80 * fullscreenScale.x);
 
@@ -673,7 +677,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(255, 255, 0, 255));    
                     }
 
-                    ImGui::SliderFloat("Frm Time", &frame_time, 0.0f, 128.0f);
+                    ImGui::SliderFloat("Frm Time", &frame_time, 0.0f, 4.0f, "%.4f");
 
                     ImGui::PopStyleColor(2);
 
@@ -686,15 +690,15 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         
                     } else {
                         animParamsMatch = false;
+                        bool canApplyAnimation = scene.loaded_atlases[selectedAtlas].are_anim_params_valid(selectedTileIndex, anim_frames, frame_time);
 
                         UIPos(1050, 675, 1050, 655);
-                        if (ImGui::Button("Apply Changes", ImVec2(200*fullscreenScale.x,(35.0f*fullscreenScale.y)))) {
-                            
-                            if (scene.loaded_atlases[selectedAtlas].are_anim_params_valid(selectedTileIndex, anim_frames, frame_time)) {
-                                scene.loaded_atlases[selectedAtlas].assign_tile_animation(selectedTileIndex, anim_frames, frame_time);
+                        if (canApplyAnimation && ImGui::Button("Apply Changes", ImVec2(200*fullscreenScale.x,(35.0f*fullscreenScale.y)))) {
+                            if (scene.apply_tile_animation(selectedAtlas, selectedTileIndex, anim_frames, frame_time)) {
                                 animParamsMatch = true;
                             }
-
+                        } else if (!canApplyAnimation) {
+                            ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "Invalid animation parameters.");
                         }
                     }
 
@@ -724,7 +728,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     ImGui::BeginChild("TileGrid", ImVec2(800 * fullscreenScale.x, 110 * fullscreenScale.y), true);
                 }
 
-                if (selectedAtlas != -1) {
+                if (selectedAtlasValid) {
 
                     Texture2D & tileset_texture = *scene.loaded_atlases[selectedAtlas].image_sheet_source;
                     int total_cols = (int)(scene.loaded_atlases[selectedAtlas].tiles_per_row);

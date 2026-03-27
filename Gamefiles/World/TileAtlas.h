@@ -121,6 +121,23 @@ struct TileAtlas {
         return tile_data[idx].anim_parent_index >= 0 && tile_data[idx].anim_parent_index != (int)idx;
     }
 
+    bool is_valid_tile_index (int idx) const {
+        return idx >= 0 && idx < (int)tile_data.size();
+    }
+
+    int get_animation_parent_index (int idx) const {
+        if (!is_valid_tile_index(idx)) {
+            return -1;
+        }
+
+        int parent_idx = tile_data[idx].anim_parent_index;
+        if (parent_idx >= 0) {
+            return parent_idx;
+        }
+
+        return idx;
+    }
+
     void reset_all_tile_animation () {
         for (TileData & data : tile_data) {
             data.is_anim_tile = false;
@@ -167,7 +184,7 @@ struct TileAtlas {
 
         size_t cursor = _tile_idx;
         for (int i = 0; i < _total_anim_frames; i++) {
-            if (tile_data[cursor].is_anim_tile) {
+            if (tile_data[cursor].is_anim_tile && _tile_idx != cursor) {
                 return false;
             } else {
                 cursor++;
@@ -180,21 +197,52 @@ struct TileAtlas {
 
     void assign_tile_animation (size_t _tile_idx, uint32_t _total_anim_frames, float _anim_frametime) {
 
+        if (_total_anim_frames == 0 || _anim_frametime == 0.0f) { // Unassign animation
+            tile_data[_tile_idx].is_anim_tile     = false;
+            tile_data[_tile_idx].anim_frame_count = 0;
+            tile_data[_tile_idx].anim_frame_speed = 0.0f;
+            tile_data[_tile_idx].anim_parent_index = -1;
+
+            for (TileData & data : tile_data) {
+                if (data.anim_parent_index == _tile_idx) {
+                    data.is_anim_tile = false;
+                    data.anim_parent_index = -1;
+                    data.anim_frame_count = 0;
+                    data.anim_frame_speed = 0.0f;
+                }
+            }
+
+            return;
+        }
+
+        if (tile_data[_tile_idx].is_anim_tile) {        // REASSIGN animation when animation already exists, meaning clear all previous children
+            for (TileData & data : tile_data) {
+                if (data.anim_parent_index == _tile_idx) {
+                    data.is_anim_tile = false;
+                    data.anim_parent_index = -1;
+                    data.anim_frame_count = 0;
+                    data.anim_frame_speed = 0.0f;
+                }
+            }
+        }
+
         tile_data[_tile_idx].is_anim_tile     = true;
         tile_data[_tile_idx].anim_frame_count = _total_anim_frames;
         tile_data[_tile_idx].anim_frame_speed = _anim_frametime;
+        tile_data[_tile_idx].anim_parent_index = -1;
 
-        size_t cursor = _tile_idx + 1;
+        size_t cursor = _tile_idx;
 
-        for (int i = 1; i < _total_anim_frames; i++) {
+        for (int i = 0; i < _total_anim_frames; i++) {
 
-            if (tile_data[cursor].anim_parent_index != -1 || tile_data[cursor].is_anim_tile) {
+            if (tile_data[cursor].anim_parent_index != -1 /*|| tile_data[cursor].is_anim_tile*/) {
                 return; // or assert
             }
 
             tile_data[cursor].anim_parent_index = _tile_idx;
             tile_data[cursor].anim_frame_count = 0;
             tile_data[cursor].anim_frame_speed = 0.0f;
+            tile_data[cursor].is_anim_tile     = false;
             cursor++;
         }
     }
