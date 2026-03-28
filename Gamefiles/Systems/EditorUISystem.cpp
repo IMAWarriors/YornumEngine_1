@@ -9,6 +9,7 @@
 #include "../../Gamefiles/World/Tile.h"
 #include "../../Gamefiles/World/Overhead/Gwconst.h"
 #include "../../Gamefiles/Assets/AssetManager.h"
+#include "../../Gamefiles/Assets/EditorAssets.h"
 
 #include "../../External/rlimgui/rlImGui.h"
 #include "../../External/imgui/imgui.h"
@@ -30,7 +31,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
     static bool animParamsMatch = true;
 
     static int anim_frames = 1;
-    static float frame_time = 15.0;
+    static float frame_time = 0.0f;
 
     ImGui::GetStyle().WindowMinSize = ImVec2(2.0,2.0);
     ImGui::GetStyle().WindowPadding = ImVec2(0,0);
@@ -468,7 +469,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             scale = {100.0f/img_aspect, 100.0f};
                             size = ImVec2(scale.x * fullscreenScale.x, scale.y * fullscreenScale.y);
 
-                            UIPos(290, 695, 290, 695);
+                            UIPos(280, 695, 285, 695);
                             ImGui::Text("%.0fpx by %.0fpx", (float)texture.width, (float)texture.height);
                         }
 
@@ -487,23 +488,229 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                     ImGui::PushItemWidth(85 * fullscreenScale.x);
                     
+                    if (fullscreen) {
+                        UIPos(480, 600, 480, 600 - 30);
+                        static int tilesize = 5;
+                        ImGui::SliderInt("Tiles Size", &tilesize, 1, 64);
 
-                    UIPos(480, 600, 480, 600 - 30);
-                    static int tilesize = 5;
-                    ImGui::SliderInt("Tiles Size (px)", &tilesize, 1, 64);
+                        UIPos(480, 640, 480, 640 - 30);
+                        static int column = 5;
+                        ImGui::SliderInt("Tiles / C.", &column, 1, 32);
 
-                    UIPos(480, 640, 480, 640 - 30);
-                    static int column = 5;
-                    ImGui::SliderInt("Tiles Per Column", &column, 1, 32);
+                        UIPos(480, 680, 480, 680 - 30);
+                        static int row = 5;
+                        ImGui::SliderInt("Tiles / R.", &row, 1, 32);
+                    } else {
+                        UIPos(480, 590, 480,590 - 30);
+                        static int tilesize = 5;
+                        ImGui::SliderInt("Size", &tilesize, 1, 64);
 
-                    UIPos(480, 680, 480, 680 - 30);
-                    static int row = 5;
-                    ImGui::SliderInt("Tiles Per Row", &row, 1, 32);
+                        UIPos(480, 630, 480, 630 - 30);
+                        static int column = 5;
+                        ImGui::SliderInt("TPC", &column, 1, 32);
+
+                        UIPos(480, 670, 480, 670 - 30);
+                        static int row = 5;
+                        ImGui::SliderInt("TPR", &row, 1, 32);
+                    }
 
                     ImGui::PopItemWidth();
 
 
 
+                    // ============ Physics Editor =============
+
+                    static int phystab_selectedTileIndex = -1;
+
+                    UIPos(690, 558, 690, 542);
+                    ImGui::Text("Physics & Collisions:");
+
+                    UIPos(660, 563, 660, 547);
+                    ImGui::Text("______________________");
+
+                    UIPos(700, 600, 660, 570);
+
+                    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.2f,0.2f,0.2f,0.7f));
+                    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0,0,0,1)); // black
+                    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f); // thickness
+
+                    if (fullscreen) {
+                        ImGui::BeginChild("PhysicsTileGrid", ImVec2(260 * fullscreenScale.x, 135 * fullscreenScale.y), true);
+                    } else {
+                        ImGui::BeginChild("PhysicsTileGrid", ImVec2(260 * fullscreenScale.x, 110 * fullscreenScale.y), true);
+                    }
+
+                    if (selectedIndex >= 0) {
+
+                        Texture2D & tileset_texture = *scene.loaded_atlases[selectedIndex].image_sheet_source;
+                        int total_cols = (int)(scene.loaded_atlases[selectedIndex].tiles_per_row);
+                        int total_rows = (int)(scene.loaded_atlases[selectedIndex].tiles_per_col);
+                        
+                        int tile_drawsize = 32 * fullscreenScale.x;
+
+                        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+                        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
+
+                        struct RectDraw {
+                            ImVec2 min;
+                            ImVec2 max;
+                            int r;
+                            int g;
+                            int b;
+                            int a;
+                            float thickness;
+                            bool filled;
+                        };
+
+                        struct ImgDraw {
+                            ImVec2 min;
+                            ImVec2 max;
+                            ImVec2 uv_0;
+                            ImVec2 uv_1;
+                            Texture2D& img;
+                        };
+
+
+                        std::vector<ImgDraw> imgDrawQueue;
+                        std::vector<RectDraw> drawQueue;
+                        std::vector<RectDraw> lowerQueue;
+
+                        for (int row = 0; row < total_rows; row++) {
+                            for (int col = 0; col < total_cols; col++) {
+
+                                Rectangle tile_slice = scene.loaded_atlases[selectedIndex].getRectCR(col, row);
+
+                                ImVec2 uv0 = ImVec2(
+                                    tile_slice.x / (float)tileset_texture.width,
+                                    tile_slice.y / (float)tileset_texture.height
+                                );
+
+                                ImVec2 uv1 = ImVec2(
+                                    (tile_slice.x + tile_slice.width) / (float)tileset_texture.width,
+                                    (tile_slice.y + tile_slice.height) / (float)tileset_texture.height
+                                );
+                                
+                                ImGui::PushID(row * total_cols + col);
+
+                                CollisionType coll = scene.loaded_atlases[selectedIndex].tile_data[row * total_cols + col].collision_data;
+                                Rectangle ico_slice = {-9999,0,0,0};
+
+                                if (coll == CollisionType::COLL_EMPTY) {
+                                    ico_slice = editorAssets.util_tileset_geticon(CollisionIcons::UTIL_EMPTY_COL_ICO );
+                                } else if (coll == CollisionType::COLL_FULL_SOLID) {
+                                    ico_slice = editorAssets.util_tileset_geticon(CollisionIcons::UTIL_FULL_COL_ICO );
+                                } else if (coll == CollisionType::COLL_PSLOPE1_SOLID) {
+                                    ico_slice = editorAssets.util_tileset_geticon(CollisionIcons::UTIL_PSLOPE1_COL_ICO );
+                                } else if (coll == CollisionType::COLL_NSLOPE1_SOLID) {
+                                    ico_slice = editorAssets.util_tileset_geticon(CollisionIcons::UTIL_NSLOPE1_COL_ICO );
+                                }
+
+                                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0,0,0,0));
+                                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0,0,0,0.3f));
+                                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0,0,0,0.2f));
+                                
+                                if (ImGui::ImageButton("tile", (ImTextureID)tileset_texture.id, {(float)tile_drawsize, (float)tile_drawsize}, uv0, uv1)) {
+                                    phystab_selectedTileIndex = row * total_cols + col;
+
+                                    anim_frames = scene.loaded_atlases[selectedIndex].tile_data[phystab_selectedTileIndex].anim_frame_count;
+                                    frame_time = scene.loaded_atlases[selectedIndex].tile_data[phystab_selectedTileIndex].anim_frame_speed;
+
+                                    animParamsMatch = true;
+                                }
+
+                                if (ico_slice.x != -9999) {
+                                    ImVec2 uv2 = ImVec2(
+                                        ico_slice.x / (float)editorAssets.util_tileset.width,
+                                        ico_slice.y / (float)editorAssets.util_tileset.height
+                                    );
+
+                                    ImVec2 uv3 = ImVec2(
+                                        (ico_slice.x + ico_slice.width) / (float)editorAssets.util_tileset.width,
+                                        (ico_slice.y + ico_slice.height) / (float)editorAssets.util_tileset.height
+                                    );
+
+                                    imgDrawQueue.push_back({ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), uv2, uv3, editorAssets.util_tileset});
+                                }
+
+
+
+                                
+
+
+                            
+                                lowerQueue.push_back({ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), 0, 0, 0, 255, 2.0f, false});
+
+                                if (animParamsMatch != true) {
+                                    if (phystab_selectedTileIndex + anim_frames > row * total_cols + col && row * total_cols + col > phystab_selectedTileIndex) {
+                                        drawQueue.push_back({ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), 255, 0, 0, 40, 2.0f, true});   
+                                    }
+                                }
+
+                                if ((row * total_cols + col) >= 0 && (row * total_cols + col) < (int)scene.loaded_atlases[selectedIndex].tile_data.size()) {
+                                    if (scene.loaded_atlases[selectedIndex].tile_data[row * total_cols + col].is_anim_tile) {
+                                        drawQueue.push_back({ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), 150, 30, 0, 255, 2.0f, false});
+                                    }
+                                }
+
+                                if (ImGui::IsItemHovered()) {
+                                    drawQueue.push_back({ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), 0, 0, 225, 255, 2.0f, false});   
+                                }
+
+                                if (phystab_selectedTileIndex == row * total_cols + col) {
+                                    drawQueue.push_back({ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), 0, 0, 190, 255, 3.0f, false});
+                                }
+                                
+                                ImGui::PopID();
+
+                                if (col < total_cols-1) {
+                                    ImGui::SameLine();
+                                }
+
+
+
+
+
+                                
+                                ImGui::PopStyleColor(3);
+                            }
+
+                    
+                        }
+
+                        
+
+                        for (RectDraw draw : lowerQueue) {
+                            ImDrawList* rdraw = ImGui::GetWindowDrawList();
+                            rdraw->AddRect(draw.min, draw.max, IM_COL32(draw.r, draw.g, draw.b, draw.a), 0.0f, 0, draw.thickness);
+                        }
+
+                        for (ImgDraw imgdraw : imgDrawQueue) {
+                            ImDrawList* dl = ImGui::GetWindowDrawList();
+
+                            dl->AddImage( (ImTextureID)imgdraw.img.id, imgdraw.min, imgdraw.max, imgdraw.uv_0, imgdraw.uv_1 );
+                        }
+
+                        for (RectDraw draw : drawQueue) {
+                            if (draw.filled) {
+                                ImDrawList* rdraw = ImGui::GetWindowDrawList();
+                                rdraw->AddRectFilled(draw.min, draw.max, IM_COL32(draw.r, draw.g, draw.b, draw.a));
+                            } else {
+                                ImDrawList* rdraw = ImGui::GetWindowDrawList();
+                                rdraw->AddRect(draw.min, draw.max, IM_COL32(draw.r, draw.g, draw.b, draw.a), 0.0f, 0, draw.thickness);
+                            }
+                        }
+
+                        
+
+                        drawQueue.clear();
+                        ImGui::PopStyleVar(3);
+                        ImGui::PopStyleColor(2);
+                        ImGui::EndChild();
+
+                    }
+                    
+
+                    // ========================== END OF PHYSICS WINDOW =================================
 
 
 
@@ -660,26 +867,30 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(255, 255, 0, 255));    
                     }
 
-                    ImGui::SliderInt("Anim Frms", &anim_frames, 0, 16);
-
+                    ImGui::SliderInt("Anim Frms", &anim_frames, 1, 16);
                     ImGui::PopStyleColor(2);
 
-                    
+                    if (anim_frames != 1) {
+                        
+                        
 
-                    UIPos(1050, 635, 1050, 605);
-                    
+                        
 
-                    if (frame_time != scene.loaded_atlases[selectedAtlas].tile_data[selectedTileIndex].anim_frame_speed) {
-                        ImGui::PushStyleColor(ImGuiCol_SliderGrab, IM_COL32(0, 255, 0, 255));       // yellow grab
-                        ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(0, 255, 0, 255));       
-                    } else {
-                        ImGui::PushStyleColor(ImGuiCol_SliderGrab, IM_COL32(255, 255, 0, 255));       // yellow grab
-                        ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(255, 255, 0, 255));    
+                        UIPos(1050, 635, 1050, 605);
+                        
+
+                        if (frame_time != scene.loaded_atlases[selectedAtlas].tile_data[selectedTileIndex].anim_frame_speed) {
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrab, IM_COL32(0, 255, 0, 255));       // yellow grab
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(0, 255, 0, 255));       
+                        } else {
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrab, IM_COL32(255, 255, 0, 255));       // yellow grab
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(255, 255, 0, 255));    
+                        }
+
+                        ImGui::SliderFloat("Frm Time", &frame_time, 0.00f, 1.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+
+                        ImGui::PopStyleColor(2);
                     }
-
-                    ImGui::SliderFloat("Frm Time", &frame_time, 0.0f, 4.0f, "%.4f");
-
-                    ImGui::PopStyleColor(2);
 
                     
 
@@ -695,6 +906,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         UIPos(1050, 675, 1050, 655);
                         if (canApplyAnimation && ImGui::Button("Apply Changes", ImVec2(200*fullscreenScale.x,(35.0f*fullscreenScale.y)))) {
                             if (scene.apply_tile_animation(selectedAtlas, selectedTileIndex, anim_frames, frame_time)) {
+                                anim_frames = scene.loaded_atlases[selectedAtlas].tile_data[selectedTileIndex].anim_frame_count;
+                                frame_time = scene.loaded_atlases[selectedAtlas].tile_data[selectedTileIndex].anim_frame_speed;
                                 animParamsMatch = true;
                             }
                         } else if (!canApplyAnimation) {
@@ -795,6 +1008,12 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             if (animParamsMatch != true) {
                                 if (selectedTileIndex + anim_frames > row * total_cols + col && row * total_cols + col > selectedTileIndex) {
                                     drawQueue.push_back({ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), 255, 0, 0, 40, 2.0f, true});   
+                                }
+                            }
+
+                            if ((row * total_cols + col) >= 0 && (row * total_cols + col) < (int)scene.loaded_atlases[selectedAtlas].tile_data.size()) {
+                                if (scene.loaded_atlases[selectedAtlas].tile_data[row * total_cols + col].is_anim_tile) {
+                                    drawQueue.push_back({ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), 150, 30, 0, 255, 2.0f, false});
                                 }
                             }
 

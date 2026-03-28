@@ -5,6 +5,6 @@
 
 void GameEngine::AddEditorSystems() {
 
-    systems.add_system<EditorUISystem>(Phases::EDITORUI, *renderer, scene, assets);
+    systems.add_system<EditorUISystem>(Phases::EDITORUI, *renderer, scene, assets, editorAssets);
     
 }

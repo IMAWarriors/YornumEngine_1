@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <cstdint>
+#include <cmath>
 #include <string>
 #include <vector>
 
@@ -100,7 +101,7 @@ struct TileAtlas {
         tile_count = tiles_per_row * tiles_per_col;
 
         tile_data.clear();
-        tile_data.resize( tile_count, {-1, false, 0, 0.0f, CollisionType::COLL_EMPTY} );
+        tile_data.resize( tile_count, {-1, false, 1, 0.25f, CollisionType::COLL_EMPTY} );
 
         return true;
     }
@@ -197,9 +198,9 @@ struct TileAtlas {
 
     void assign_tile_animation (size_t _tile_idx, uint32_t _total_anim_frames, float _anim_frametime) {
 
-        if (_total_anim_frames == 0 || _anim_frametime == 0.0f) { // Unassign animation
+        if (_total_anim_frames == 1 || _total_anim_frames == 0 || _anim_frametime == 0.0f) { // Unassign animation
             tile_data[_tile_idx].is_anim_tile     = false;
-            tile_data[_tile_idx].anim_frame_count = 0;
+            tile_data[_tile_idx].anim_frame_count = 1;
             tile_data[_tile_idx].anim_frame_speed = 0.0f;
             tile_data[_tile_idx].anim_parent_index = -1;
 
@@ -207,7 +208,7 @@ struct TileAtlas {
                 if (data.anim_parent_index == _tile_idx) {
                     data.is_anim_tile = false;
                     data.anim_parent_index = -1;
-                    data.anim_frame_count = 0;
+                    data.anim_frame_count = 1;
                     data.anim_frame_speed = 0.0f;
                 }
             }
@@ -220,7 +221,7 @@ struct TileAtlas {
                 if (data.anim_parent_index == _tile_idx) {
                     data.is_anim_tile = false;
                     data.anim_parent_index = -1;
-                    data.anim_frame_count = 0;
+                    data.anim_frame_count = 1;
                     data.anim_frame_speed = 0.0f;
                 }
             }
@@ -231,16 +232,16 @@ struct TileAtlas {
         tile_data[_tile_idx].anim_frame_speed = _anim_frametime;
         tile_data[_tile_idx].anim_parent_index = -1;
 
-        size_t cursor = _tile_idx;
+        size_t cursor = _tile_idx + 1;
 
-        for (int i = 0; i < _total_anim_frames; i++) {
+        for (uint32_t i = 1; i < _total_anim_frames; i++) {
 
             if (tile_data[cursor].anim_parent_index != -1 /*|| tile_data[cursor].is_anim_tile*/) {
                 return; // or assert
             }
 
             tile_data[cursor].anim_parent_index = _tile_idx;
-            tile_data[cursor].anim_frame_count = 0;
+            tile_data[cursor].anim_frame_count = 1;
             tile_data[cursor].anim_frame_speed = 0.0f;
             tile_data[cursor].is_anim_tile     = false;
             cursor++;
@@ -291,24 +292,17 @@ struct TileAtlas {
 
             float max_frame_time_anim = data.anim_frame_count * data.anim_frame_speed;
 
-            if (data.anim_frame_count <= 0 || data.anim_frame_speed <= 0.0f) {
+            if (data.anim_frame_count <= 1 || data.anim_frame_speed <= 0.0f) {
                 // Invalid animation → just render base tile
                 return getRectCR(_c, _r);
             }
 
-            float frame_time = current_tile_frame_time;
-            while (frame_time > max_frame_time_anim) {
-                frame_time -= max_frame_time_anim;
+            float frame_time = std::fmod(current_tile_frame_time, max_frame_time_anim);
+            if (frame_time < 0.0f) {
+                frame_time += max_frame_time_anim;
             }
 
-            float anim_progress;
-            if (max_frame_time_anim > 0.0f) {
-                anim_progress = (frame_time / max_frame_time_anim) * data.anim_frame_count;
-            } else {
-                anim_progress = 0.0f;
-            }
-
-            int tile_anim_frame = (int)anim_progress;
+            int tile_anim_frame = (int)(frame_time / data.anim_frame_speed);
 
             if (tile_anim_frame >= data.anim_frame_count) {
                 tile_anim_frame = data.anim_frame_count - 1;

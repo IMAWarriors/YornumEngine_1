@@ -21,6 +21,8 @@ class Renderer;
 
 class AssetManager;
 
+struct EditorAssets;
+
 
 class EditorUISystem : public System {
 
@@ -29,11 +31,13 @@ class EditorUISystem : public System {
         Renderer & renderer;
         Scene & scene;
         AssetManager & assets;
+        EditorAssets & editorAssets;
 
+        
 
     public: 
 
-        EditorUISystem (Renderer & _renderer, Scene & _scene, AssetManager & _assets) : renderer(_renderer), scene(_scene), assets(_assets) {}
+        EditorUISystem (Renderer & _renderer, Scene & _scene, AssetManager & _assets, EditorAssets & _editorAssets) : renderer(_renderer), scene(_scene), assets(_assets), editorAssets(_editorAssets) {}
         
     
         void update (Registry & registry, float deltatime) override;

@@ -6,12 +6,15 @@
 // Get Engine Tools
 #include "../../Engine/ECS/SystemManager.h"
 #include "../Assets/AssetManager.h"
+#include "../Assets/EditorAssets.h"
 #include "../../Engine/ECS/ComponentPool.h"               // Get the GENERAL COMPONENT POOL INFORMATION for Component refs
 
 // Get Systems
 #include "../Systems/Systems.h"
 
 #include "../../Engine/ECS/Enum_SystemPhases.h"
+
+
 
 
 #include "../World/Scene.h"
@@ -41,6 +44,9 @@ class GameEngine {
         Scene scene;
 
         AssetManager assets;
+        EditorAssets editorAssets;
+
+
 
         // Pointers to CoreApplication Attributes
         Renderer * renderer = nullptr;
@@ -63,6 +69,7 @@ class GameEngine {
 
         void AddEditorSystems();
 
+        void CleanUp();
 
 
 

@@ -86,6 +86,8 @@ void CoreApplication::RunCoreEngineMainEditor (GameEngine & game) {
 
     // Close the program
 
+    game.CleanUp();
+
     rlImGuiShutdown();
     window.EndProgram();
 

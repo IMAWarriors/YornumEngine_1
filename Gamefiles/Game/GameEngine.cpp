@@ -12,6 +12,8 @@ void GameEngine::Initialize(Renderer & _renderer, InputManager & _input, DebugSt
     input    = &_input;
     debug    = &_debug;
 
+    editorAssets.init();
+
     scene.load_new_tileset("Cave Tileset", assets.LoadTilesetTexture("Gamefiles/Assets/Sprites/Tilesets/cave_tileset.png"),32,10,7);
     scene.load_new_tileset("Test Tileset", assets.LoadTilesetTexture("Gamefiles/Assets/Sprites/Tilesets/tileset_test_1_A.png"),8,4,4);
 
@@ -109,3 +111,6 @@ void GameEngine::SetEditorMode () {
 }
 
 
+void GameEngine::CleanUp() {
+    editorAssets.shutdown();
+}

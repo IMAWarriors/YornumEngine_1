@@ -72,6 +72,8 @@ void CoreApplication::RunCoreEngine(GameEngine & game) {
 
     }
 
+    game.CleanUp();
+
     // Close the program
     window.EndProgram();
 
