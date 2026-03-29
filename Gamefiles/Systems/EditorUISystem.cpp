@@ -30,6 +30,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
     static bool animParamsMatch = true;
 
+    static int phystab_selectedTileIndex = -1;
+
     static int anim_frames = 1;
     static float frame_time = 0.0f;
 
@@ -298,7 +300,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                 UIPos(10, 563, 10, 547);
 
-                ImGui::Text("________________");
+                ImGui::Text("_______________");
 
                 //static std::vector<std::string> items = scenes.
                 //static std::vector<std::string> itempaths = assets.GetTilesetPaths("Gamefiles/Assets/Sprites/Tilesets/");
@@ -332,6 +334,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         } else {
                             selectedIndex = i;
                         }
+                        phystab_selectedTileIndex = -1;
                         tilesetToPreview = true;
                         path = (scene.loaded_atlases[i].image_sheet_source);
                     }
@@ -483,7 +486,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     ImGui::Text("Settings:");
 
                     UIPos(490, 563, 490, 547);
-                    ImGui::Text("________________");
+                    ImGui::Text("___________");
 
 
                     ImGui::PushItemWidth(85 * fullscreenScale.x);
@@ -520,13 +523,13 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                     // ============ Physics Editor =============
 
-                    static int phystab_selectedTileIndex = -1;
+                    
 
                     UIPos(690, 558, 690, 542);
                     ImGui::Text("Physics & Collisions:");
 
                     UIPos(660, 563, 660, 547);
-                    ImGui::Text("______________________");
+                    ImGui::Text("___________________________");
 
                     UIPos(700, 600, 660, 570);
 
@@ -592,6 +595,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 
                                 ImGui::PushID(row * total_cols + col);
 
+                                
+
                                 CollisionType coll = scene.loaded_atlases[selectedIndex].tile_data[row * total_cols + col].collision_data;
                                 Rectangle ico_slice = {-9999,0,0,0};
 
@@ -608,7 +613,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0,0,0,0));
                                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0,0,0,0.3f));
                                 ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0,0,0,0.2f));
-                                
+
                                 if (ImGui::ImageButton("tile", (ImTextureID)tileset_texture.id, {(float)tile_drawsize, (float)tile_drawsize}, uv0, uv1)) {
                                     phystab_selectedTileIndex = row * total_cols + col;
 
@@ -616,6 +621,12 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                     frame_time = scene.loaded_atlases[selectedIndex].tile_data[phystab_selectedTileIndex].anim_frame_speed;
 
                                     animParamsMatch = true;
+                                }
+                                
+                                if (scene.loaded_atlases[selectedIndex].tile_data[row * total_cols + col].anim_parent_index != -1) {
+
+                                    drawQueue.push_back({ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), 255, 255, 255, 40, 2.0f, true});   
+                                
                                 }
 
                                 if (ico_slice.x != -9999) {
@@ -708,9 +719,171 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         ImGui::EndChild();
 
                     }
+
+
+
+
+
+                    UIPos(970, 600, 960, 570);
+
+                    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.2f,0.2f,0.2f,0.7f));
+                    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0,0,0,1)); // black
+                    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f); // thickness
+
+                    if (fullscreen) {
+                        ImGui::BeginChild("CollisionSelector", ImVec2(240 * fullscreenScale.x, 135 * fullscreenScale.y), true);
+                    } else {
+                        ImGui::BeginChild("CollisionSelector", ImVec2(240 * fullscreenScale.x, 110 * fullscreenScale.y), true);
+                    }
+
+                    // ** INSERT CODE HERE ** //
+
+
+                    // ======================= COLLISION SELECTOR =======================
+
+                    // safety: only operate if a tile is selected
+                    bool validTile =
+                        (selectedIndex >= 0) &&
+                        (phystab_selectedTileIndex >= 0) &&
+                        (phystab_selectedTileIndex < (int)scene.loaded_atlases[selectedIndex].tile_data.size());
+
+                    CollisionType* currentCollision = nullptr;
+
+                    if (selectedIndex >= 0 &&
+                        phystab_selectedTileIndex >= 0 &&
+                        phystab_selectedTileIndex < (int)scene.loaded_atlases[selectedIndex].tile_data.size()) {
+
+                        currentCollision =
+                            &scene.loaded_atlases[selectedIndex].tile_data[phystab_selectedTileIndex].collision_data;
+                    }
+
                     
 
+                    // -------- LEFT SIDE: CURRENT SELECTION DISPLAY --------
+                    ImGui::BeginGroup();
+
+                    ImGui::Text("Current:");
+
+                    ImVec2 previewSize = ImVec2(40 * fullscreenScale.x, 40 * fullscreenScale.y);
+
+                    Rectangle currentIcon = {-9999,0,0,0};
+
+                    if (validTile) {
+                        if (currentCollision && (*currentCollision == CollisionType::COLL_EMPTY))
+                            currentIcon = editorAssets.util_tileset_geticon(CollisionIcons::UTIL_EMPTY_COL_ICO);
+                        else if (currentCollision && (*currentCollision == CollisionType::COLL_FULL_SOLID))
+                            currentIcon = editorAssets.util_tileset_geticon(CollisionIcons::UTIL_FULL_COL_ICO);
+                        else if (currentCollision && (*currentCollision == CollisionType::COLL_PSLOPE1_SOLID))
+                            currentIcon = editorAssets.util_tileset_geticon(CollisionIcons::UTIL_PSLOPE1_COL_ICO);
+                        else if (currentCollision && (*currentCollision == CollisionType::COLL_NSLOPE1_SOLID))
+                            currentIcon = editorAssets.util_tileset_geticon(CollisionIcons::UTIL_NSLOPE1_COL_ICO);
+                    }
+
+                    if (currentIcon.x != -9999) {
+                        ImVec2 min = ImGui::GetCursorScreenPos();
+                        ImVec2 max = {min.x + previewSize.x, min.y + previewSize.y};
+
+                        // white background
+                        ImGui::GetWindowDrawList()->AddRectFilled(min, max, IM_COL32(60,60,60,255));
+
+                        ImVec2 uv0 = {
+                            currentIcon.x / (float)editorAssets.util_tileset.width,
+                            currentIcon.y / (float)editorAssets.util_tileset.height
+                        };
+
+                        ImVec2 uv1 = {
+                            (currentIcon.x + currentIcon.width) / (float)editorAssets.util_tileset.width,
+                            (currentIcon.y + currentIcon.height) / (float)editorAssets.util_tileset.height
+                        };
+
+                        ImGui::Image((ImTextureID)editorAssets.util_tileset.id, previewSize, uv0, uv1);
+                    }
+
+                    ImGui::EndGroup();
+
+                    // spacing between left + right
+                    ImGui::SameLine();
+                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 20);
+
+                    // -------- RIGHT SIDE: SELECTOR LIST --------
+                    ImGui::BeginGroup();
+
+                    struct CollisionOption {
+                        CollisionType type;
+                        CollisionIcons icon;
+                        const char* label;
+                    };
+
+                    CollisionOption options[4] = {
+                        {CollisionType::COLL_EMPTY,        CollisionIcons::UTIL_EMPTY_COL_ICO,   "Empty Collision"},
+                        {CollisionType::COLL_FULL_SOLID,   CollisionIcons::UTIL_FULL_COL_ICO,    "Full Solid"},
+                        {CollisionType::COLL_PSLOPE1_SOLID,CollisionIcons::UTIL_PSLOPE1_COL_ICO, "Positive Slope"},
+                        {CollisionType::COLL_NSLOPE1_SOLID,CollisionIcons::UTIL_NSLOPE1_COL_ICO, "Negative Slope"}
+                    };
+
+                    ImVec2 buttonSize = ImVec2(28 * fullscreenScale.x, 28 * fullscreenScale.y);
+
+                    for (int i = 0; i < 4; i++) {
+                        
+
+                        ImGui::PushID(i);
+
+                        bool isSelected = currentCollision && (*currentCollision == options[i].type);
+
+                        // highlight selected
+                        if (isSelected) {
+                            ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(80, 120, 255, 255));
+                        } else {
+                            ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(50, 50, 50, 255));
+                        }
+
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(90, 90, 90, 255));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(120, 120, 120, 255));
+
+                        Rectangle ico = editorAssets.util_tileset_geticon(options[i].icon);
+
+                        ImVec2 min = ImGui::GetCursorScreenPos();
+                        ImVec2 max = {min.x + buttonSize.x, min.y + buttonSize.y};
+
+                        // white background (IMPORTANT)
+                        ImGui::GetWindowDrawList()->AddRectFilled(min, max, IM_COL32(255,255,255,255));
+
+                        ImVec2 uv0 = {
+                            ico.x / (float)editorAssets.util_tileset.width,
+                            ico.y / (float)editorAssets.util_tileset.height
+                        };
+
+                        ImVec2 uv1 = {
+                            (ico.x + ico.width) / (float)editorAssets.util_tileset.width,
+                            (ico.y + ico.height) / (float)editorAssets.util_tileset.height
+                        };
+
+                        if (ImGui::ImageButton("colbtn", (ImTextureID)editorAssets.util_tileset.id, buttonSize, uv0, uv1)) {
+                            if (currentCollision) {
+                                *currentCollision = options[i].type;
+                            }
+                        }
+
+                        ImGui::SameLine();
+                        ImGui::Text("%s", options[i].label);
+
+                        ImGui::PopStyleColor(3);
+                        ImGui::PopID();
+                    }
+
+                    ImGui::EndGroup();
+
+
+                    // *** Do not put code past here
+
+                    ImGui::PopStyleVar();
+                    ImGui::PopStyleColor(2);
+
+                    ImGui::EndChild();
+
+                    
                     // ========================== END OF PHYSICS WINDOW =================================
+
 
 
 

@@ -33,6 +33,7 @@ Gamefiles\Game\GameEngine.cpp ^
 -IExternal\imgui ^
 -IExternal\rlimgui ^
 -o editor.exe ^
+-mwindows ^
 -I%RAYLIB_PATH%\include ^
 -L%RAYLIB_PATH%\lib ^
 -lraylib ^

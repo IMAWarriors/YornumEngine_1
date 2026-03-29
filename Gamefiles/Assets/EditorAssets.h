@@ -17,7 +17,7 @@ struct EditorAssets {
     Texture2D util_tileset;
 
     void init() {
-        util_tileset = LoadTexture("Sprites/Tilesets/util_tileset_1.png");
+        util_tileset = LoadTexture("Gamefiles/Assets/Sprites/Tilesets/util_tileset_1.png");
     }
 
     Rectangle util_tileset_geticon (CollisionIcons ico) {

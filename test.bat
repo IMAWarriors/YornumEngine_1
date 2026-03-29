@@ -24,6 +24,7 @@ Gamefiles\World\TileGrid.cpp ^
 Gamefiles\Game\Func_GEAddEditorSystems.cpp ^
 Gamefiles\Game\GameEngine.cpp ^
 -o game.exe ^
+-mwindows ^
 -I%RAYLIB_PATH%\include ^
 -L%RAYLIB_PATH%\lib ^
 -lraylib ^
