@@ -17,6 +17,9 @@
 #include <vector>
 #include <algorithm>
 
+#include <cmath>
+#include <cctype>
+
 void EditorUISystem::update (Registry & registry, float deltatime) {
 
     Vec2 fullscreenScale = {
@@ -339,7 +342,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 // *** Draw list of all Tile Atlases ***
 
                 for (int i = 0; i < scene.loaded_atlases.size(); i++) {
-                    if (ImGui::Selectable(scene.loaded_atlases[i].name.c_str(), selectedIndex == i)) {
+                    if (ImGui::Selectable(tileset_paths[i].c_str(), selected == i, ImGuiSelectableFlags_DontClosePopups)) {
                         if (selectedIndex == i) {
                             selectedIndex = -1;
                         } else {
@@ -471,12 +474,38 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     ImGui::Spacing();
                     ImGui::InputText("Tileset Name", new_tileset_name, sizeof(new_tileset_name));
 
+                    std::string newAtlasNameTrimmed = std::string(new_tileset_name);
+                    newAtlasNameTrimmed.erase(
+                        newAtlasNameTrimmed.begin(),
+                        std::find_if(newAtlasNameTrimmed.begin(), newAtlasNameTrimmed.end(), [] (unsigned char ch) {
+                            return !std::isspace(ch);
+                        })
+                    );
+                    newAtlasNameTrimmed.erase(
+                        std::find_if(newAtlasNameTrimmed.rbegin(), newAtlasNameTrimmed.rend(), [] (unsigned char ch) {
+                            return !std::isspace(ch);
+                        }).base(),
+                        newAtlasNameTrimmed.end()
+                    );
+
+                    bool uniqueName = !newAtlasNameTrimmed.empty();
+                    for (const TileAtlas & atlas : scene.loaded_atlases) {
+                        if (atlas.name == newAtlasNameTrimmed) {
+                            uniqueName = false;
+                            break;
+                        }
+                    }
+
+                    const bool splitValid = previewTilesetLoaded
+                        && TileAtlas().test_split_validity(previewTilesetTexture, new_tilesize, new_split_columns, new_split_rows);
+                    const bool canConfirm = splitValid && uniqueName && !selectedTilesetPathToLoad.empty();
+
                     if (previewTilesetLoaded) {
                         ImGui::SliderInt("Tile Size", &new_tilesize, 1, 256);
                         ImGui::SliderInt("Tiles / Col", &new_split_columns, 1, 512);
                         ImGui::SliderInt("Tiles / Row", &new_split_rows, 1, 512);
 
-                        const bool splitValid = TileAtlas().test_split_validity(previewTilesetTexture, new_tilesize, new_split_columns, new_split_rows);
+                        
                         ImGui::Text("Preview: %dx%d", previewTilesetTexture.width, previewTilesetTexture.height);
                         ImGui::TextColored(splitValid ? ImVec4(0,1,0,1) : ImVec4(1,0,0,1), splitValid ? "Valid split" : "Invalid split");
 
@@ -488,10 +517,13 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         ImGui::Image((ImTextureID)previewTilesetTexture.id, previewSize);
                         ImDrawList * drawList = ImGui::GetWindowDrawList();
                         ImVec2 imageMin = ImGui::GetItemRectMin();
-                        ImU32 gridColor = splitValid ? IM_COL32(0, 255, 0, 220) : IM_COL32(255, 0, 0, 220);
+                        ImU32 gridColorValid = IM_COL32(0, 255, 0, 220);
+                        ImU32 gridColorInvalid = IM_COL32(255, 0, 0, 220);
                         float scaledTileSize = (float)new_tilesize * imgScale;
-                        for (int r = 0; r < new_split_rows; r++) {
-                            for (int c = 0; c < new_split_columns; c++) {
+                        int gridCols = std::max(1, (int)std::ceil((float)previewTilesetTexture.width / (float)new_tilesize));
+                        int gridRows = std::max(1, (int)std::ceil((float)previewTilesetTexture.height / (float)new_tilesize));
+                        for (int r = 0; r < gridRows; r++) {
+                            for (int c = 0; c < gridCols; c++) {
                                 ImVec2 dmin = {
                                     imageMin.x + (float)c * scaledTileSize,
                                     imageMin.y + (float)r * scaledTileSize
@@ -500,6 +532,10 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                     dmin.x + scaledTileSize,
                                     dmin.y + scaledTileSize
                                 };
+                                bool cellIncludedInSelection = c < new_split_columns && r < new_split_rows;
+                                bool cellFitsImageBounds = ((c + 1) * new_tilesize <= previewTilesetTexture.width)
+                                    && ((r + 1) * new_tilesize <= previewTilesetTexture.height);
+                                ImU32 gridColor = (cellIncludedInSelection && cellFitsImageBounds) ? gridColorValid : gridColorInvalid;
                                 drawList->AddRect(dmin, dmax, gridColor, 0.0f, 0, 1.5f);
                             }
                         }
@@ -509,22 +545,15 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     ImGui::Spacing();
 
                     // CONFIRM BUTTON
+                    ImGui::BeginDisabled(!canConfirm);
                     if (ImGui::Button("Confirm", ImVec2(120, 0))) {
 
-                        bool splitValid = previewTilesetLoaded && TileAtlas().test_split_validity(previewTilesetTexture, new_tilesize, new_split_columns, new_split_rows);
-                        std::string newAtlasName = std::string(new_tileset_name);
-                        bool uniqueName = !newAtlasName.empty();
-                        for (const TileAtlas & atlas : scene.loaded_atlases) {
-                            if (atlas.name == newAtlasName) {
-                                uniqueName = false;
-                                break;
-                            }
-                        }
+                        
                         loadTilesetNameError = !uniqueName;
 
-                        if (splitValid && uniqueName && !selectedTilesetPathToLoad.empty()) {
+                        if (canConfirm) {
                             Texture2D & importedTexture = assets.LoadTilesetTexture(selectedTilesetPathToLoad);
-                            scene.load_new_tileset(newAtlasName, importedTexture, new_tilesize, new_split_columns, new_split_rows);
+                            scene.load_new_tileset(newAtlasNameTrimmed, importedTexture, new_tilesize, new_split_columns, new_split_rows);
                             selectedIndex = (int)scene.loaded_atlases.size() - 1;
                             phystab_selectedTileIndex = -1;
                             tilesetToPreview = true;
@@ -539,6 +568,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         }
                     }
 
+                    ImGui::EndDisabled();
+
                     ImGui::SameLine();
 
                     // CANCEL BUTTON
@@ -551,7 +582,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         ImGui::CloseCurrentPopup();
                     }
 
-                    if (loadTilesetNameError) {
+                    if (loadTilesetNameError || (!uniqueName && new_tileset_name[0] != '\0')) {
                         ImGui::TextColored(ImVec4(1, 0.25f, 0.25f, 1), "Tileset name must be non-empty and unique.");
                     }
 
