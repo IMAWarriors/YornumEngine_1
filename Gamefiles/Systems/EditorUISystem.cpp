@@ -32,6 +32,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
     static int phystab_selectedTileIndex = -1;
 
+    static bool newTilesetSplitMatch = true;
+
     static int anim_frames = 1;
     static float frame_time = 0.0f;
 
@@ -326,19 +328,48 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     ImGui::BeginChild("ItemListPanel", ImVec2(220 * fullscreenScale.x, 110 * fullscreenScale.y), true);
                 }
 
-                
+                // ***** Tileset splitting information *****
+
+                static int tilesize = 5;
+                static int column = 5;
+                static int row = 5;
+
+
+                // *** Draw list of all Tile Atlases ***
+
                 for (int i = 0; i < scene.loaded_atlases.size(); i++) {
                     if (ImGui::Selectable(scene.loaded_atlases[i].name.c_str(), selectedIndex == i)) {
                         if (selectedIndex == i) {
                             selectedIndex = -1;
                         } else {
                             selectedIndex = i;
+                            
+                            if (selectedIndex != -1) {
+                                tilesize    = scene.loaded_atlases[i].tile_size;
+                                column      = scene.loaded_atlases[i].tiles_per_col;
+                                row         = scene.loaded_atlases[i].tiles_per_row;
+                            }
                         }
                         phystab_selectedTileIndex = -1;
                         tilesetToPreview = true;
                         path = (scene.loaded_atlases[i].image_sheet_source);
                     }
                 }
+
+                size_t current_tilesize = 0;
+                size_t current_tpc = 0;
+                size_t current_tpr = 0;
+
+                if (selectedIndex >= 0 && selectedIndex < scene.loaded_atlases.size()) {
+                    auto & atlas = scene.loaded_atlases[selectedIndex];
+                    current_tilesize = atlas.tile_size;
+                    current_tpc = atlas.tiles_per_col;
+                    current_tpr = atlas.tiles_per_row;
+                }
+
+                // *****************************************
+
+                
                 
 
                 ImGui::EndChild();
@@ -403,6 +434,10 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 ImGui::PopStyleColor();
 
 
+                static bool splitStagedAndValid = false;
+                
+                static bool splitConfirmationWindow = false;
+
 
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f,0.05f,0.8f,0.5f)); // 
                 UIPos(240, 595.0f + 84.0f, 240, (600 - 35) + (90.0f));
@@ -411,7 +446,67 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 } else {
                     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 0));
                 }
-                ImGui::Button("%", ImVec2(30*fullscreenScale.x,(25.0f*fullscreenScale.y)));
+
+                if (splitStagedAndValid) {
+
+                    if(ImGui::Button("%", ImVec2(30*fullscreenScale.x,(25.0f*fullscreenScale.y)))) {
+
+                        ImGui::OpenPopup("Confirm Split");
+
+                    }
+                }
+
+                if (ImGui::BeginPopupModal("Confirm Split", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+
+                    ImGui::Text("Are you sure you want to re-split this tileset?");
+                    ImGui::Separator();
+
+                    ImGui::Text("Tile Size: %d", tilesize);
+                    ImGui::Text("Columns: %d", column);
+                    ImGui::Text("Rows: %d", row);
+
+                    ImGui::Spacing();
+
+                    // CONFIRM BUTTON
+                    if (ImGui::Button("Confirm", ImVec2(120, 0))) {
+
+                        // Delete tilegrid tiles that has these tile atlases
+
+                        for (TileGrid & grid : scene.tile_layers) {  // ***HUGELY DANGEROUS****
+
+                            for (int y = gwconst::WORLD_TILEGRID_Y_BOUND_MIN_TILE; y <= gwconst::WORLD_TILEGRID_Y_BOUND_MAX_TILE ; y++) {
+
+                                for (int x = gwconst::WORLD_TILEGRID_X_BOUND_MIN_TILE; x <= gwconst::WORLD_TILEGRID_X_BOUND_MAX_TILE ; x++) {
+
+                                    Tile& tile = grid.get_tile(x, y);
+
+                                    if (tile.atlas_idx == selectedIndex) {
+                                        tile = {-1, -1};
+                                    }
+                                    
+
+                                }
+
+                            }
+
+
+                        }
+
+                        // 🔥 DO YOUR ACTUAL LOGIC HERE
+                        scene.loaded_atlases[selectedIndex].split_tileset(*scene.loaded_atlases[selectedIndex].image_sheet_source, tilesize, column, row);
+
+                        ImGui::CloseCurrentPopup();
+                    }
+
+                    ImGui::SameLine();
+
+                    // CANCEL BUTTON
+                    if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+                        ImGui::CloseCurrentPopup();
+                    }
+
+                    ImGui::EndPopup();
+                }
                 
                 ImGui::PopStyleVar();
                 ImGui::PopStyleColor();
@@ -490,34 +585,91 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
 
                     ImGui::PushItemWidth(85 * fullscreenScale.x);
+
+                    newTilesetSplitMatch = true;
                     
                     if (fullscreen) {
                         UIPos(480, 600, 480, 600 - 30);
-                        static int tilesize = 5;
+
+                        if (tilesize != (int)current_tilesize) {
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrab, IM_COL32(180, 180, 0, 255));       // yellow grab
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(255, 255, 0, 255));       
+                            newTilesetSplitMatch = false;
+                        } else {
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrab, IM_COL32(0, 180, 0, 255));       
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(0, 255, 0, 255));       
+                        }
+
                         ImGui::SliderInt("Tiles Size", &tilesize, 1, 64);
 
                         UIPos(480, 640, 480, 640 - 30);
-                        static int column = 5;
+
+                        if (column != (int)current_tpc) {
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrab, IM_COL32(180, 180, 0, 255));       // yellow grab
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(255, 255, 0, 255));     
+                            newTilesetSplitMatch = false;  
+                        } else {
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrab, IM_COL32(0, 180, 0, 255));       
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(0, 255, 0, 255));       
+                        }
+
                         ImGui::SliderInt("Tiles / C.", &column, 1, 32);
 
                         UIPos(480, 680, 480, 680 - 30);
-                        static int row = 5;
+
+                        if (row != (int)current_tpr) {
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrab, IM_COL32(180, 180, 0, 255));       // yellow grab
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(255, 255, 0, 255));     
+                            newTilesetSplitMatch = false;  
+                        } else {
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrab, IM_COL32(0, 180, 0, 255));       
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(0, 255, 0, 255));       
+                        }
+
                         ImGui::SliderInt("Tiles / R.", &row, 1, 32);
                     } else {
                         UIPos(480, 590, 480,590 - 30);
-                        static int tilesize = 5;
+
+                        if (tilesize != (int)current_tilesize) {
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrab, IM_COL32(180, 180, 0, 255));       // yellow grab
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(255, 255, 0, 255));       
+                            newTilesetSplitMatch = false;
+                        } else {
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrab, IM_COL32(0, 180, 0, 255));       
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(0, 255, 0, 255));       
+                        }
+                        
                         ImGui::SliderInt("Size", &tilesize, 1, 64);
 
                         UIPos(480, 630, 480, 630 - 30);
-                        static int column = 5;
+
+                        if (column != (int)current_tpc) {
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrab, IM_COL32(180, 180, 0, 255));       // yellow grab
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(255, 255, 0, 255));       
+                            newTilesetSplitMatch = false;
+                        } else {
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrab, IM_COL32(0, 180, 0, 255));       
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(0, 255, 0, 255));       
+                        }
+                        
                         ImGui::SliderInt("TPC", &column, 1, 32);
 
                         UIPos(480, 670, 480, 670 - 30);
-                        static int row = 5;
+
+                        if (row != (int)current_tpr) {
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrab, IM_COL32(180, 180, 0, 255));       // yellow grab
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(255, 255, 0, 255));       
+                            newTilesetSplitMatch = false;
+                        } else {
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrab, IM_COL32(0, 180, 0, 255));       
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(0, 255, 0, 255));       
+                        }
+                        
                         ImGui::SliderInt("TPR", &row, 1, 32);
                     }
 
                     ImGui::PopItemWidth();
+                    ImGui::PopStyleColor(6);
 
 
 
@@ -578,6 +730,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         std::vector<RectDraw> drawQueue;
                         std::vector<RectDraw> lowerQueue;
 
+                        ImVec2 firstTileMin;
+                        bool gotFirstTile = false;
+
                         for (int row = 0; row < total_rows; row++) {
                             for (int col = 0; col < total_cols; col++) {
 
@@ -594,8 +749,6 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 );
                                 
                                 ImGui::PushID(row * total_cols + col);
-
-                                
 
                                 CollisionType coll = scene.loaded_atlases[selectedIndex].tile_data[row * total_cols + col].collision_data;
                                 Rectangle ico_slice = {-9999,0,0,0};
@@ -641,6 +794,12 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                     );
 
                                     imgDrawQueue.push_back({ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), uv2, uv3, editorAssets.util_tileset});
+
+                                }
+
+                                if (!gotFirstTile) {
+                                    firstTileMin = ImGui::GetItemRectMin(); // THIS is what you want
+                                    gotFirstTile = true;
                                 }
 
 
@@ -688,6 +847,61 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     
                         }
 
+
+                        // ******** EDIT HERE TO ADD TILESET SPLIT PREVIEW *************
+
+                        if (!newTilesetSplitMatch && selectedIndex != -1) {
+
+                            float actual_tile_size = (float)scene.loaded_atlases[selectedIndex].tile_size;
+
+                            // how much 1 pixel in the texture = in ImGui space
+                            float pixels_to_screen = tile_drawsize / actual_tile_size;
+
+                            // now scale your NEW tilesize properly
+                            float scaledSize = tilesize * pixels_to_screen;
+
+                            ImVec2 dmin = firstTileMin;
+                            ImVec2 dmax = ImVec2(dmin.x + scaledSize, dmin.y + scaledSize);
+
+                            int cols_to_draw = row;
+                            int rows_to_draw = column;
+
+                            // =======================================================
+
+                            ImDrawList* rdraw = ImGui::GetWindowDrawList();
+
+                            for (int r = 0; r < rows_to_draw; r++) {
+                                for (int c = 0; c < cols_to_draw; c++) {
+
+                                    ImVec2 dmin = ImVec2(
+                                        firstTileMin.x + c * scaledSize,
+                                        firstTileMin.y + r * scaledSize
+                                    );
+
+                                    ImVec2 dmax = ImVec2(
+                                        dmin.x + scaledSize,
+                                        dmin.y + scaledSize
+                                    );
+
+                                    if (scene.loaded_atlases[selectedIndex].test_split_validity(*scene.loaded_atlases[selectedIndex].image_sheet_source, tilesize, row, column)) {
+                                        
+                                        // Green, meaning it is valid split
+                                        
+                                        rdraw->AddRect(dmin, dmax, IM_COL32(0, 255, 0, 255), 0.0f, 0, 2.0f);
+                                        splitStagedAndValid = true;
+
+                                    } else {
+
+                                        rdraw->AddRect(dmin, dmax, IM_COL32(255, 0, 0, 255), 0.0f, 0, 2.0f);
+                                        splitStagedAndValid = false;
+
+                                    }
+                                }
+                            }
+
+                        }
+
+                        // ***************************************************************
                         
 
                         for (RectDraw draw : lowerQueue) {

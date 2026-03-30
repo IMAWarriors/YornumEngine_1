@@ -69,6 +69,20 @@ struct TileAtlas {
         return false;
     }
 
+    bool test_split_validity (Texture2D & _image_sheet_source, size_t _tile_px_size, size_t _tiles_per_row, size_t _tiles_per_col) const {
+
+        Texture2D * imgsrc = &_image_sheet_source;
+
+        int wid = imgsrc->width;
+        int hgt = imgsrc->height;
+
+        bool valid_tsize = (256 >= _tile_px_size && _tile_px_size > 0);
+        bool valid_width = wid >= (_tiles_per_row * _tile_px_size);
+        bool valid_height = hgt >= (_tiles_per_col * _tile_px_size);
+
+        return (valid_tsize && valid_width && valid_height);
+
+    }
 
     // Check if split is valid
     bool is_split_valid (Texture2D & _image_sheet_source, size_t _tile_px_size, size_t _tiles_per_row, size_t _tiles_per_col) {
