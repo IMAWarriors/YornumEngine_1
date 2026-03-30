@@ -45,6 +45,8 @@ class AssetManager {
 
         Texture2D & LoadTilesetTexture (const std::string & _path);
 
+        bool UnloadTilesetTexture(Texture2D * _texture_ptr);
+
         void UnloadAllAssets();
 
         // Getter Functions

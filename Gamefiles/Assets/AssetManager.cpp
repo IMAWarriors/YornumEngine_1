@@ -66,3 +66,21 @@ Texture2D & AssetManager::LoadTilesetTexture (const string & _path) {
     return *(loaded_tilesets[new_tileset_index]);
 
 }
+
+
+bool AssetManager::UnloadTilesetTexture(Texture2D * _texture_ptr) {
+    if (_texture_ptr == nullptr) {
+        return false;
+    }
+
+    for (size_t i = 0; i < loaded_tilesets.size(); i++) {
+        if (loaded_tilesets[i].get() == _texture_ptr) {
+            UnloadTexture(*loaded_tilesets[i]);
+            loaded_tilesets.erase(loaded_tilesets.begin() + i);
+            loaded_tilesets_paths.erase(loaded_tilesets_paths.begin() + i);
+            return true;
+        }
+    }
+
+    return false;
+}

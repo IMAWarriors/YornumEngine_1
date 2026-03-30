@@ -15,6 +15,7 @@
 #include "../../External/imgui/imgui.h"
 
 #include <vector>
+#include <algorithm>
 
 void EditorUISystem::update (Registry & registry, float deltatime) {
 
@@ -392,11 +393,30 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 }
                 
                 static int selectedTilesetToLoadIndex = -1;
+                static Texture2D previewTilesetTexture = {0};
+                static bool previewTilesetLoaded = false;
+                static std::string selectedTilesetPathToLoad;
+                static int new_tilesize = 16;
+                static int new_split_columns = 1;
+                static int new_split_rows = 1;
+                static char new_tileset_name[128] = "";
+                static bool loadTilesetNameError = false;
                 
                 
                 if (ImGui::Button("+", ImVec2(30*fullscreenScale.x,(25.0f*fullscreenScale.y)))) {
 
                     selectedTilesetToLoadIndex = -1;
+                    selectedTilesetPathToLoad.clear();
+                    new_tilesize = 16;
+                    new_split_columns = 1;
+                    new_split_rows = 1;
+                    new_tileset_name[0] = '\0';
+                    loadTilesetNameError = false;
+                    if (previewTilesetLoaded) {
+                        UnloadTexture(previewTilesetTexture);
+                        previewTilesetTexture = {0};
+                        previewTilesetLoaded = false;
+                    }
                     ImGui::OpenPopup("Load New Tileset...");
 
                 }
@@ -427,13 +447,61 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 
                                 if (selectedTilesetToLoadIndex != -1) {
                                     
-
+                                    selectedTilesetPathToLoad = tileset_paths[i];
+                                    if (previewTilesetLoaded) {
+                                        UnloadTexture(previewTilesetTexture);
+                                        previewTilesetTexture = {0};
+                                        previewTilesetLoaded = false;
+                                    }
+                                    previewTilesetTexture = LoadTexture(selectedTilesetPathToLoad.c_str());
+                                    previewTilesetLoaded = IsTextureValid(previewTilesetTexture);
+                                    if (previewTilesetLoaded) {
+                                        new_split_columns = std::max(1, previewTilesetTexture.width / std::max(1, new_tilesize));
+                                        new_split_rows = std::max(1, previewTilesetTexture.height / std::max(1, new_tilesize));
+                                    }
 
                                 }
                             }
                             
 
-                            
+
+                        }
+                    }
+
+                    ImGui::Spacing();
+                    ImGui::InputText("Tileset Name", new_tileset_name, sizeof(new_tileset_name));
+
+                    if (previewTilesetLoaded) {
+                        ImGui::SliderInt("Tile Size", &new_tilesize, 1, 256);
+                        ImGui::SliderInt("Tiles / Col", &new_split_columns, 1, 512);
+                        ImGui::SliderInt("Tiles / Row", &new_split_rows, 1, 512);
+
+                        const bool splitValid = TileAtlas().test_split_validity(previewTilesetTexture, new_tilesize, new_split_columns, new_split_rows);
+                        ImGui::Text("Preview: %dx%d", previewTilesetTexture.width, previewTilesetTexture.height);
+                        ImGui::TextColored(splitValid ? ImVec4(0,1,0,1) : ImVec4(1,0,0,1), splitValid ? "Valid split" : "Invalid split");
+
+                        const float maxPreviewWidth = 420.0f * fullscreenScale.x;
+                        const float maxPreviewHeight = 280.0f * fullscreenScale.y;
+                        const float imgScale = std::min(maxPreviewWidth / (float)previewTilesetTexture.width, maxPreviewHeight / (float)previewTilesetTexture.height);
+                        const ImVec2 previewSize = {previewTilesetTexture.width * imgScale, previewTilesetTexture.height * imgScale};
+
+                        ImGui::Image((ImTextureID)previewTilesetTexture.id, previewSize);
+                        ImDrawList * drawList = ImGui::GetWindowDrawList();
+                        ImVec2 imageMin = ImGui::GetItemRectMin();
+                        ImU32 gridColor = splitValid ? IM_COL32(0, 255, 0, 220) : IM_COL32(255, 0, 0, 220);
+                        float scaledTileSize = (float)new_tilesize * imgScale;
+                        for (int r = 0; r < new_split_rows; r++) {
+                            for (int c = 0; c < new_split_columns; c++) {
+                                ImVec2 dmin = {
+                                    imageMin.x + (float)c * scaledTileSize,
+                                    imageMin.y + (float)r * scaledTileSize
+                                };
+                                ImVec2 dmax = {
+                                    dmin.x + scaledTileSize,
+                                    dmin.y + scaledTileSize
+                                };
+                                drawList->AddRect(dmin, dmax, gridColor, 0.0f, 0, 1.5f);
+                            }
                         }
                     }
                     
@@ -443,22 +511,57 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     // CONFIRM BUTTON
                     if (ImGui::Button("Confirm", ImVec2(120, 0))) {
 
-                        
+                        bool splitValid = previewTilesetLoaded && TileAtlas().test_split_validity(previewTilesetTexture, new_tilesize, new_split_columns, new_split_rows);
+                        std::string newAtlasName = std::string(new_tileset_name);
+                        bool uniqueName = !newAtlasName.empty();
+                        for (const TileAtlas & atlas : scene.loaded_atlases) {
+                            if (atlas.name == newAtlasName) {
+                                uniqueName = false;
+                                break;
+                            }
+                        }
+                        loadTilesetNameError = !uniqueName;
 
+                        if (splitValid && uniqueName && !selectedTilesetPathToLoad.empty()) {
+                            Texture2D & importedTexture = assets.LoadTilesetTexture(selectedTilesetPathToLoad);
+                            scene.load_new_tileset(newAtlasName, importedTexture, new_tilesize, new_split_columns, new_split_rows);
+                            selectedIndex = (int)scene.loaded_atlases.size() - 1;
+                            phystab_selectedTileIndex = -1;
+                            tilesetToPreview = true;
+                            path = scene.loaded_atlases[selectedIndex].image_sheet_source;
 
-                        
-
-                        ImGui::CloseCurrentPopup();
+                            if (previewTilesetLoaded) {
+                                UnloadTexture(previewTilesetTexture);
+                                previewTilesetTexture = {0};
+                                previewTilesetLoaded = false;
+                            }
+                            ImGui::CloseCurrentPopup();
+                        }
                     }
 
                     ImGui::SameLine();
 
                     // CANCEL BUTTON
                     if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+                        if (previewTilesetLoaded) {
+                            UnloadTexture(previewTilesetTexture);
+                            previewTilesetTexture = {0};
+                            previewTilesetLoaded = false;
+                        }
                         ImGui::CloseCurrentPopup();
                     }
 
+                    if (loadTilesetNameError) {
+                        ImGui::TextColored(ImVec4(1, 0.25f, 0.25f, 1), "Tileset name must be non-empty and unique.");
+                    }
+
                     ImGui::EndPopup();
+
+                } else if (previewTilesetLoaded) {
+                    UnloadTexture(previewTilesetTexture);
+                    previewTilesetTexture = {0};
+                    previewTilesetLoaded = false;
+
                 }
 
 
@@ -478,12 +581,71 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 } else {
                     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 0));
                 }
-                ImGui::Button("-", ImVec2(30*fullscreenScale.x,(25.0f*fullscreenScale.y)));
+                if (ImGui::Button("-", ImVec2(30*fullscreenScale.x,(25.0f*fullscreenScale.y)))) {
+                    if (selectedIndex >= 0 && selectedIndex < (int)scene.loaded_atlases.size()) {
+                        ImGui::OpenPopup("Delete Tileset Confirm");
+                    }
+                }
                 
                 ImGui::PopStyleVar();
                 ImGui::PopStyleColor();
 
 
+                if (ImGui::BeginPopupModal("Delete Tileset Confirm", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+                    if (selectedIndex >= 0 && selectedIndex < (int)scene.loaded_atlases.size()) {
+                        ImGui::Text("Delete tileset '%s'?", scene.loaded_atlases[selectedIndex].name.c_str());
+                        ImGui::TextColored(ImVec4(1, 0.4f, 0.4f, 1), "This will clear placed tiles that use it.");
+                    } else {
+                        ImGui::Text("No tileset selected.");
+                    }
+
+                    ImGui::Separator();
+
+                    if (ImGui::Button("Confirm", ImVec2(120, 0))) {
+                        if (selectedIndex >= 0 && selectedIndex < (int)scene.loaded_atlases.size()) {
+                            Texture2D * deletedTexture = scene.loaded_atlases[selectedIndex].image_sheet_source;
+
+                            for (TileGrid & grid : scene.tile_layers) {
+                                for (int y = gwconst::WORLD_TILEGRID_Y_BOUND_MIN_TILE; y <= gwconst::WORLD_TILEGRID_Y_BOUND_MAX_TILE; y++) {
+                                    for (int x = gwconst::WORLD_TILEGRID_X_BOUND_MIN_TILE; x <= gwconst::WORLD_TILEGRID_X_BOUND_MAX_TILE; x++) {
+                                        Tile & tile = grid.get_tile(x, y);
+                                        if (tile.atlas_idx == selectedIndex) {
+                                            tile = {-1, -1};
+                                        } else if (tile.atlas_idx > selectedIndex) {
+                                            tile.atlas_idx--;
+                                        }
+                                    }
+                                }
+                            }
+
+                            scene.loaded_atlases.erase(scene.loaded_atlases.begin() + selectedIndex);
+
+                            bool atlasStillUsesTexture = false;
+                            for (const TileAtlas & atlas : scene.loaded_atlases) {
+                                if (atlas.image_sheet_source == deletedTexture) {
+                                    atlasStillUsesTexture = true;
+                                    break;
+                                }
+                            }
+                            if (!atlasStillUsesTexture) {
+                                assets.UnloadTilesetTexture(deletedTexture);
+                            }
+
+                            selectedIndex = -1;
+                            phystab_selectedTileIndex = -1;
+                            path = nullptr;
+                            tilesetToPreview = false;
+                        }
+                        ImGui::CloseCurrentPopup();
+                    }
+
+                    ImGui::SameLine();
+                    if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+                        ImGui::CloseCurrentPopup();
+                    }
+
+                    ImGui::EndPopup();
+                }
 
 
 
