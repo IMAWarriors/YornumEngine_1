@@ -342,7 +342,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 // *** Draw list of all Tile Atlases ***
 
                 for (int i = 0; i < scene.loaded_atlases.size(); i++) {
-                    if (ImGui::Selectable(tileset_paths[i].c_str(), selected == i, ImGuiSelectableFlags_DontClosePopups)) {
+                    
+                    if (ImGui::Selectable(scene.loaded_atlases[i].name.c_str(), selectedIndex == i)) {
                         if (selectedIndex == i) {
                             selectedIndex = -1;
                         } else {
@@ -442,7 +443,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                     for (int i = 0; i < tileset_paths.size(); i++) {
 
-                        if (ImGui::Selectable(tileset_paths[i].c_str(), selectedTilesetToLoadIndex == i)) {
+                         if (ImGui::Selectable(tileset_paths[i].c_str(), selectedTilesetToLoadIndex == i, ImGuiSelectableFlags_DontClosePopups)) {
                             if (selectedTilesetToLoadIndex == i) {
                                 selectedTilesetToLoadIndex = -1;
                             } else {
