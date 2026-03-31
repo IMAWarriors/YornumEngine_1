@@ -14,7 +14,7 @@
 #include <string>
 #include <vector>
 
-enum class CollisionType {
+enum class CollisionType : uint8_t {
     COLL_EMPTY = 0,
     COLL_FULL_SOLID,
     COLL_PSLOPE1_SOLID,
@@ -40,6 +40,7 @@ struct TileAtlas {
     
 
     std::string name;
+    std::string imgpath;
     Texture2D * image_sheet_source = nullptr;
     std::vector<TileData> tile_data;
     size_t tile_atlas_width;        // Px

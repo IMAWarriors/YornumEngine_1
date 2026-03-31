@@ -83,6 +83,24 @@ Tile & TileGrid::get_tile (int col, int row) {
 
 
 
+
+
+
+
+const Tile& TileGrid::get_tile(int col, int row) const {
+
+    if (gwconst::WORLD_TILEGRID_X_BOUND_MIN_TILE <= col && col <= gwconst::WORLD_TILEGRID_X_BOUND_MAX_TILE &&
+        gwconst::WORLD_TILEGRID_Y_BOUND_MIN_TILE <= row && row <= gwconst::WORLD_TILEGRID_Y_BOUND_MAX_TILE) {
+
+        return tilegrid[col + gwconst::WORLD_TILEGRID_X_BOUND_MAX_TILE][row + gwconst::WORLD_TILEGRID_Y_BOUND_MAX_TILE];
+
+    } else {
+        throw std::runtime_error("ERROR: TRIED TO ACCESS TILE THAT DOES NOT EXIST");
+    }
+}
+
+
+
 Tile & TileGrid::get_tile_world_pos (Vec2 pos) {
 
     // Get tile by coordinates
@@ -101,6 +119,8 @@ Tile & TileGrid::get_tile_world_pos (Vec2 pos) {
     return tile;
     
 }
+
+
 
 int TileGrid::translate_world_x_col (float world_x) const {
     return (int)(std::floor(world_x / gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS));

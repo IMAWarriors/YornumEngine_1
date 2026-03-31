@@ -49,6 +49,8 @@ class AssetManager {
 
         void UnloadAllAssets();
 
+        void UnloadAllTilesetTextureAssets();
+
         // Getter Functions
         
 
@@ -57,6 +59,9 @@ class AssetManager {
 
         std::vector<std::string> GetTilesetFilenames (const std::string & _path);
         std::vector<std::string> GetTilesetPaths (const std::string & _path);
+
+        std::vector<std::string> GetFilenamesInDirectory (const std::string & _path, const std::string & _extension);
+        std::vector<std::string> GetFilepathsInDirectory (const std::string & _path, const std::string & _extension);
 
 
 };

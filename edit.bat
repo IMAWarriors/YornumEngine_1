@@ -27,6 +27,7 @@ Gamefiles\Systems\InputSystem.cpp ^
 Gamefiles\Systems\DebugOverlaySystem.cpp ^
 Gamefiles\Systems\EngineManagerSystem.cpp ^
 Gamefiles\Systems\EditorUISystem.cpp ^
+Gamefiles\World\SceneSerialization.cpp ^
 Gamefiles\World\TileGrid.cpp ^
 Gamefiles\Game\Func_EGEAddEditorSystems.cpp ^
 Gamefiles\Game\GameEngine.cpp ^

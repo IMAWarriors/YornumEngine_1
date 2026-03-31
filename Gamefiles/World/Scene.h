@@ -5,6 +5,9 @@
 
 #include "Overhead/Gwconst.h"
 #include "../../Engine/Core/Overhead/GameTypes.h"
+#include "../Assets/AssetManager.h"
+
+
 
 #include "TileAtlas.h"
 #include "TileGrid.h"
@@ -20,16 +23,22 @@
 #include <fstream>   // file streams
 #include <sstream>   // string streams (parsing)
 
-struct SceneSavefile {
-    std::string scene_name;
-    std::vector<TileAtlas> atlases;
-    std::vector<TileGrid> layers;
-    
-};
+#include <memory>
+
+class Scene;
+
+namespace serial {
+    bool SaveSceneToFile(const Scene&, const std::string&);
+    bool LoadSceneFromFile(Scene&, AssetManager&, const std::string&);
+}
+
+
 
 class Scene {
 
     public:
+
+        
 
         // Editor Wiring
         int EDITOR_ONLY_SELECTED_ATLAS = -1;
@@ -39,17 +48,64 @@ class Scene {
 
         bool uiCapturesMouse = false;
 
+        std::vector<std::unique_ptr<Texture2D>> texture_dependencies;
+
+        // ****************************** SERIALIZED ATTRIBUTES ******************************
+        //      SAVE DATA FOR SCENES
+        //  ----------------------------------------------------------------------------------
+
         std::string loaded_scene_name;
         std::vector<TileAtlas> loaded_atlases;
         std::vector<TileGrid> tile_layers; 
 
-       
+        // ====================================================================================
+        
 
-        Tile get_tile (size_t layer, int column, int row);
-        void set_tile (size_t layer, int column, int row, Tile newtile);
+        void new_scene () {
+            loaded_scene_name   = "untitled_scene";
+            loaded_atlases.clear();
+            tile_layers.clear();
+        }
 
-        void tiles_clear_all ();
-        void tiles_clear (size_t layer);
+        bool load_scene (const std::string & _path, AssetManager & _assets) {
+
+            // Needs assets ref to be passed because when loading a scene,
+            // all assets are automatically unloaded and assets needed for the scene are loaded
+
+            bool success = false;
+
+            _assets.UnloadAllTilesetTextureAssets();
+
+            success = serial::LoadSceneFromFile(*this, _assets, _path);
+
+            return success;
+
+        }
+
+        bool save_scene (const std::string & _path) {
+
+            bool success = false;
+
+            success = serial::SaveSceneToFile(*this, _path);
+
+            return success;
+
+        }
+
+
+        // ******************************************************************
+        //  UNDEFINED FUCNTIONS 
+        // ------------------------------------->
+        //
+        /*      Tile get_tile (size_t layer, int column, int row);
+                void set_tile (size_t layer, int column, int row, Tile newtile);
+
+                void tiles_clear_all ();
+                void tiles_clear (size_t layer);
+                
+        */
+
+        // *******************************************************************
 
         void tiles_load_garbagedata (size_t layer, int atlasIndex) {
 
@@ -94,6 +150,17 @@ class Scene {
 
         }
 
+        void import_new_tileset (AssetManager & _assets, std::string & _name, const std::string & _imgpath, size_t _tile_px_size, size_t _tiles_per_row, size_t _tiles_per_col) {
+
+            // Probably save the dependency or smth later idk i have to figure out how raylib naturall handles textures
+            // so iknow what to do with my textures and how to do it
+            //
+
+
+            loaded_atlases.push_back(TileAtlas(_name, _assets.LoadTilesetTexture(_imgpath), _tile_px_size, _tiles_per_row, _tiles_per_col));
+            loaded_atlases[loaded_atlases.size()-1].imgpath = _imgpath;
+
+        }
 
         void load_new_tileset (const std::string & _name, Texture2D & _image, size_t _tile_px_size, size_t _tiles_per_row, size_t _tiles_per_col) {
             
@@ -161,14 +228,6 @@ class Scene {
         }
 
 
-
-        std::string get_scene_stream () {
-
-            
-
-
-
-        }
 
 
 

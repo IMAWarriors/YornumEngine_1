@@ -23,7 +23,9 @@ class TileGrid {
 
         TileGrid ();
 
-         Tile & get_tile (int col, int row); // general mutator
+        Tile & get_tile (int col, int row); // general mutator
+
+        const Tile & get_tile (int col, int row) const; // general mutator
 
         Tile & get_tile_world_pos (Vec2 pos);
 

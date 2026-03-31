@@ -44,7 +44,69 @@ vector<string> AssetManager::GetTilesetPaths (const string & _path) {
 
 }
 
+std::vector<std::string> AssetManager::GetFilenamesInDirectory (const std::string & _path, const std::string & _extension) {
+
+    vector<string> Filenames;
+
+    for (const auto & entry : directory_iterator(_path)) {
+
+        if (entry.is_regular_file() && entry.path().extension() == _extension) {
+
+            string file = entry.path().filename().string();
+            Filenames.push_back(file);
+
+        }
+
+    }
+
+    return Filenames;
+
+}
+
+
+std::vector<std::string> AssetManager::GetFilepathsInDirectory (const std::string & _path, const std::string & _extension) {
+
+    vector<string> Filepaths;
+
+    for (const auto & entry : directory_iterator(_path)) {
+
+        if (entry.is_regular_file() && entry.path().extension() == _extension) {
+
+            string file = entry.path().string();
+            Filepaths.push_back(file);
+
+        }
+
+    }
+
+    return Filepaths;
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 void AssetManager::UnloadAllAssets() {
+    for (auto & tileset : loaded_tilesets) {
+        UnloadTexture(*tileset);
+    }
+    loaded_tilesets_paths.clear();
+    loaded_tilesets.clear();
+}
+
+void AssetManager::UnloadAllTilesetTextureAssets() {
     for (auto & tileset : loaded_tilesets) {
         UnloadTexture(*tileset);
     }

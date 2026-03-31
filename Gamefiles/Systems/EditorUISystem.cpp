@@ -20,6 +20,10 @@
 #include <cmath>
 #include <cctype>
 
+#include <filesystem>
+
+
+
 void EditorUISystem::update (Registry & registry, float deltatime) {
 
     Vec2 fullscreenScale = {
@@ -66,6 +70,44 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
     //  - Resplitting tile atlas
     // =========================================================================================
 
+
+    auto DrawSceneSettings = [&] () {
+
+        ImVec2 orig = ImGui::GetStyle().WindowPadding;
+        ImGui::GetStyle().WindowPadding = ImVec2(4,4);
+
+
+
+        // Anchor to top-right corner
+            ImVec2 windowSize = ImVec2(160 * fullscreenScale.x, 80 * fullscreenScale.y);
+            ImVec2 windowPos = ImVec2(
+                GetScreenWidth() - windowSize.x - 350.0f,
+                30.0f * fullscreenScale.y
+            );
+
+            ImGui::SetNextWindowPos(windowPos, ImGuiCond_Always);
+            ImGui::SetNextWindowSize(windowSize, ImGuiCond_Always);
+
+            ImGui::PushStyleColor(ImGuiCol_TitleBg, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.2f, 0.2f, 0.7f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_TitleBgCollapsed, ImVec4(0.1f, 0.1f, 0.3f, 1.0f));
+
+            if (ImGui::Begin(scene.loaded_scene_name.c_str(), nullptr,
+                ImGuiWindowFlags_NoResize |
+                ImGuiWindowFlags_NoCollapse)) {
+                scene.uiCapturesMouse |= ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
+
+                // =========================
+                // Layer List
+                // =========================
+                
+            }
+
+            ImGui::End();
+            ImGui::PopStyleColor(3);
+            ImGui::GetStyle().WindowPadding = orig;
+
+    };
 
     auto DrawLayerManager = [&] () {
 
@@ -336,7 +378,12 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("New")) {}
             if (ImGui::MenuItem("Open")) {}
-            if (ImGui::MenuItem("Save")) {}
+            if (ImGui::MenuItem("Save")) {
+
+                ImGui::OpenPopup("Save Scene");
+
+                //scene.save_scene();
+            }
             ImGui::Separator();
             if (ImGui::MenuItem("Exit")) {}
             ImGui::EndMenu();
@@ -349,10 +396,116 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
         }
 
         ImGui::EndMainMenuBar();
+
+
+        // Save modal or wtv
+
+        ImVec2 saveSceneModalSize = {
+            std::max(620.0f, GetScreenWidth() * 0.72f),
+            std::max(420.0f, GetScreenHeight() * 0.76f)
+        };
+        ImGui::SetNextWindowSize(saveSceneModalSize, ImGuiCond_Appearing);
+
+
+        if (ImGui::BeginPopupModal("Save Scene", NULL, ImGuiWindowFlags_NoCollapse)) { 
+
+            std::filesystem::create_directories("Gamefiles/Scenes/");
+
+            auto strip_ext = [](const std::string& s) {
+                size_t pos = s.find_last_of('.');
+                return (pos == std::string::npos) ? s : s.substr(0, pos);
+            };
+
+            std::vector<std::string> scenepaths = assets.GetFilepathsInDirectory("Gamefiles/Scenes/", "scene");
+            std::vector<std::string> scenenames = assets.GetFilenamesInDirectory("Gamefiles/Scenes/", "scene");
+
+            std::string scenename_to_write = scene.loaded_scene_name;
+
+            int selectedscenefileidx = -1;
+            bool existingFileSelected = false;
+
+            for (int i = 0; i < (int)scenenames.size(); i++) {
+                if (strip_ext(scenenames[i]) == strip_ext(scenename_to_write)) {
+                    existingFileSelected = true;
+                    selectedscenefileidx = i;
+                    break;
+                }
+            }
+            if (!existingFileSelected) {
+                selectedscenefileidx = -1;
+            }
+
+            ImGui::Text("Choose filename of scene to create or overwrite:");
+            
+            ImGui::BeginChild("TilesetSourceList", ImVec2(0, saveSceneModalSize.y * 0.28f), true, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+
+            for (int i = 0; i < (int)scenepaths.size(); i++) {
+
+                if (ImGui::Selectable(scenepaths[i].c_str(), selectedscenefileidx == i, ImGuiSelectableFlags_DontClosePopups)) {
+                    
+                    scenename_to_write = scenenames[i].c_str();
+
+                }
+            }
+
+            
+
+
+            
+
+            ImGui::EndChild();
+
+            ImGui::Spacing();
+
+            if (existingFileSelected) {
+
+                ImGui::Text("Warning! Filename selected already exists in directory and will overwrite scene data.");
+                ImGui::Text("(If you are intentionally saving updates on an old scene, ignore this message.)");
+                
+            }
+
+            ImGui::Spacing();
+
+            if (ImGui::Button("Confirm", ImVec2(120, 0))) {
+
+
+                std::string finalPath;
+
+                if (selectedscenefileidx != -1) {
+                    finalPath = scenepaths[selectedscenefileidx];
+                } else {
+                    finalPath = "Gamefiles/Scenes/" + scenename_to_write + ".scene";
+                }
+
+                std::cout << "Saving to: " << finalPath << "\n";
+
+                bool success = scene.save_scene(finalPath);
+
+                std::cout << (success ? "SAVE OK\n" : "SAVE FAILED\n");
+
+                scene.save_scene(finalPath);
+
+                ImGui::CloseCurrentPopup();
+
+            }
+
+            if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+
+                ImGui::CloseCurrentPopup();
+
+            }
+
+
+        }
+
+
+
+
+
     }
 
 
-
+    
 
 
 
