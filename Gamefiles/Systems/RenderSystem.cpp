@@ -171,7 +171,7 @@ void RenderSystem::update (Registry & registry, float deltatime) {
                             scene.loaded_atlases[tile_to_draw.atlas_idx].tiles_per_row - 1,
                             scene.loaded_atlases[tile_to_draw.atlas_idx].tiles_per_col - 1);
 
-                            if (tile_to_draw.tile_idx >= atlasMaxIndex) {
+                            if (tile_to_draw.tile_idx > atlasMaxIndex) {
                                 is_empty_tile = true;
                                 atlasMaxIndex = 9999;
                             }

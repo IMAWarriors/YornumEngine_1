@@ -14,11 +14,14 @@
 #include "../../External/rlimgui/rlImGui.h"
 #include "../../External/imgui/imgui.h"
 
+
+
 #include <vector>
 #include <algorithm>
 
 #include <cmath>
 #include <cctype>
+#include <cstdio>
 
 #include <filesystem>
 
@@ -372,17 +375,24 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
     ImGui::End();
     */
 
+    static std::string saveSceneNameInput;
+    static int saveSceneSelectedIndex = -1;
+    static bool saveSceneInitialized = false;
+
+    static int openSceneSelectedIndex = -1;
+
     ImGui::GetStyle().FramePadding = ImVec2(4, 4);
 
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("New")) {}
-            if (ImGui::MenuItem("Open")) {}
+            if (ImGui::MenuItem("Open")) {
+                openSceneSelectedIndex = -1;
+                ImGui::OpenPopup("Open Scene");
+            }
             if (ImGui::MenuItem("Save")) {
-
+                saveSceneInitialized = false;
                 ImGui::OpenPopup("Save Scene");
-
-                //scene.save_scene();
             }
             ImGui::Separator();
             if (ImGui::MenuItem("Exit")) {}
@@ -395,114 +405,151 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
             ImGui::EndMenu();
         }
 
-        ImGui::EndMainMenuBar();
+    }
+
+    std::filesystem::create_directories("Gamefiles/Scenes/");
+
+    // Save modal or wtv
+    auto strip_ext = [](const std::string& s) {
+        size_t pos = s.find_last_of('.');
+        return (pos == std::string::npos) ? s : s.substr(0, pos);
+    };
+
+    ImVec2 saveSceneModalSize = {
+        std::max(620.0f, GetScreenWidth() * 0.72f),
+        std::max(420.0f, GetScreenHeight() * 0.76f)
+    };
 
 
-        // Save modal or wtv
+    ImGui::SetNextWindowSize(saveSceneModalSize, ImGuiCond_Appearing);
+    if (ImGui::BeginPopupModal("Save Scene", NULL, ImGuiWindowFlags_NoCollapse)) {
 
-        ImVec2 saveSceneModalSize = {
-            std::max(620.0f, GetScreenWidth() * 0.72f),
-            std::max(420.0f, GetScreenHeight() * 0.76f)
-        };
-        ImGui::SetNextWindowSize(saveSceneModalSize, ImGuiCond_Appearing);
+        std::vector<std::string> scenepaths = assets.GetFilepathsInDirectory("Gamefiles/Scenes/", "scene");
+        std::vector<std::string> scenenames = assets.GetFilenamesInDirectory("Gamefiles/Scenes/", "scene");
 
-
-        if (ImGui::BeginPopupModal("Save Scene", NULL, ImGuiWindowFlags_NoCollapse)) { 
-
-            std::filesystem::create_directories("Gamefiles/Scenes/");
-
-            auto strip_ext = [](const std::string& s) {
-                size_t pos = s.find_last_of('.');
-                return (pos == std::string::npos) ? s : s.substr(0, pos);
-            };
-
-            std::vector<std::string> scenepaths = assets.GetFilepathsInDirectory("Gamefiles/Scenes/", "scene");
-            std::vector<std::string> scenenames = assets.GetFilenamesInDirectory("Gamefiles/Scenes/", "scene");
-
-            std::string scenename_to_write = scene.loaded_scene_name;
-
-            int selectedscenefileidx = -1;
-            bool existingFileSelected = false;
+        if (!saveSceneInitialized) {
+            saveSceneNameInput = scene.loaded_scene_name;
+            saveSceneSelectedIndex = -1;
 
             for (int i = 0; i < (int)scenenames.size(); i++) {
-                if (strip_ext(scenenames[i]) == strip_ext(scenename_to_write)) {
-                    existingFileSelected = true;
-                    selectedscenefileidx = i;
+                if (strip_ext(scenenames[i]) == strip_ext(saveSceneNameInput)) {
+                    saveSceneSelectedIndex = i;
                     break;
                 }
             }
-            if (!existingFileSelected) {
-                selectedscenefileidx = -1;
+            saveSceneInitialized = true;
+        }
+
+        ImGui::Text("Choose filename of scene to create or overwrite:");
+        ImGui::BeginChild("SaveSceneList", ImVec2(0, saveSceneModalSize.y * 0.28f), true, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+        
+        for (int i = 0; i < (int)scenepaths.size(); i++) {
+            if (ImGui::Selectable(scenepaths[i].c_str(), saveSceneSelectedIndex == i, ImGuiSelectableFlags_DontClosePopups)) {
+                saveSceneSelectedIndex = i;
+                saveSceneNameInput = strip_ext(scenenames[i]);
+
             }
+        }
 
-            ImGui::Text("Choose filename of scene to create or overwrite:");
-            
-            ImGui::BeginChild("TilesetSourceList", ImVec2(0, saveSceneModalSize.y * 0.28f), true, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+        ImGui::EndChild();
 
-            for (int i = 0; i < (int)scenepaths.size(); i++) {
+        char filenameBuffer[128];
+        std::snprintf(filenameBuffer, sizeof(filenameBuffer), "%s", saveSceneNameInput.c_str());
+        if (ImGui::InputText("Scene Name", filenameBuffer, sizeof(filenameBuffer))) {
+            saveSceneNameInput = filenameBuffer;
+            saveSceneSelectedIndex = -1;
+        }
 
-                if (ImGui::Selectable(scenepaths[i].c_str(), selectedscenefileidx == i, ImGuiSelectableFlags_DontClosePopups)) {
-                    
-                    scenename_to_write = scenenames[i].c_str();
+        const bool existingFileSelected = (saveSceneSelectedIndex >= 0 && saveSceneSelectedIndex < (int)scenepaths.size());
 
-                }
-            }
+        if (existingFileSelected) {
+            ImGui::Text("Warning! Filename selected already exists in directory and will overwrite scene data.");
+            ImGui::Text("(If you are intentionally saving updates on an old scene, ignore this message.)");
+        }
 
-            
-
-
-            
-
-            ImGui::EndChild();
-
-            ImGui::Spacing();
+        if (ImGui::Button("Confirm", ImVec2(120, 0))) {
+            std::string finalPath;
 
             if (existingFileSelected) {
-
-                ImGui::Text("Warning! Filename selected already exists in directory and will overwrite scene data.");
-                ImGui::Text("(If you are intentionally saving updates on an old scene, ignore this message.)");
-                
+                finalPath = scenepaths[saveSceneSelectedIndex];
+            } else {
+                finalPath = "Gamefiles/Scenes/" + strip_ext(saveSceneNameInput) + ".scene";
             }
 
-            ImGui::Spacing();
-
-            if (ImGui::Button("Confirm", ImVec2(120, 0))) {
-
-
-                std::string finalPath;
-
-                if (selectedscenefileidx != -1) {
-                    finalPath = scenepaths[selectedscenefileidx];
-                } else {
-                    finalPath = "Gamefiles/Scenes/" + scenename_to_write + ".scene";
-                }
-
-                std::cout << "Saving to: " << finalPath << "\n";
-
+            if (!saveSceneNameInput.empty()) {
+                scene.loaded_scene_name = strip_ext(saveSceneNameInput);
+               
                 bool success = scene.save_scene(finalPath);
-
+                
                 std::cout << (success ? "SAVE OK\n" : "SAVE FAILED\n");
 
-                scene.save_scene(finalPath);
+                
 
                 ImGui::CloseCurrentPopup();
 
-            }
-
-            if (ImGui::Button("Cancel", ImVec2(120, 0))) {
-
-                ImGui::CloseCurrentPopup();
+                saveSceneInitialized = false;
 
             }
-
 
         }
 
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
+            saveSceneInitialized = false;
+        }
 
+        ImGui::EndPopup();
+    }
 
+    ImGui::SetNextWindowSize(saveSceneModalSize, ImGuiCond_Appearing);
 
+    if (ImGui::BeginPopupModal("Open Scene", NULL, ImGuiWindowFlags_NoCollapse)) {
+
+        std::vector<std::string> scenepaths = assets.GetFilepathsInDirectory("Gamefiles/Scenes/", "scene");
+
+        ImGui::Text("Choose a scene file to load:");
+        ImGui::BeginChild("OpenSceneList", ImVec2(0, saveSceneModalSize.y * 0.36f), true, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+
+        for (int i = 0; i < (int)scenepaths.size(); i++) {
+            if (ImGui::Selectable(scenepaths[i].c_str(), openSceneSelectedIndex == i, ImGuiSelectableFlags_DontClosePopups)) {
+                openSceneSelectedIndex = i;
+            }
+        }
+
+        ImGui::EndChild();
+
+        if (openSceneSelectedIndex >= 0 && openSceneSelectedIndex < (int)scenepaths.size()) {
+            ImGui::Text("Selected: %s", scenepaths[openSceneSelectedIndex].c_str());
+        } else {
+            ImGui::Text("Selected: (none)");
+        }
+
+        if (ImGui::Button("Load", ImVec2(120, 0))) {
+            if (openSceneSelectedIndex >= 0 && openSceneSelectedIndex < (int)scenepaths.size()) {
+                if (scene.load_scene(scenepaths[openSceneSelectedIndex], assets)) {
+                    scene.loaded_scene_name = strip_ext(std::filesystem::path(scenepaths[openSceneSelectedIndex]).filename().string());
+                }
+                ImGui::CloseCurrentPopup();
+                openSceneSelectedIndex = -1;
+            }
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
+            openSceneSelectedIndex = -1;
+        }
+
+        ImGui::EndPopup();
 
     }
+
+
+
+
+
+    
 
 
     
