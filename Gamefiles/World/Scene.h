@@ -162,9 +162,10 @@ class Scene {
 
         }
 
-        void load_new_tileset (const std::string & _name, Texture2D & _image, size_t _tile_px_size, size_t _tiles_per_row, size_t _tiles_per_col) {
+        void load_new_tileset (const std::string & _name, Texture2D & _image, size_t _tile_px_size, size_t _tiles_per_row, size_t _tiles_per_col, const std::string & _imgpath = "") {
             
             loaded_atlases.push_back(TileAtlas(_name, _image, _tile_px_size, _tiles_per_row, _tiles_per_col));
+            loaded_atlases.back().imgpath = _imgpath;
 
         }
 
@@ -178,6 +179,7 @@ class Scene {
             }
 
             return loaded_atlases[atlas_idx].get_animation_parent_index(tile_idx);
+            
         }
 
         void remap_layer_tiles_to_animation_parent (int atlas_idx, int animation_parent_idx, uint32_t animation_frame_count) {

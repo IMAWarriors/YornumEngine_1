@@ -3,6 +3,7 @@
 
 #include "SceneSerialization.h"
 
+#include <filesystem>
 
 bool serial::SaveSceneToFile(const Scene & scene, const std::string& filepath) {
 
@@ -146,6 +147,10 @@ bool serial::LoadSceneFromFile(Scene & scene, AssetManager & assets, const std::
         file.read((char*)&len, sizeof(int));
         std::string path(len, '\0');
         file.read(path.data(), len);
+
+        if (path.empty() || !std::filesystem::exists(path)) {
+            return false;
+        }
 
         // dimensions
         int tilesize, tpr, tpc;

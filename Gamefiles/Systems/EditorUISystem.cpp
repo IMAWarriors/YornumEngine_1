@@ -229,7 +229,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
             ImVec2 avail = ImGui::GetContentRegionAvail();
             ImGui::BeginChild("TileGrid", ImVec2(avail.x * 0.5f, avail.y * 0.8f), true);
 
-            if (selectedIndex != -1) {
+            if (selectedIndex >= 0 && selectedIndex < (int)scene.loaded_atlases.size()) {
 
                 Texture2D & tileset_texture = *scene.loaded_atlases[selectedIndex].image_sheet_source;
                 int total_cols = (int)(scene.loaded_atlases[selectedIndex].tiles_per_row);
@@ -381,6 +381,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
     static int openSceneSelectedIndex = -1;
 
+    bool triggerOpenScenePopup = false;
+    bool triggerSaveScenePopup = false;
+
     ImGui::GetStyle().FramePadding = ImVec2(4, 4);
 
     if (ImGui::BeginMainMenuBar()) {
@@ -388,11 +391,11 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
             if (ImGui::MenuItem("New")) {}
             if (ImGui::MenuItem("Open")) {
                 openSceneSelectedIndex = -1;
-                ImGui::OpenPopup("Open Scene");
+                triggerOpenScenePopup = true;
             }
             if (ImGui::MenuItem("Save")) {
                 saveSceneInitialized = false;
-                ImGui::OpenPopup("Save Scene");
+                triggerSaveScenePopup = true;
             }
             ImGui::Separator();
             if (ImGui::MenuItem("Exit")) {}
@@ -408,6 +411,13 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
         ImGui::EndMainMenuBar();
 
+    }
+
+    if (triggerOpenScenePopup) {
+        ImGui::OpenPopup("Open Scene");
+    }
+    if (triggerSaveScenePopup) {
+        ImGui::OpenPopup("Save Scene");
     }
 
     std::filesystem::create_directories("Gamefiles/Scenes/");
@@ -532,6 +542,22 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
             if (openSceneSelectedIndex >= 0 && openSceneSelectedIndex < (int)scenepaths.size()) {
                 if (scene.load_scene(scenepaths[openSceneSelectedIndex], assets)) {
                     scene.loaded_scene_name = strip_ext(std::filesystem::path(scenepaths[openSceneSelectedIndex]).filename().string());
+
+                    selectedIndex = -1;
+                    phystab_selectedTileIndex = -1;
+
+                    if (scene.tile_layers.empty()) {
+                        selectedLayer = 0;
+                    } else if (selectedLayer >= (int)scene.tile_layers.size()) {
+                        selectedLayer = (int)scene.tile_layers.size() - 1;
+                    } else if (selectedLayer < 0) {
+                        selectedLayer = 0;
+                    }
+
+                    scene.EDITOR_ONLY_SELECTED_ATLAS = -1;
+                    scene.EDITOR_ONLY_SELECTED_PALLET_TILE = -1;
+                    scene.EDITOR_ONLY_SELECTED_LAYER = selectedLayer;
+
                 }
                 ImGui::CloseCurrentPopup();
                 openSceneSelectedIndex = -1;
@@ -897,7 +923,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                         if (canConfirm) {
                             Texture2D & importedTexture = assets.LoadTilesetTexture(selectedTilesetPathToLoad);
-                            scene.load_new_tileset(newAtlasNameTrimmed, importedTexture, new_tilesize, new_split_columns, new_split_rows);
+                            
+                            scene.load_new_tileset(newAtlasNameTrimmed, importedTexture, new_tilesize, new_split_columns, new_split_rows, selectedTilesetPathToLoad);
                             selectedIndex = (int)scene.loaded_atlases.size() - 1;
                             tilesize = new_tilesize;
                             split_columns = new_split_columns;
