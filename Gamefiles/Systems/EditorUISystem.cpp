@@ -405,6 +405,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
             ImGui::EndMenu();
         }
 
+
+        ImGui::EndMainMenuBar();
+
     }
 
     std::filesystem::create_directories("Gamefiles/Scenes/");
