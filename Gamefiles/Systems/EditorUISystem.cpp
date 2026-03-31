@@ -30,6 +30,10 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
     bool fullscreen = GetScreenWidth() > config::INIT_WINDOW_DISPLAY_WIDTH;
 
     static bool showTileAtlasEditor = false;
+    static bool showLayerManager = true;
+
+    static int selectedLayer = 0;
+
     static int selectedIndex = -1; // FOR line: if(ImGui::BeginTabItem("Tileset")) {...  // serves to give show selected tile atlas for tile atlas editor
 
     static bool animParamsMatch = true;
@@ -61,6 +65,91 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
     //  - Adjusting tile collisions
     //  - Resplitting tile atlas
     // =========================================================================================
+
+
+    auto DrawLayerManager = [&] () {
+
+        ImVec2 orig = ImGui::GetStyle().WindowPadding;
+        ImGui::GetStyle().WindowPadding = ImVec2(4,4);
+
+
+
+        // Anchor to top-right corner
+            ImVec2 windowSize = ImVec2(220 * fullscreenScale.x, 300 * fullscreenScale.y);
+            ImVec2 windowPos = ImVec2(
+                GetScreenWidth() - windowSize.x - 10.0f,
+                30.0f * fullscreenScale.y
+            );
+
+            ImGui::SetNextWindowPos(windowPos, ImGuiCond_Always);
+            ImGui::SetNextWindowSize(windowSize, ImGuiCond_Always);
+
+            ImGui::PushStyleColor(ImGuiCol_TitleBg, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.2f, 0.2f, 0.7f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_TitleBgCollapsed, ImVec4(0.1f, 0.1f, 0.3f, 1.0f));
+
+            if (ImGui::Begin("Layer Manager", nullptr,
+                ImGuiWindowFlags_NoResize |
+                ImGuiWindowFlags_NoCollapse)) 
+            {
+                scene.uiCapturesMouse |= ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
+
+                // =========================
+                // Layer List
+                // =========================
+                ImGui::Text("Layers:");
+                ImGui::Separator();
+
+                ImGui::BeginChild("LayerList", ImVec2(0, 180 * fullscreenScale.y), true);
+
+                for (int i = 0; i < (int)scene.tile_layers.size(); i++) {
+
+                    std::string label = "Layer " + std::to_string(i);
+
+                    if (ImGui::Selectable(label.c_str(), selectedLayer == i)) {
+                        selectedLayer = i;
+                    }
+                }
+
+                ImGui::EndChild();
+
+                // =========================
+                // Buttons
+                // =========================
+
+                // Add Layer
+                if (ImGui::Button("+ Add Layer", ImVec2(-1, 0))) {
+                    scene.tiles_push_new_layer();
+                    selectedLayer = (int)scene.tile_layers.size() - 1;
+                }
+
+                // Delete Layer
+                if (ImGui::Button("- Delete Layer", ImVec2(-1, 0))) {
+                    if (!scene.tile_layers.empty() && selectedLayer >= 0) {
+                        scene.tile_layers.erase(scene.tile_layers.begin() + selectedLayer);
+
+                        if (selectedLayer >= (int)scene.tile_layers.size()) {
+                            selectedLayer = (int)scene.tile_layers.size() - 1;
+                        }
+                    }
+                }
+
+                // =========================
+                // Info
+                // =========================
+                ImGui::Separator();
+                ImGui::Text("Editing Layer: %d", selectedLayer);
+
+                // 🔴 THIS IS IMPORTANT:
+                // expose this to rest of editor
+                scene.EDITOR_ONLY_SELECTED_LAYER = selectedLayer;
+            }
+
+            ImGui::End();
+            ImGui::PopStyleColor(3);
+            ImGui::GetStyle().WindowPadding = orig;
+    };
+
 
     auto DrawTileAtlasEditor = [&] () {
 
@@ -262,12 +351,24 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
         ImGui::EndMainMenuBar();
     }
 
+
+
+
+
+
     ImGui::GetStyle().FramePadding = ImVec2(4, 4);
 
     
     if (showTileAtlasEditor) {
         DrawTileAtlasEditor();
     }
+
+    if (showLayerManager) {
+
+        DrawLayerManager();
+
+    }
+
 
 
 
@@ -338,11 +439,18 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 static int split_columns = 5;   // horizontal tile count (tiles_per_row)
                 static int split_rows = 5;      // vertical tile count (tiles_per_col)
 
+                if (selectedIndex >= (int)scene.loaded_atlases.size()) {
+                    selectedIndex = -1;
+                    phystab_selectedTileIndex = -1;
+                    path = nullptr;
+                    tilesetToPreview = false;
+                }
+
 
                 // *** Draw list of all Tile Atlases ***
 
                 for (int i = 0; i < scene.loaded_atlases.size(); i++) {
-                    
+
                     if (ImGui::Selectable(scene.loaded_atlases[i].name.c_str(), selectedIndex == i)) {
                         if (selectedIndex == i) {
                             selectedIndex = -1;
@@ -432,18 +540,23 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
 
 
-                if (ImGui::BeginPopupModal("Load New Tileset...", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+                ImVec2 loadTilesetModalSize = {
+                    std::max(620.0f, GetScreenWidth() * 0.72f),
+                    std::max(420.0f, GetScreenHeight() * 0.76f)
+                };
+                ImGui::SetNextWindowSize(loadTilesetModalSize, ImGuiCond_Appearing);
+                if (ImGui::BeginPopupModal("Load New Tileset...", NULL, ImGuiWindowFlags_NoCollapse)) {
 
                     
                     ImGui::Separator();
 
                     std::vector<std::string> tileset_paths = assets.GetTilesetPaths("Gamefiles/Assets/Sprites/Tilesets/");
 
-                    
+                    ImGui::Text("Choose source image:");
+                    ImGui::BeginChild("TilesetSourceList", ImVec2(0, loadTilesetModalSize.y * 0.28f), true, ImGuiWindowFlags_AlwaysVerticalScrollbar);
 
-                    for (int i = 0; i < tileset_paths.size(); i++) {
-
-                         if (ImGui::Selectable(tileset_paths[i].c_str(), selectedTilesetToLoadIndex == i, ImGuiSelectableFlags_DontClosePopups)) {
+                    for (int i = 0; i < (int)tileset_paths.size(); i++) {
+                        if (ImGui::Selectable(tileset_paths[i].c_str(), selectedTilesetToLoadIndex == i, ImGuiSelectableFlags_DontClosePopups)) {
                             if (selectedTilesetToLoadIndex == i) {
                                 selectedTilesetToLoadIndex = -1;
                             } else {
@@ -462,7 +575,11 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                     if (previewTilesetLoaded) {
                                         new_split_columns = std::max(1, previewTilesetTexture.width / std::max(1, new_tilesize));
                                         new_split_rows = std::max(1, previewTilesetTexture.height / std::max(1, new_tilesize));
-                                    }
+                                    } else {
+                                        selectedTilesetPathToLoad.clear();
+                                        selectedTilesetToLoadIndex = -1;
+                                    
+                                    } 
 
                                 }
                             }
@@ -471,6 +588,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                         }
                     }
+
+                    ImGui::EndChild();
 
                     ImGui::Spacing();
                     ImGui::InputText("Tileset Name", new_tileset_name, sizeof(new_tileset_name));
@@ -510,24 +629,41 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         ImGui::Text("Preview: %dx%d", previewTilesetTexture.width, previewTilesetTexture.height);
                         ImGui::TextColored(splitValid ? ImVec4(0,1,0,1) : ImVec4(1,0,0,1), splitValid ? "Valid split" : "Invalid split");
 
-                        const float maxPreviewWidth = 420.0f * fullscreenScale.x;
-                        const float maxPreviewHeight = 280.0f * fullscreenScale.y;
-                        const float imgScale = std::min(maxPreviewWidth / (float)previewTilesetTexture.width, maxPreviewHeight / (float)previewTilesetTexture.height);
-                        const ImVec2 previewSize = {previewTilesetTexture.width * imgScale, previewTilesetTexture.height * imgScale};
-
-                        ImGui::Image((ImTextureID)previewTilesetTexture.id, previewSize);
+                        ImVec2 previewChildSize = ImVec2(0, loadTilesetModalSize.y * 0.42f);
+                        ImGui::BeginChild("TilesetSplitPreviewChild", previewChildSize, true, ImGuiWindowFlags_AlwaysHorizontalScrollbar | ImGuiWindowFlags_AlwaysVerticalScrollbar);
                         ImDrawList * drawList = ImGui::GetWindowDrawList();
-                        ImVec2 imageMin = ImGui::GetItemRectMin();
+                        ImVec2 canvasStart = ImGui::GetCursorScreenPos();
+                        const float padding = 8.0f;
+                        const float maxPreviewWidth = std::max(320.0f, loadTilesetModalSize.x - 56.0f);
+                        const float maxPreviewHeight = std::max(180.0f, loadTilesetModalSize.y * 0.35f);
+                        const float imgScale = std::min(maxPreviewWidth / (float)previewTilesetTexture.width, maxPreviewHeight / (float)previewTilesetTexture.height);
+                        
+                        const float scaledTileSize = (float)new_tilesize * imgScale;
+                        const int imageCols = std::max(1, (int)std::ceil((float)previewTilesetTexture.width / (float)new_tilesize));
+                        const int imageRows = std::max(1, (int)std::ceil((float)previewTilesetTexture.height / (float)new_tilesize));
+                        const int gridCols = std::max(imageCols, new_split_columns);
+                        const int gridRows = std::max(imageRows, new_split_rows);
+                        const ImVec2 previewSize = {
+                            std::max(previewTilesetTexture.width * imgScale, gridCols * scaledTileSize),
+                            std::max(previewTilesetTexture.height * imgScale, gridRows * scaledTileSize)
+                        };
+
+                        drawList->AddRectFilled(
+                            {canvasStart.x, canvasStart.y},
+                            {canvasStart.x + previewSize.x + padding, canvasStart.y + previewSize.y + padding},
+                            IM_COL32(32, 32, 32, 255)
+                        );
+                        ImGui::Image((ImTextureID)previewTilesetTexture.id, ImVec2(previewTilesetTexture.width * imgScale, previewTilesetTexture.height * imgScale));
+
+                        
                         ImU32 gridColorValid = IM_COL32(0, 255, 0, 220);
                         ImU32 gridColorInvalid = IM_COL32(255, 0, 0, 220);
-                        float scaledTileSize = (float)new_tilesize * imgScale;
-                        int gridCols = std::max(1, (int)std::ceil((float)previewTilesetTexture.width / (float)new_tilesize));
-                        int gridRows = std::max(1, (int)std::ceil((float)previewTilesetTexture.height / (float)new_tilesize));
+                        
                         for (int r = 0; r < gridRows; r++) {
                             for (int c = 0; c < gridCols; c++) {
                                 ImVec2 dmin = {
-                                    imageMin.x + (float)c * scaledTileSize,
-                                    imageMin.y + (float)r * scaledTileSize
+                                    canvasStart.x + (float)c * scaledTileSize,
+                                    canvasStart.y + (float)r * scaledTileSize
                                 };
                                 ImVec2 dmax = {
                                     dmin.x + scaledTileSize,
@@ -540,6 +676,10 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 drawList->AddRect(dmin, dmax, gridColor, 0.0f, 0, 1.5f);
                             }
                         }
+
+                        ImGui::Dummy(ImVec2(previewSize.x + padding, previewSize.y + padding));
+                        ImGui::EndChild();
+
                     }
                     
 
@@ -556,6 +696,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             Texture2D & importedTexture = assets.LoadTilesetTexture(selectedTilesetPathToLoad);
                             scene.load_new_tileset(newAtlasNameTrimmed, importedTexture, new_tilesize, new_split_columns, new_split_rows);
                             selectedIndex = (int)scene.loaded_atlases.size() - 1;
+                            tilesize = new_tilesize;
+                            split_columns = new_split_columns;
+                            split_rows = new_split_rows;
                             phystab_selectedTileIndex = -1;
                             tilesetToPreview = true;
                             path = scene.loaded_atlases[selectedIndex].image_sheet_source;
@@ -651,6 +794,13 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             }
 
                             scene.loaded_atlases.erase(scene.loaded_atlases.begin() + selectedIndex);
+
+                            if (scene.EDITOR_ONLY_SELECTED_ATLAS == selectedIndex) {
+                                scene.EDITOR_ONLY_SELECTED_ATLAS = -1;
+                                scene.EDITOR_ONLY_SELECTED_PALLET_TILE = -1;
+                            } else if (scene.EDITOR_ONLY_SELECTED_ATLAS > selectedIndex) {
+                                scene.EDITOR_ONLY_SELECTED_ATLAS--;
+                            }
 
                             bool atlasStillUsesTexture = false;
                             for (const TileAtlas & atlas : scene.loaded_atlases) {
@@ -1780,6 +1930,10 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
             ImGui::PopStyleColor(6);
         }
     }
+
+
+    scene.uiCapturesMouse = ImGui::GetIO().WantCaptureMouse;
+
     ImGui::End();
 
     

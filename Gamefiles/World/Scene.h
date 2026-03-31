@@ -17,6 +17,16 @@
 #include <cstdlib>   // for rand(), srand()
 #include <ctime>
 
+#include <fstream>   // file streams
+#include <sstream>   // string streams (parsing)
+
+struct SceneSavefile {
+    std::string scene_name;
+    std::vector<TileAtlas> atlases;
+    std::vector<TileGrid> layers;
+    
+};
+
 class Scene {
 
     public:
@@ -24,12 +34,16 @@ class Scene {
         // Editor Wiring
         int EDITOR_ONLY_SELECTED_ATLAS = -1;
         int EDITOR_ONLY_SELECTED_PALLET_TILE = -1;
+        int EDITOR_ONLY_SELECTED_LAYER = 0;
         bool EDITOR_ONLY_ACTIVE_TAEDITOR = false;
 
+        bool uiCapturesMouse = false;
 
         std::string loaded_scene_name;
         std::vector<TileAtlas> loaded_atlases;
-        std::vector<TileGrid> tile_layers;
+        std::vector<TileGrid> tile_layers; 
+
+       
 
         Tile get_tile (size_t layer, int column, int row);
         void set_tile (size_t layer, int column, int row, Tile newtile);
@@ -53,9 +67,20 @@ class Scene {
                     tile = {atlasIndex, random_tile_index};  
 
                 }
-
             }
+        }
 
+        void tiles_load_emptydata (size_t layer) {
+
+            for (int row = gwconst::WORLD_TILEGRID_Y_BOUND_MIN_TILE; row <= gwconst::WORLD_TILEGRID_Y_BOUND_MAX_TILE; row++) {
+
+                for (int col = gwconst::WORLD_TILEGRID_X_BOUND_MIN_TILE; col <= gwconst::WORLD_TILEGRID_X_BOUND_MAX_TILE; col++) {
+
+                    Tile & tile = tile_layers[layer].get_tile(col, row);
+                    tile = {-1, -1};  
+
+                }
+            }
 
         }
 
@@ -65,7 +90,7 @@ class Scene {
             tile_layers.push_back(TileGrid());
             // For now just garbage data them when loading too
 
-            tiles_load_garbagedata(0, 0);
+            tiles_load_emptydata(tile_layers.size()-1);
 
         }
 
@@ -134,6 +159,19 @@ class Scene {
             remap_layer_tiles_to_animation_parent(atlas_idx, tile_idx, animation_frame_count);
             return true;
         }
+
+
+
+        std::string get_scene_stream () {
+
+            
+
+
+
+        }
+
+
+
 
 
 

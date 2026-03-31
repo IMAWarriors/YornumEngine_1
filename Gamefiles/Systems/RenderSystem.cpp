@@ -79,6 +79,8 @@ void RenderSystem::update (Registry & registry, float deltatime) {
         //
         // ========================================================================================================
 
+        int ilayer = 0;
+
         for (TileGrid & layer : scene.tile_layers) {
 
             // Pretty much all of this is unadjusted for CAMERA ZOOM
@@ -199,7 +201,9 @@ void RenderSystem::update (Registry & registry, float deltatime) {
                     // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
                     // renderSceneEditorUI check is reduntant, but reminds that this is ediotr only code
-                    if (renderSceneEditorUI && mouseHover && !scene.EDITOR_ONLY_ACTIVE_TAEDITOR) {
+                    
+                    
+                    if (renderSceneEditorUI && mouseHover && !scene.EDITOR_ONLY_ACTIVE_TAEDITOR && !scene.uiCapturesMouse) {
 
                         bool hoveringTileGrid = false;
 
@@ -231,14 +235,18 @@ void RenderSystem::update (Registry & registry, float deltatime) {
                                 DrawRectangleLinesEx(thisTileDestination, 3.0f, RED);
                             }
 
+
+                            if (scene.EDITOR_ONLY_SELECTED_LAYER >= 0 && scene.EDITOR_ONLY_SELECTED_LAYER == ilayer) {
                             
-                            if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) && world_column == hoverWorldCol && world_row == hoverWorldRow) {
-                                if (scene.EDITOR_ONLY_SELECTED_ATLAS < 0 || scene.EDITOR_ONLY_SELECTED_PALLET_TILE < 0) {
-                                    layer.get_tile(world_column, world_row) = {-1,-1};
-                                } else {
-                                    int selected_parent_tile = scene.normalize_tile_to_animation_parent(scene.EDITOR_ONLY_SELECTED_ATLAS, scene.EDITOR_ONLY_SELECTED_PALLET_TILE);
-                                    layer.get_tile(world_column, world_row) = {scene.EDITOR_ONLY_SELECTED_ATLAS, selected_parent_tile};
+                                if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) && world_column == hoverWorldCol && world_row == hoverWorldRow) {
+                                    if (!scene.is_valid_atlas_index(scene.EDITOR_ONLY_SELECTED_ATLAS) || scene.EDITOR_ONLY_SELECTED_PALLET_TILE < 0) {
+                                        layer.get_tile(world_column, world_row) = {-1,-1};
+                                    } else {
+                                        int selected_parent_tile = scene.normalize_tile_to_animation_parent(scene.EDITOR_ONLY_SELECTED_ATLAS, scene.EDITOR_ONLY_SELECTED_PALLET_TILE);
+                                        layer.get_tile(world_column, world_row) = {scene.EDITOR_ONLY_SELECTED_ATLAS, selected_parent_tile};
+                                    }
                                 }
+
                             }
 
                         }
@@ -256,6 +264,9 @@ void RenderSystem::update (Registry & registry, float deltatime) {
 
                 
             }
+
+            ilayer++;
+
         }
 
         
