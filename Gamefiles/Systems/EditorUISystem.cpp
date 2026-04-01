@@ -434,6 +434,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
     };
 
 
+    ImGui::GetStyle().WindowPadding = ImVec2(8,8);
+
     ImGui::SetNextWindowSize(saveSceneModalSize, ImGuiCond_Appearing);
     if (ImGui::BeginPopupModal("Save Scene", NULL, ImGuiWindowFlags_NoCollapse)) {
 
