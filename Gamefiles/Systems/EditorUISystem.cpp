@@ -47,10 +47,15 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
     static int phystab_selectedTileIndex = -1;
 
+    static int selectedTileIndex = -1;
+
     static bool newTilesetSplitMatch = true;
 
     static int anim_frames = 1;
     static float frame_time = 0.0f;
+
+    
+
 
     ImGui::GetStyle().WindowMinSize = ImVec2(2.0,2.0);
     ImGui::GetStyle().WindowPadding = ImVec2(0,0);
@@ -559,6 +564,15 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     scene.EDITOR_ONLY_SELECTED_ATLAS = -1;
                     scene.EDITOR_ONLY_SELECTED_PALLET_TILE = -1;
                     scene.EDITOR_ONLY_SELECTED_LAYER = selectedLayer;
+
+                    selectedLayer = 0;
+                    
+                    selectedTileIndex = -1;
+
+
+                    animParamsMatch = true;
+                    phystab_selectedTileIndex = -1;
+                    newTilesetSplitMatch = true;
 
                 }
                 ImGui::CloseCurrentPopup();
@@ -1786,7 +1800,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
             if (ImGui::BeginTabItem("Pallet")) {
 
-                static int selectedTileIndex = -1;
+                
 
                 
 
