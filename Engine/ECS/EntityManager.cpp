@@ -67,6 +67,7 @@ bool EntityManager::contains(Entity _entity) const {
 
 uint32_t EntityManager::get_gen(uint32_t _idx) const {
     if (_idx >= generations.size()) { return generations[generations.size() - 1]; }
+    if (generations.empty()) { return 0; }
     return generations[_idx];
 }
 

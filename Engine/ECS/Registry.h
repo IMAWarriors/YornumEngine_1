@@ -149,6 +149,10 @@ class Registry {
                 throw std::runtime_error("ERROR: TRIED TO REFERENCE A COMPONENT POOL FROM AN INDEX WHOSE POOL HAS NOT YET BEEN INITIALIZED");
             }
 
+            if (component_pools[component_pool_index] == nullptr) {
+                throw std::runtime_error("ERROR: COMPONENT POOL SLOT EXISTS BUT HAS NOT BEEN INITIALIZED");
+            }
+
             ComponentPool<T_ComponentType> * component_pool_ptr = static_cast<ComponentPool<T_ComponentType>*>(component_pools[component_pool_index]);
 
             if (!component_pool_ptr->has(_entity)) {
