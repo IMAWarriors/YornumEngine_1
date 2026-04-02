@@ -7,7 +7,7 @@
 // NORMAL NON-EDITOR BUILD
 // =========================================================================================
 
-void CoreApplication::RunCoreEngine(GameEngine & game) {
+void CoreApplication::RunCoreEngine(GameEngine & game, const std::string & scenename) {
 
 
     // Initialize window and program
@@ -20,7 +20,14 @@ void CoreApplication::RunCoreEngine(GameEngine & game) {
     DebugStats          debugInfo;
 
     renderer.init_canvas(canvas);
+
     game.Initialize(renderer, inputManager, debugInfo);
+
+    if (scenename != "NOFILE.NONE") {
+
+        game.LoadScene(scenename);
+        
+    }
 
 
     float accumulator = 0.0f;               // Store Time bucket
@@ -76,13 +83,18 @@ void CoreApplication::RunCoreEngine(GameEngine & game) {
 
     // Close the program
     window.EndProgram();
-
-
-
 } 
+
+
+
+
+
+
 
 void CoreApplication::RunCoreEngineMainEditor (GameEngine & game) {
 
     // Do nothing
 
 }
+
+

@@ -13,7 +13,7 @@ void CoreApplication::RunCoreEngineMainEditor (GameEngine & game) {
     game.SetEditorMode();
 
     // Initialize window and program
-    Window window("Scene Editor & Manager");
+    Window window("Scene Editor & Manager", true);
 
     // Initialize for GUI drawing
     rlImGuiSetup(true);
@@ -98,7 +98,7 @@ void CoreApplication::RunCoreEngineMainEditor (GameEngine & game) {
 
 
 
-void CoreApplication::RunCoreEngine(GameEngine & game) {
+void CoreApplication::RunCoreEngine(GameEngine & game, const std::string & scenepath) {
 
     // Do nothing
 

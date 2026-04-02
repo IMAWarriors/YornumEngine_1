@@ -6,7 +6,10 @@ set COMPILER=g++
 echo INFO: Project ^>^> Linking and compiling project files...
 echo INFO: Project ^>^> Configuring EDITOR build version...
 
+windres eicon.rc -O coff -o eicon.res
+
 %COMPILER% ^
+eicon.res ^
 Tools\Main\Editor.cpp ^
 External\rlimgui\rlImGui.cpp ^
 External\imgui\imgui.cpp ^

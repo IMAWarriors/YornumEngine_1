@@ -43,16 +43,30 @@ void Window::ListenFullscreenToggle() {
     }
 }
 
-Window::Window (const char * title) {
+Window::Window (const char * title, bool edit) {
 
     // SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     fullscreen = false;
+
+    if (edit) {
+        editorflag = true;
+    }
 
     // Window setup
     SetConfigFlags(FLAG_VSYNC_HINT);
     SetConfigFlags(FLAG_WINDOW_HIGHDPI);
     InitWindow(config::INIT_WINDOW_DISPLAY_WIDTH, config::INIT_WINDOW_DISPLAY_HEIGHT, title);
     SetTargetFPS(config::GAME_WORLD_FPS);
+
+    if (!editorflag) {
+        Image icon = LoadImage("Icons/convertico-ico_256x256.png");
+        SetWindowIcon(icon);
+        UnloadImage(icon);
+    } else {
+        Image icon = LoadImage("Icons/editorico.png");
+        SetWindowIcon(icon);
+        UnloadImage(icon);
+    }
 
     int monitor = GetCurrentMonitor();
     int monitor_width  = GetMonitorWidth(monitor);

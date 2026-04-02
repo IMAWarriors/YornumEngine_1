@@ -82,6 +82,39 @@ class Scene {
 
         }
 
+        bool load_scene_by_name (const std::string & _name, AssetManager & _assets) {
+
+            // Needs assets ref to be passed because when loading a scene,
+            // all assets are automatically unloaded and assets needed for the scene are loaded
+
+            bool success = false;
+
+            int _extIdx = -1;
+            for (int i=0;i<_name.size();i++) {
+                if (_name[i]=='.') {
+                    _extIdx = i;
+                    break;
+                }
+            }
+
+            std::string _path;
+
+            if (_extIdx >= 0) {
+                _path = _name.substr(0,_extIdx);
+            } else {
+                _path = _name;
+            }
+             
+            _path = std::string("Gamefiles/Scenes/" + _path + ".scene");
+
+            _assets.UnloadAllTilesetTextureAssets();
+
+            success = serial::LoadSceneFromFile(*this, _assets, _path);
+
+            return success;
+
+        }
+
         bool save_scene (const std::string & _path) {
 
             bool success = false;

@@ -14,9 +14,12 @@ class Window {
 
         bool fullscreen;
 
+
     public:
 
-        Window (const char * title);
+        bool editorflag = false;
+
+        Window (const char * title, bool edit = false);
 
         void ListenFullscreenToggle ();
         

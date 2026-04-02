@@ -34,9 +34,10 @@ class CoreApplication {
 
     public:
 
-        void RunCoreEngine (GameEngine & game);
+        void RunCoreEngine (GameEngine & game, const std::string & scenename = "NOFILE.NONE");
 
         void RunCoreEngineMainEditor (GameEngine & game);
+
 
 
 

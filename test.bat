@@ -5,7 +5,10 @@ set COMPILER=g++
 
 echo INFO: Project ^>^> Linking and compiling project files...
 
+windres icon.rc -O coff -o icon.res
+
 %COMPILER% ^
+icon.res ^
 main.cpp ^
 Engine\Core\Main\Main_CoreApplication.cpp ^
 Engine\Core\Window\Window.cpp ^

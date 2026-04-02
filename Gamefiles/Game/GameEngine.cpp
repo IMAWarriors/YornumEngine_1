@@ -109,6 +109,16 @@ void GameEngine::TickPhase (Phases phase, float deltatime) {
 
 }
 
+
+bool GameEngine::LoadScene (const std::string & scenename) {
+
+    bool success = scene.load_scene_by_name(scenename, assets);
+    
+
+    return success;
+
+}
+
 bool GameEngine::IsRunningEditor () {
     return RUNNING_EDITOR;
 }

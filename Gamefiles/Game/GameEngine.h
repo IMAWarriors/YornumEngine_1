@@ -71,6 +71,8 @@ class GameEngine {
 
         void CleanUp();
 
+        bool LoadScene (const std::string & scenename);
+
 
 
 
