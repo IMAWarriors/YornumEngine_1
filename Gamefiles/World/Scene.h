@@ -183,6 +183,7 @@ class Scene {
 
         }
 
+        // To import a tileset to assets and load the tioleset
         void import_new_tileset (AssetManager & _assets, std::string & _name, const std::string & _imgpath, size_t _tile_px_size, size_t _tiles_per_row, size_t _tiles_per_col) {
 
             // Probably save the dependency or smth later idk i have to figure out how raylib naturall handles textures
@@ -195,6 +196,7 @@ class Scene {
 
         }
 
+        // To actively load a passively loaded tileset from assets
         void load_new_tileset (const std::string & _name, Texture2D & _image, size_t _tile_px_size, size_t _tiles_per_row, size_t _tiles_per_col, const std::string & _imgpath = "") {
             
             loaded_atlases.push_back(TileAtlas(_name, _image, _tile_px_size, _tiles_per_row, _tiles_per_col));

@@ -33,9 +33,11 @@ class EditorUISystem : public System {
         AssetManager & assets;
         EditorAssets & editorAssets;
 
+
+        float imgsizeMax = 512.0f;
         
 
-    public: 
+    public:
 
         EditorUISystem (Renderer & _renderer, Scene & _scene, AssetManager & _assets, EditorAssets & _editorAssets) : renderer(_renderer), scene(_scene), assets(_assets), editorAssets(_editorAssets) {}
         
