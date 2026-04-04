@@ -30,6 +30,12 @@ class Window {
         bool IsRunning () const;
 
 
+
+        // SHADERS
+
+        Shader painter;
+
+
     // Functions
 
 };

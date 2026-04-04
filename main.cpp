@@ -1,30 +1,25 @@
 // main.cpp
 
 /**    =======================================================================================================
- *      > MAIN FILE, Version E-Build Alpha 1.5.2
- *      > E-Build Alpha 1.6.0 [Stabilized Push!]: Refactored project structure
+ *      > MAIN FILE, Version E-Build Alpha 1.6.1
+ *      > E-Build Alpha 1.6.1 [Stabilized Push!]: Fixed minor bugs
  *     -------------------------------------------------------------------------------------------------------
  *      > by IMAWarriors
  *      >  -------------------------------------------
  *          VERSION 
  *         -------------------------------------------
  *          E-Build Alpha 
- *          1.6.0
+ *          1.6.1
  *          [Stabilized Push!]
  *          Refactored project structure
  *      ------------------------------------------------------------------------------------------------------
- *      > Stable working version pushed to Git on 04-04-2026, 4:05 PM 
+ *      > Stable working version pushed to Git on 04-04-2026, 7:25 PM 
  *      ======================================================================================================
- *      >>> Most Recently Added Features
+ *      >>> New to this major build:                
  *      ======================================================================================================
  * 
- *       - Fixed tileset and scene path loading bugs
- * 
- *       - Refactored project structure
- * 
- *       - Fixed large tileset loading
-
- * 
+ *       - Added shader support and fixed import bugs
+ *
  *    ======================================================================================================= */
 
 

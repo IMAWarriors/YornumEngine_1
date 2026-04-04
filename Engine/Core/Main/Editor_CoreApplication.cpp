@@ -40,6 +40,14 @@ void CoreApplication::RunCoreEngineMainEditor (GameEngine & game) {
 
     while ( window.IsRunning() ) {
 
+
+        // STEP 0:          SHADER HANDLING???
+
+        float time = GetTime();
+        SetShaderValue(window.painter, GetShaderLocation(window.painter, "time"), &time, SHADER_UNIFORM_FLOAT);
+
+
+
         // STEP 1:          LOGIC  | Update logic and game frame state
         // ==========================================
     
@@ -74,8 +82,12 @@ void CoreApplication::RunCoreEngineMainEditor (GameEngine & game) {
 
         renderer.begin_texture_frame(canvas);
 
+        // BeginShaderMode(window.painter);
+
         //  Render Logic, VARIABLE TIME
         game.TickPhase(Phases::RENDERING, alpha);
+
+        // EndShaderMode();
 
         renderer.end_texture_frame();
         renderer.present(canvas, game, alpha);   // Begin Draw -> Draw Pro texture -> End Draw

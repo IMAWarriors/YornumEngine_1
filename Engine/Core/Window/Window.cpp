@@ -54,6 +54,7 @@ Window::Window (const char * title, bool edit) {
 
     SetConfigFlags(FLAG_VSYNC_HINT);
     SetConfigFlags(FLAG_WINDOW_HIGHDPI);
+
     InitWindow(config::INIT_WINDOW_DISPLAY_WIDTH, config::INIT_WINDOW_DISPLAY_HEIGHT, title);
     SetTargetFPS(config::GAME_WORLD_FPS);
 
@@ -68,6 +69,15 @@ Window::Window (const char * title, bool edit) {
         UnloadImage(icon);
     }
     // ====================================================================================================
+
+
+    // ******************* LOAD SHADERS HERE *****************************
+
+    painter = LoadShader(0, "assets/shaders/painter.fs");
+
+
+    // *******************************************************************
+
 
     int monitor = GetCurrentMonitor();
     int monitor_width  = GetMonitorWidth(monitor);
