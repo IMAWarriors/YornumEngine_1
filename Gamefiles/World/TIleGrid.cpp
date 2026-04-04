@@ -9,7 +9,7 @@ TileGrid::TileGrid () {
 
     // Outer Loop, loop over Columns adjusting every X value 
 
-    for (int TILE_COL_IDX = -(gwconst::WORLD_TILEGRID_X_BOUND_MIN_TILE); 
+    for (int TILE_COL_IDX = gwconst::WORLD_TILEGRID_X_BOUND_MIN_TILE; 
              TILE_COL_IDX <= gwconst::WORLD_TILEGRID_X_BOUND_MAX_TILE; 
              TILE_COL_IDX++) {
 

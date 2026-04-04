@@ -5,6 +5,30 @@
 
 #include <filesystem>
 
+namespace {
+    std::string ResolveTilesetPathFromSceneRecord(const std::string& rawPath) {
+        namespace fs = std::filesystem;
+
+        if (rawPath.empty()) {
+            return {};
+        }
+
+        fs::path candidate(rawPath);
+        if (fs::exists(candidate)) {
+            return candidate.string();
+        }
+
+        // Fallback for legacy scene files after project structure refactors:
+        // keep only the filename and search in the current tileset directory.
+        fs::path fallback = fs::path("assets/sprites/tilesets") / candidate.filename();
+        if (fs::exists(fallback)) {
+            return fallback.string();
+        }
+
+        return {};
+    }
+}
+
 bool serial::SaveSceneToFile(const Scene & scene, const std::string& filepath) {
 
     std::ofstream file(filepath, std::ios::binary);
@@ -148,7 +172,8 @@ bool serial::LoadSceneFromFile(Scene & scene, AssetManager & assets, const std::
         std::string path(len, '\0');
         file.read(path.data(), len);
 
-        if (path.empty() || !std::filesystem::exists(path)) {
+        path = ResolveTilesetPathFromSceneRecord(path);
+        if (path.empty()) {
             return false;
         }
 

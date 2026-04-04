@@ -59,11 +59,11 @@ Window::Window (const char * title, bool edit) {
 
     // =================================== Choose what ICON to load =======================================
     if (!editorflag) {
-        Image icon = LoadImage("Icons/g1_mainicon.png");
+        Image icon = LoadImage("assets/icons/g1_mainicon.png");
         SetWindowIcon(icon);
         UnloadImage(icon);
     } else {
-        Image icon = LoadImage("Icons/g1_mainicon_editor.png");
+        Image icon = LoadImage("assets/icons/g1_mainicon_editor.png");
         SetWindowIcon(icon);
         UnloadImage(icon);
     }

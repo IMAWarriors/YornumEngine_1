@@ -2,28 +2,27 @@
 
 /**    =======================================================================================================
  *      > MAIN FILE, Version E-Build Alpha 1.5.2
- *      > E-Build Alpha 1.5.2 [Stabilized Push!]: Fixed out-of-bounds crash because of stale selectedTileIndex after Scene loading
+ *      > E-Build Alpha 1.6.0 [Stabilized Push!]: Refactored project structure
  *     -------------------------------------------------------------------------------------------------------
  *      > by IMAWarriors
  *      >  -------------------------------------------
  *          VERSION 
  *         -------------------------------------------
  *          E-Build Alpha 
- *          1.5.2
+ *          1.6.0
  *          [Stabilized Push!]
- *          Fixed out-of-bounds crash because of stale selectedTileIndex after Scene loading
+ *          Refactored project structure
  *      ------------------------------------------------------------------------------------------------------
- *      > Stable working version pushed to Git on 04-01-2026, 12:50 PM 
+ *      > Stable working version pushed to Git on 04-04-2026, 4:05 PM 
  *      ======================================================================================================
  *      >>> Most Recently Added Features
  *      ======================================================================================================
  * 
- *       - Fixed crash related to loading scene when selected 
- *          tile data persists about scene loads out of bounds
+ *       - Fixed tileset and scene path loading bugs
  * 
- *       - Cleaned up Registry exception handling
+ *       - Refactored project structure
  * 
- *       - Implemented Scene saving and loading
+ *       - Fixed large tileset loading
 
  * 
  *    ======================================================================================================= */
