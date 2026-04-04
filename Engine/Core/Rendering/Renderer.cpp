@@ -60,7 +60,7 @@ void Renderer::init_canvas (RenderTexture2D & render_texture) {
     render_texture = LoadRenderTexture(config::GAME_WORLD_WIDTH, config::GAME_WORLD_HEIGHT);
     SetTextureFilter(render_texture.texture, TEXTURE_FILTER_BILINEAR);
 
-    debug_font = LoadFontEx("Gamefiles/Assets/Fonts/consolai.ttf",24,0,0);
+    debug_font = LoadFontEx("assets/fonts/consolai.ttf",24,0,0);
     
 }
 

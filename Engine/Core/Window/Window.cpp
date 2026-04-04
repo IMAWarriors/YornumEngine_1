@@ -52,21 +52,22 @@ Window::Window (const char * title, bool edit) {
         editorflag = true;
     }
 
-    // Window setup
     SetConfigFlags(FLAG_VSYNC_HINT);
     SetConfigFlags(FLAG_WINDOW_HIGHDPI);
     InitWindow(config::INIT_WINDOW_DISPLAY_WIDTH, config::INIT_WINDOW_DISPLAY_HEIGHT, title);
     SetTargetFPS(config::GAME_WORLD_FPS);
 
+    // =================================== Choose what ICON to load =======================================
     if (!editorflag) {
-        Image icon = LoadImage("Icons/convertico-ico_256x256.png");
+        Image icon = LoadImage("Icons/g1_mainicon.png");
         SetWindowIcon(icon);
         UnloadImage(icon);
     } else {
-        Image icon = LoadImage("Icons/editorico.png");
+        Image icon = LoadImage("Icons/g1_mainicon_editor.png");
         SetWindowIcon(icon);
         UnloadImage(icon);
     }
+    // ====================================================================================================
 
     int monitor = GetCurrentMonitor();
     int monitor_width  = GetMonitorWidth(monitor);

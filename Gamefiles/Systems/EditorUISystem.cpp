@@ -11,8 +11,6 @@
 #include "../../Gamefiles/Assets/AssetManager.h"
 #include "../../Gamefiles/Assets/EditorAssets.h"
 
-#include "../../External/rlimgui/rlImGui.h"
-#include "../../External/imgui/imgui.h"
 
 
 
@@ -56,6 +54,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
     static int palette_tiles_per_page = 256;
     static int palette_page_columns = 12;
     static int palette_page_index = 0;
+    static int atlas_tiles_per_page = 512;
+    static int atlas_page_columns = 16;
+    static int atlas_page_index = 0;
     static int physics_tiles_per_page = 128;
     static int physics_page_columns = 8;
     static int physics_page_index = 0;
@@ -265,8 +266,34 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 std::vector<RectDraw> drawQueue;
                 std::vector<RectDraw> lowerQueue;
 
-                for (int row = 0; row < total_rows; row++) {
-                    for (int col = 0; col < total_cols; col++) {
+                const int total_tiles = total_cols * total_rows;
+                atlas_tiles_per_page = std::clamp(atlas_tiles_per_page, 32, 2048);
+                atlas_page_columns = std::clamp(atlas_page_columns, 1, 64);
+                const int atlas_total_pages = std::max(1, (total_tiles + atlas_tiles_per_page - 1) / atlas_tiles_per_page);
+                atlas_page_index = std::clamp(atlas_page_index, 0, atlas_total_pages - 1);
+
+                ImGui::PushItemWidth(120 * fullscreenScale.x);
+                ImGui::SliderInt("Atlas Page Size", &atlas_tiles_per_page, 32, 2048);
+                ImGui::SliderInt("Atlas Columns", &atlas_page_columns, 1, 64);
+                ImGui::PopItemWidth();
+                if (ImGui::Button("<##atlas_page_prev") && atlas_page_index > 0) {
+                    atlas_page_index--;
+                }
+                ImGui::SameLine();
+                if (ImGui::Button(">##atlas_page_next") && atlas_page_index + 1 < atlas_total_pages) {
+                    atlas_page_index++;
+                }
+                ImGui::SameLine();
+                ImGui::Text("Page %d / %d (%d tiles)", atlas_page_index + 1, atlas_total_pages, total_tiles);
+                ImGui::Separator();
+
+                const int atlas_page_start = atlas_page_index * atlas_tiles_per_page;
+                const int atlas_page_end = std::min(total_tiles, atlas_page_start + atlas_tiles_per_page);
+                int page_tile_counter = 0;
+
+                for (int tile_index = atlas_page_start; tile_index < atlas_page_end; tile_index++) {
+                    const int row = tile_index / total_cols;
+                    const int col = tile_index % total_cols;
 
                         Rectangle tile_slice = scene.loaded_atlases[selectedIndex].getRectCR(col, row);
 
@@ -310,7 +337,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                         ImGui::PopID();
 
-                        if (col < total_cols-1) {
+                        page_tile_counter++;
+                        if (page_tile_counter % atlas_page_columns != 0 && tile_index + 1 < atlas_page_end) {
                             ImGui::SameLine();
                         }
 
@@ -321,9 +349,6 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                         ImGui::PopStyleColor(3);
                     }
-
-
-                }
 
                 for (RectDraw draw : lowerQueue) {
                     ImDrawList* rdraw = ImGui::GetWindowDrawList();
@@ -431,7 +456,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
         ImGui::OpenPopup("Save Scene");
     }
 
-    std::filesystem::create_directories("Gamefiles/Scenes/");
+    std::filesystem::create_directories(SCENEDIR);
 
     // Save modal or wtv
     auto strip_ext = [](const std::string& s) {
@@ -450,8 +475,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
     ImGui::SetNextWindowSize(saveSceneModalSize, ImGuiCond_Appearing);
     if (ImGui::BeginPopupModal("Save Scene", NULL, ImGuiWindowFlags_NoCollapse)) {
 
-        std::vector<std::string> scenepaths = assets.GetFilepathsInDirectory("Gamefiles/Scenes/", "scene");
-        std::vector<std::string> scenenames = assets.GetFilenamesInDirectory("Gamefiles/Scenes/", "scene");
+        std::vector<std::string> scenepaths = assets.GetFilepathsInDirectory(SCENEDIR, "scene");
+        std::vector<std::string> scenenames = assets.GetFilenamesInDirectory(SCENEDIR, "scene");
 
         if (!saveSceneInitialized) {
             saveSceneNameInput = scene.loaded_scene_name;
@@ -499,7 +524,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
             if (existingFileSelected) {
                 finalPath = scenepaths[saveSceneSelectedIndex];
             } else {
-                finalPath = "Gamefiles/Scenes/" + strip_ext(saveSceneNameInput) + ".scene";
+                finalPath = SCENEDIR + strip_ext(saveSceneNameInput) + ".scene";
             }
 
             if (!saveSceneNameInput.empty()) {
@@ -532,7 +557,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
     if (ImGui::BeginPopupModal("Open Scene", NULL, ImGuiWindowFlags_NoCollapse)) {
 
-        std::vector<std::string> scenepaths = assets.GetFilepathsInDirectory("Gamefiles/Scenes/", "scene");
+        std::vector<std::string> scenepaths = assets.GetFilepathsInDirectory(SCENEDIR, "scene");
 
         ImGui::Text("Choose a scene file to load:");
         ImGui::BeginChild("OpenSceneList", ImVec2(0, saveSceneModalSize.y * 0.36f), true, ImGuiWindowFlags_AlwaysVerticalScrollbar);
@@ -554,10 +579,15 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
         if (ImGui::Button("Load", ImVec2(120, 0))) {
             if (openSceneSelectedIndex >= 0 && openSceneSelectedIndex < (int)scenepaths.size()) {
                 if (scene.load_scene(scenepaths[openSceneSelectedIndex], assets)) {
+
+
+
                     scene.loaded_scene_name = strip_ext(std::filesystem::path(scenepaths[openSceneSelectedIndex]).filename().string());
 
                     selectedIndex = -1;
                     phystab_selectedTileIndex = -1;
+
+
 
                     if (scene.tile_layers.empty()) {
                         selectedLayer = 0;
@@ -801,7 +831,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                     ImGui::Separator();
 
-                    std::vector<std::string> tileset_paths = assets.GetTilesetPaths("Gamefiles/Assets/Sprites/Tilesets/");
+                    std::vector<std::string> tileset_paths = assets.GetTilesetPaths(TILESETDIR);
 
                     ImGui::Text("Choose source image:");
                     ImGui::BeginChild("TilesetSourceList", ImVec2(0, loadTilesetModalSize.y * 0.28f), true, ImGuiWindowFlags_AlwaysVerticalScrollbar);
@@ -900,7 +930,10 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             const float padding = 8.0f;
                             const float maxPreviewWidth = std::max(320.0f, loadTilesetModalSize.x - 56.0f);
                             const float maxPreviewHeight = std::max(180.0f, loadTilesetModalSize.y * 0.35f);
-                            const float imgScale = std::min(maxPreviewWidth / (float)previewTilesetTexture.width, maxPreviewHeight / (float)previewTilesetTexture.height);
+                            const float imgScale = std::max(
+                                0.001f,
+                                std::min(maxPreviewWidth / (float)previewTilesetTexture.width, maxPreviewHeight / (float)previewTilesetTexture.height)
+                            );
 
                             const float scaledTileSize = (float)new_tilesize * imgScale;
                             const ImVec2 previewSize = {
@@ -919,21 +952,31 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             ImU32 gridColorValid = IM_COL32(0, 255, 0, 220);
                             ImU32 gridColorInvalid = IM_COL32(255, 0, 0, 220);
 
-                            for (int r = 0; r < gridRows; r++) {
-                                for (int c = 0; c < gridCols; c++) {
-                                    ImVec2 dmin = {
-                                        canvasStart.x + (float)c * scaledTileSize,
-                                        canvasStart.y + (float)r * scaledTileSize
-                                    };
-                                    ImVec2 dmax = {
-                                        dmin.x + scaledTileSize,
-                                        dmin.y + scaledTileSize
-                                    };
-                                    bool cellIncludedInSelection = c < new_split_columns && r < new_split_rows;
-                                    bool cellFitsImageBounds = ((c + 1) * new_tilesize <= previewTilesetTexture.width)
-                                        && ((r + 1) * new_tilesize <= previewTilesetTexture.height);
-                                    ImU32 gridColor = (cellIncludedInSelection && cellFitsImageBounds) ? gridColorValid : gridColorInvalid;
-                                    drawList->AddRect(dmin, dmax, gridColor, 0.0f, 0, 1.5f);
+                            // Draw by lines instead of one rectangle per cell, which can exceed ImGui's index limits.
+                            const int maxPreviewLines = 4096;
+                            if ((gridCols + gridRows + 2) > maxPreviewLines) {
+                                ImGui::TextColored(ImVec4(1, 0.8f, 0.2f, 1), "Split grid too dense to draw safely.");
+                                ImGui::Text("Showing image only. Reduce rows/columns for grid lines.");
+                            } else {
+                                const ImVec2 imageBottomRight = {
+                                    canvasStart.x + previewTilesetTexture.width * imgScale,
+                                    canvasStart.y + previewTilesetTexture.height * imgScale
+                                };
+
+                                for (int c = 0; c <= gridCols; c++) {
+                                    const float x = canvasStart.x + (float)c * scaledTileSize;
+                                    const bool inSelection = c <= new_split_columns;
+                                    const bool fitsBounds = (c * new_tilesize) <= previewTilesetTexture.width;
+                                    const ImU32 color = (inSelection && fitsBounds) ? gridColorValid : gridColorInvalid;
+                                    drawList->AddLine({x, canvasStart.y}, {x, imageBottomRight.y}, color, 1.2f);
+                                }
+
+                                for (int r = 0; r <= gridRows; r++) {
+                                    const float y = canvasStart.y + (float)r * scaledTileSize;
+                                    const bool inSelection = r <= new_split_rows;
+                                    const bool fitsBounds = (r * new_tilesize) <= previewTilesetTexture.height;
+                                    const ImU32 color = (inSelection && fitsBounds) ? gridColorValid : gridColorInvalid;
+                                    drawList->AddLine({canvasStart.x, y}, {imageBottomRight.x, y}, color, 1.2f);
                                 }
                             }
 

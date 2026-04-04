@@ -8,8 +8,8 @@
 #include <cstdlib>   // for rand(), srand()
 #include <ctime>
 
-#include "../../Engine/Core/Main/CoreApplication.h"
-#include "../../Gamefiles/Game/GameEngine.h"
+#include "Engine/Core/Main/CoreApplication.h"
+#include "Gamefiles/Game/GameEngine.h"
 
 
 

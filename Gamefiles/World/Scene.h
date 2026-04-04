@@ -36,9 +36,13 @@ namespace serial {
 
 class Scene {
 
-    public:
+    private:
 
-        
+        std::string DEFAULT_PATH_SCENEFILES = "assets/scenes/";
+
+
+
+    public:
 
         // Editor Wiring
         int EDITOR_ONLY_SELECTED_ATLAS = -1;
@@ -105,7 +109,7 @@ class Scene {
                 _path = _name;
             }
              
-            _path = std::string("Gamefiles/Scenes/" + _path + ".scene");
+            _path = std::string(DEFAULT_PATH_SCENEFILES + _path + ".scene");
 
             _assets.UnloadAllTilesetTextureAssets();
 

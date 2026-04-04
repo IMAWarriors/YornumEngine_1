@@ -12,6 +12,9 @@
 // Get Specific Components
 #include "../Components/Components.h"
 
+#include "../../../external/rlimgui/rlImGui.h"
+#include "../../../external/imgui/imgui.h"
+
 #include <vector>
 #include <string>
 
@@ -35,11 +38,20 @@ class EditorUISystem : public System {
 
 
         float imgsizeMax = 512.0f;
+
+
+        const std::string SCENEDIR = "assets/scenes/";
+        const std::string TILESETDIR = "assets/sprites/tilesets/";
         
 
     public:
 
-        EditorUISystem (Renderer & _renderer, Scene & _scene, AssetManager & _assets, EditorAssets & _editorAssets) : renderer(_renderer), scene(_scene), assets(_assets), editorAssets(_editorAssets) {}
+        EditorUISystem (Renderer & _renderer, Scene & _scene, AssetManager & _assets, EditorAssets & _editorAssets) : renderer(_renderer), scene(_scene), assets(_assets), editorAssets(_editorAssets) {
+
+            ImGuiIO& io = ImGui::GetIO();
+            io.IniFilename = "../../../cache/imgui/EMain_imgui.ini";
+
+        }
         
     
         void update (Registry & registry, float deltatime) override;
