@@ -2,6 +2,7 @@
 
 #include "PhysicsBodyMovementSystem.h"
 
+#include <algorithm>
 #include <vector>
 
 void PhysicsBodyMovementSystem::update (Registry & registry, float deltatime) {
@@ -23,7 +24,7 @@ void PhysicsBodyMovementSystem::update (Registry & registry, float deltatime) {
         Vec2 to_move = {velocity.magnitude.x * deltatime, velocity.magnitude.y * deltatime};
 
         int direction_x = (velocity.magnitude.x > 0.0f) ? 1 : (velocity.magnitude.x < 0.0f) ? -1 : 0;
-        int direction_y = (velocity.magnitude.y > 0.0f) ? 1 : -1;
+        int direction_y = (velocity.magnitude.y > 0.0f) ? 1 : (velocity.magnitude.y < 0.0f) ? -1 : 0;
 
         const int HORZ_RAY_SPACING = 10;
         const int HORZ_RAY_COUNT = std::max(2, (int)std::ceil(body.size.y / (float)HORZ_RAY_SPACING));
@@ -36,108 +37,76 @@ void PhysicsBodyMovementSystem::update (Registry & registry, float deltatime) {
 
         for (TileGrid & layer : scene.tile_layers) {
 
-            // HORIZONTAL COLLISION
-
-            // Cast horizontal rays
-
-            if (direction_x > 0) {
-                for (int i = 0; i < HORZ_RAY_COUNT; i++) {
-                    float ray_y = (transform.position.y - body.size.y / 2.0f) + ((body.size.y * i) / (float)(HORZ_RAY_COUNT - 1));
-                    horz_ray_dists[i] = layer.raycast(scene, {transform.position.x + body.size.x / 2.0f, ray_y}, {1.0f, 0.0f}, (int)std::ceil(std::fabs(to_move.x)));
-                }
-                
-            } else if (direction_x < 0) {
-                for (int i = 0; i < HORZ_RAY_COUNT; i++) {
-                    float ray_y = (transform.position.y - body.size.y / 2.0f) + ((body.size.y * i) / (float)(HORZ_RAY_COUNT - 1));
-                    horz_ray_dists[i] = layer.raycast(scene, {transform.position.x - body.size.x / 2.0f, ray_y}, {-1.0f, 0.0f}, (int)std::ceil(std::fabs(to_move.x)));
-                }
-
-            } else {
-                break;
+            if (direction_x == 0) {
+                continue;
             }
 
-            // Set move to horizontal ray calc dist min clamp to collision
+            for (int i = 0; i < HORZ_RAY_COUNT; i++) {
+                float ray_y = (transform.position.y - body.size.y / 2.0f) + ((body.size.y * i) / (float)(HORZ_RAY_COUNT - 1));
+                Vec2 ray_start = (direction_x > 0)
+                    ? Vec2{transform.position.x + body.size.x / 2.0f, ray_y}
+                    : Vec2{transform.position.x - body.size.x / 2.0f, ray_y};
+                Vec2 ray_step = (direction_x > 0) ? Vec2{1.0f, 0.0f} : Vec2{-1.0f, 0.0f};
+                horz_ray_dists[i] = layer.raycast(scene, ray_start, ray_step, (int)std::ceil(std::fabs(to_move.x)));
+                
+            }
+
+            float clamped_dist = std::fabs(to_move.x);
+            bool inside_wall = false;
 
             for (float dist : horz_ray_dists) {
-                if (dist < std::fabs(to_move.x)) {
-                    // We cannot move full desired distance for some reason
-
-                    if (dist == -1) {
-                        // We are inside of a wall
-                        to_move.x = 0.0f;
-                        break;
-
-                    } else {
-                        // We are not inside of a wall, we just can't move our full desired distance
-
-                        int move_axis = (to_move.x > 0) ? 1 : -1;
-                        to_move.x = (dist - body.skin) * move_axis;
-                    }
-                    
-                    velocity.magnitude.x = 0;
+                if (dist == -1.0f) {
+                    inside_wall = true;
+                    break;
                 }
+                clamped_dist = std::min(clamped_dist, dist);
             }
         
 
 
-            // VERTICAL COLLISION
-
-            // Cast vertical rays
-
-            if (direction_y > 0) {
-                for (int i = 0; i < VERT_RAY_COUNT; i++) {
-                    float ray_x = (transform.position.x - body.size.x / 2.0f) + ((body.size.x * i) / (float)(VERT_RAY_COUNT - 1));
-                    vert_ray_dists[i] = layer.raycast(scene, {ray_x, transform.position.x + body.size.x / 2.0f}, {0.0f, 1.0f}, (int)std::ceil(std::fabs(to_move.y)));
-                }
-                
-            } else if (direction_x < 0) {
-                for (int i = 0; i < VERT_RAY_COUNT; i++) {
-                    float ray_x = (transform.position.x - body.size.y / 2.0f) + ((body.size.x * i) / (float)(VERT_RAY_COUNT - 1));
-                    vert_ray_dists[i] = layer.raycast(scene, {ray_x, transform.position.x - body.size.x / 2.0f}, {0.0f, -1.0f}, (int)std::ceil(std::fabs(to_move.y)));
-                }
-
-            } else {
-                break;
+            if (inside_wall || clamped_dist < std::fabs(to_move.x)) {
+                float safe_dist = inside_wall ? 0.0f : std::max(0.0f, clamped_dist - body.skin);
+                to_move.x = safe_dist * (float)direction_x;
+                velocity.magnitude.x = 0.0f;
             }
-
-            // Set move to vertical ray calc dist min clamp to collision
-
-            for (float dist : vert_ray_dists) {
-                if (dist < std::fabs(to_move.y)) {
-                    // We cannot move full desired distance for some reason
-
-                    if (dist == -1) {
-                        // We are inside of a wall
-                        to_move.y = 0.0f;
-                        break;
-
-                    } else {
-                        // We are not inside of a wall, we just can't move our full desired distance
-
-                        int move_axis = (to_move.y > 0) ? 1 : -1;
-                        to_move.y = (dist - body.skin) * move_axis;
-                    }
-                    
-                    velocity.magnitude.y = 0;
-                }
-            }
-
-
-        
-        
-        
-        
-        
-        
         }
-        
-
-
-
-
-
 
         transform.position.x = transform.position.x + to_move.x;
+
+        // Resolve Y after X so the body can slide along blocking walls.
+        for (TileGrid & layer : scene.tile_layers) {
+            if (direction_y == 0) {
+                continue;
+            }
+
+            for (int i = 0; i < VERT_RAY_COUNT; i++) {
+                float ray_x = (transform.position.x - body.size.x / 2.0f) + ((body.size.x * i) / (float)(VERT_RAY_COUNT - 1));
+                Vec2 ray_start = (direction_y > 0)
+                    ? Vec2{ray_x, transform.position.y + body.size.y / 2.0f}
+                    : Vec2{ray_x, transform.position.y - body.size.y / 2.0f};
+                Vec2 ray_step = (direction_y > 0) ? Vec2{0.0f, 1.0f} : Vec2{0.0f, -1.0f};
+                vert_ray_dists[i] = layer.raycast(scene, ray_start, ray_step, (int)std::ceil(std::fabs(to_move.y)));
+                
+            }
+
+            float clamped_dist = std::fabs(to_move.y);
+            bool inside_wall = false;
+
+            for (float dist : vert_ray_dists) {
+                if (dist == -1.0f) {
+                    inside_wall = true;
+                    break;
+                }
+                clamped_dist = std::min(clamped_dist, dist);
+            }
+
+            if (inside_wall || clamped_dist < std::fabs(to_move.y)) {
+                float safe_dist = inside_wall ? 0.0f : std::max(0.0f, clamped_dist - body.skin);
+                to_move.y = safe_dist * (float)direction_y;
+                velocity.magnitude.y = 0.0f;
+            }
+        }
+        
         transform.position.y = transform.position.y + to_move.y;
 
 
