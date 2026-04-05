@@ -69,6 +69,8 @@ void RenderSystem::update (Registry & registry, float deltatime) {
         float first_tile_screen_x = ((float)(first_column * gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS) - world_left) * camera_zoom;
         float first_tile_screen_y = ((float)(first_row * gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS) - world_top) * camera_zoom;
 
+        const float tile_step = (float)gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS * camera_zoom;
+
         int visible_cols = (int)std::ceil((config::GAME_WORLD_WIDTH / camera_zoom) / gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS) + 2;
         int visible_rows = (int)std::ceil((config::GAME_WORLD_HEIGHT / camera_zoom) / gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS) + 2;
 
@@ -135,8 +137,15 @@ void RenderSystem::update (Registry & registry, float deltatime) {
                     int world_column = first_column + col_offset;
                     int world_row    = first_row + row_offset;
 
-                    float screen_x = first_tile_screen_x + (col_offset * gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS * camera_zoom);
-                    float screen_y = first_tile_screen_y + (row_offset * gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS * camera_zoom);
+                    float raw_left   = first_tile_screen_x + (col_offset * tile_step);
+                    float raw_right  = first_tile_screen_x + ((col_offset + 1) * tile_step);
+                    float raw_top    = first_tile_screen_y + (row_offset * tile_step);
+                    float raw_bottom = first_tile_screen_y + ((row_offset + 1) * tile_step);
+
+                    float screen_x = std::round(raw_left);
+                    float screen_y = std::round(raw_top);
+                    float screen_w = std::round(raw_right) - screen_x;
+                    float screen_h = std::round(raw_bottom) - screen_y;
 
 
 
@@ -191,8 +200,8 @@ void RenderSystem::update (Registry & registry, float deltatime) {
                             scene.loaded_atlases[tile_to_draw.atlas_idx].getRect(current_tile_animation_frame, tile_to_draw.tile_idx),
                             {screen_x,
                                 screen_y,
-                                (float)gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS * camera_zoom,
-                                (float)gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS * camera_zoom}
+                                screen_w,
+                                screen_h}
                             );
                     }
 

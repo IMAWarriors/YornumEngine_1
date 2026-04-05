@@ -138,6 +138,8 @@ Texture2D & AssetManager::LoadTilesetTexture (const string & _path) {
     int new_tileset_index = loaded_tilesets.size();
 
     loaded_tilesets.push_back(std::make_unique<Texture2D>(LoadTexture(_path.c_str())));
+    // SetTextureFilter(*loaded_tilesets.back(), TEXTURE_FILTER_POINT);
+    SetTextureWrap(*loaded_tilesets.back(), TEXTURE_WRAP_CLAMP);
     loaded_tilesets_paths.push_back(_path);
 
     return *(loaded_tilesets[new_tileset_index]);

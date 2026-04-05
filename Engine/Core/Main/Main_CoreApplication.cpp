@@ -71,12 +71,12 @@ void CoreApplication::RunCoreEngine(GameEngine & game, const std::string & scene
 
         renderer.begin_texture_frame(canvas);
 
-        // BeginShaderMode(window.painter);
+        BeginShaderMode(window.painter);
 
         //  Render Logic, VARIABLE TIME
         game.TickPhase(Phases::RENDERING, alpha);
 
-        // EndShaderMode();
+        EndShaderMode();
 
         renderer.end_texture_frame();
         renderer.present(canvas, game, alpha);   // Begin Draw -> Draw Pro texture -> End Draw
