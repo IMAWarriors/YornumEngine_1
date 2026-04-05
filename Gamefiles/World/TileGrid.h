@@ -12,6 +12,8 @@
 #include <stdexcept>
 #include <cmath>
 
+class Scene;
+
 class TileGrid {
 
     private:
@@ -32,6 +34,10 @@ class TileGrid {
 
         int translate_world_x_col (float world_x) const;
         int translate_world_y_row (float world_y) const;
+
+
+
+        float raycast (const Scene & scene, Vec2 start_wc, Vec2 step, int max_steps);
 
 
 

@@ -27,8 +27,10 @@ void GameEngine::Initialize(Renderer & _renderer, InputManager & _input, DebugSt
     //      scene.tiles_push_new_layer();       // Pushes automatic test layer
 
     systems.add_system   <InputSystem>               (Phases::INPUT, *input);
+
     systems.add_system   <PlayerControllerSystem>    (Phases::SIMULATION);
-    systems.add_system   <MovementSystem>            (Phases::SIMULATION);
+    systems.add_system   <PhysicsBodyMovementSystem> (Phases::SIMULATION, scene);
+    
     systems.add_system   <CameraSystem>              (Phases::SIMULATION, *renderer);
     systems.add_system   <EngineManagerSystem>       (Phases::SIMULATION, *debug);
 

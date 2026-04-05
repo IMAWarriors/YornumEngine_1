@@ -2,7 +2,7 @@
 
 #include "TileGrid.h"
 
-
+#include "Scene.h"
 
 
 TileGrid::TileGrid () {
@@ -130,5 +130,46 @@ int TileGrid::translate_world_y_row (float world_y) const {
     return (int)(std::floor(world_y / gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS));
 }
 
+float TileGrid::raycast (const Scene & scene, Vec2 start_wc, Vec2 step, int max_steps) {
 
+
+    Vec2 ray_position = start_wc;
+    float distance = -1.0f;
+
+
+    auto colltype = [&] (Vec2 pos) -> CollisionType {
+        int ray_wcol = translate_world_x_col (pos.x);
+        int ray_wrow = translate_world_y_row (pos.y);
+        Tile tile_hit = get_tile(ray_wcol, ray_wrow);
+        CollisionType tile_colltype = (tile_hit.atlas_idx<0||tile_hit.tile_idx<0) ? CollisionType::COLL_EMPTY : scene.loaded_atlases[tile_hit.atlas_idx].tile_data[tile_hit.tile_idx].collision_data;
+        return tile_colltype;
+    };
+
+
+    if (colltype(ray_position) == CollisionType::COLL_FULL_SOLID) {
+      // -1.0f
+        return distance;
+
+    }
+
+    int step_count = 0;
+    
+    for (int i = 0; i < max_steps; i++) {
+
+
+        step_count++;
+
+        ray_position.x += step.x;
+        ray_position.y += step.y;
+
+        distance += std::sqrt((step.x*step.x) + (step.y*step.y));
+
+        if (colltype(ray_position) == CollisionType::COLL_FULL_SOLID) {
+            break;    
+        }
+    }
+
+    return distance;
+
+}
 

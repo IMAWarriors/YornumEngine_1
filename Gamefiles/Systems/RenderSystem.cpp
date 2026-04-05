@@ -42,7 +42,25 @@ void RenderSystem::update (Registry & registry, float deltatime) {
 
 
 
-    // Going to try to draw tiles here first I guess, assuming the default layer of tiles is BEHIND the player
+
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // Going to try to draw tiles here first I guess, assuming the default layer of tiles is BEHIND the play
 
     // DRAWING TILES, UTILIZING THE SCENE, NOT FUCKING ENTITIES BECAUSE THATS STUPID
     
@@ -287,26 +305,35 @@ void RenderSystem::update (Registry & registry, float deltatime) {
 
 
 
-    // STEP DRAW LOOP: Draw all Circles
+    // STEP DRAW LOOP: Draw all PhysicsBody hitboxes
 
-    for (Entity entity : registry.view<comp::Transform, comp::CircleRenderer>()) {      // For each iteration of Entity
+    for (Entity entity : registry.view<comp::Transform, comp::PhysicsBody>()) {      // For each iteration of Entity
 
 
             comp::Transform & transform     = registry.get_component<comp::Transform>(entity);
-            comp::CircleRenderer & circle = registry.get_component<comp::CircleRenderer>(entity);
+            comp::PhysicsBody & body        = registry.get_component<comp::PhysicsBody>(entity);
 
 
-            unsigned char _r = circle.color.r;
-            unsigned char _g = circle.color.g;
-            unsigned char _b = circle.color.b;
-            unsigned char _a = circle.color.a;
+        
 
 
-            Color col = Color({_r, _g, _b, _a});
+            Color col = Color({255, 0, 0, 180});
 
-            Vec2 interpolation = {transform.previous_position.x + ((transform.position.x-transform.previous_position.x) * deltatime), transform.previous_position.y + ((transform.position.y-transform.previous_position.y) * deltatime)};
+            // Vec2 interpolation = {transform.previous_position.x + ((transform.position.x-transform.previous_position.x) * deltatime), transform.previous_position.y + ((transform.position.y-transform.previous_position.y) * deltatime)};
 
-            renderer.rdraw_circle(interpolation.x, interpolation.y, circle.radius, col);
+
+            Vec2 top_left;
+            Vec2 bottom_right;
+            
+            top_left.x = transform.position.x - (body.size.x / 2.0f);
+            top_left.y = transform.position.y - (body.size.y / 2.0f);
+
+            bottom_right.x = transform.position.x + (body.size.x / 2.0f);
+            bottom_right.y = transform.position.y + (body.size.y / 2.0f);
+
+
+
+            renderer.rdraw_rect(top_left.x, top_left.y, body.size.x, body.size.y, col);
 
 
     }

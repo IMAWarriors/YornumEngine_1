@@ -11,6 +11,7 @@
 #include "comp/MouseTracker.h"
 #include "comp/FramerateTracker.h"
 #include "comp/WorldAnimationState.h"
+#include "comp/PhysicsBody.h"
 
 #include "tag/Tag_Player.h"
 #include "tag/Tag_EngineManager.h"

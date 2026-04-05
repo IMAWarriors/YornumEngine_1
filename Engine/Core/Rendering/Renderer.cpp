@@ -111,6 +111,16 @@ void Renderer::rdraw_circle(float _x, float _y, float _radius, Color _color) {
 
 }
 
+void Renderer::rdraw_rect(float _x, float _y, float _w, float _h, Color _color) {
+
+    Vec2 new_coords = world_camera_transform({_x, _y});
+    Vec2 new_max_coords = world_camera_transform({_x + _w, _y + _h});
+    Vec2 new_size = {new_max_coords.x - new_coords.x, new_max_coords.y - new_coords.y};
+    DrawRectangle((int)(new_coords.x), (int)(new_coords.y), (int)(new_size.x), (int)(new_size.y), _color);
+
+
+}
+
 
 
 void Renderer::rdraw_sprite (Texture2D _texture, Rectangle _crop, Rectangle _paste) {
