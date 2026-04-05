@@ -18,7 +18,7 @@ void PhysicsBodyMovementSystem::update (Registry & registry, float deltatime) {
         
         // Transform
 
-        Vec2 to_move = velocity.magnitude;
+        Vec2 to_move = {velocity.magnitude.x * deltatime, velocity.magnitude.y * deltatime};
 
         int direction_x = (velocity.magnitude.x > 0.0f) ? 1 : (velocity.magnitude.x < 0.0f) ? -1 : 0;
         int direction_y = (velocity.magnitude.y > 0.0f) ? 1 : -1;
@@ -34,14 +34,14 @@ void PhysicsBodyMovementSystem::update (Registry & registry, float deltatime) {
         for (TileGrid & layer : scene.tile_layers) {
             if (direction_x > 0) {
                 for (int i = 0; i < HORZ_RAY_COUNT-1; i++) {
-                    horz_ray_dists[i] = layer.raycast(scene, {transform.position.x + body.size.x / 2, (transform.position.y-body.skin) + i*HORZ_RAY_SPACING}, {1.0, 0}, (int)std::fabs(to_move.x));
+                    horz_ray_dists[i] = layer.raycast(scene, {transform.position.x + body.size.x / 2, (transform.position.y - body.size.y / 2) + i * HORZ_RAY_SPACING}, {1.0, 0}, (int)std::ceil(std::fabs(to_move.x)));
                 }
-                horz_ray_dists[HORZ_RAY_COUNT] = layer.raycast(scene, {transform.position.x + body.size.x / 2, (transform.position.y+body.size.y+body.skin)}, {1.0, 0}, (int)std::fabs(to_move.x));
+                horz_ray_dists[HORZ_RAY_COUNT] = layer.raycast(scene, {transform.position.x + body.size.x / 2, transform.position.y + body.size.y / 2}, {1.0, 0}, (int)std::ceil(std::fabs(to_move.x)));
             } else if (direction_x < 0) {
                 for (int i = 0; i < HORZ_RAY_COUNT-1; i++) {
-                    horz_ray_dists[i] = layer.raycast(scene, {transform.position.x - body.size.x / 2, (transform.position.y-body.skin) + i*HORZ_RAY_SPACING}, {-1.0, 0}, (int)std::fabs(to_move.x));
+                    horz_ray_dists[i] = layer.raycast(scene, {transform.position.x - body.size.x / 2, (transform.position.y - body.size.y / 2) + i * HORZ_RAY_SPACING}, {-1.0, 0}, (int)std::ceil(std::fabs(to_move.x)));
                 }
-                horz_ray_dists[HORZ_RAY_COUNT] = layer.raycast(scene, {transform.position.x - body.size.x / 2, (transform.position.y+body.size.y+body.skin)}, {-1.0, 0}, (int)std::fabs(to_move.x));
+                horz_ray_dists[HORZ_RAY_COUNT] = layer.raycast(scene, {transform.position.x - body.size.x / 2, transform.position.y + body.size.y / 2}, {-1.0, 0}, (int)std::ceil(std::fabs(to_move.x)));
             } else {
 
 
@@ -104,7 +104,7 @@ void PhysicsBodyMovementSystem::update (Registry & registry, float deltatime) {
                             }
                         }
 
-                        
+
 
                         break;
 
@@ -130,8 +130,8 @@ void PhysicsBodyMovementSystem::update (Registry & registry, float deltatime) {
 
 
 
-        transform.position.x = transform.position.x + (to_move.x * deltatime);
-        transform.position.y = transform.position.y + (to_move.y * deltatime);
+        transform.position.x = transform.position.x + to_move.x;
+        transform.position.y = transform.position.y + to_move.y;
 
 
     }

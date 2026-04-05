@@ -134,7 +134,7 @@ float TileGrid::raycast (const Scene & scene, Vec2 start_wc, Vec2 step, int max_
 
 
     Vec2 ray_position = start_wc;
-    float distance = -1.0f;
+    float distance = 0.0f;
 
 
     auto colltype = [&] (Vec2 pos) -> CollisionType {
@@ -147,18 +147,12 @@ float TileGrid::raycast (const Scene & scene, Vec2 start_wc, Vec2 step, int max_
 
 
     if (colltype(ray_position) == CollisionType::COLL_FULL_SOLID) {
-      // -1.0f
-        return distance;
+        return -1.0f;
 
     }
 
-    int step_count = 0;
-    
     for (int i = 0; i < max_steps; i++) {
-
-
-        step_count++;
-
+    
         ray_position.x += step.x;
         ray_position.y += step.y;
 
