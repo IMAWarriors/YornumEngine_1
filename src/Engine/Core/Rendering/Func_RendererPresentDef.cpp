@@ -40,11 +40,21 @@ void Renderer::present (RenderTexture2D & canvas, GameEngine & game, float alpha
         float camera_zoom_value = get_camera_zoom();
         float time_value = GetTime();
 
-        SetShaderValue(window.painter, window.painter_camera_pos_loc, camera_pos_data, SHADER_UNIFORM_VEC2);
-        SetShaderValue(window.painter, window.painter_resolution_loc, resolution_data, SHADER_UNIFORM_VEC2);
-        SetShaderValue(window.painter, window.painter_viewport_loc, viewport_data, SHADER_UNIFORM_VEC4);
-        SetShaderValue(window.painter, window.painter_zoom_loc, &camera_zoom_value, SHADER_UNIFORM_FLOAT);
-        SetShaderValue(window.painter, window.painter_time_loc, &time_value, SHADER_UNIFORM_FLOAT);
+        if (window.painter_camera_pos_loc >= 0) {
+            SetShaderValue(window.painter, window.painter_camera_pos_loc, camera_pos_data, SHADER_UNIFORM_VEC2);
+        }
+        if (window.painter_resolution_loc >= 0) {
+            SetShaderValue(window.painter, window.painter_resolution_loc, resolution_data, SHADER_UNIFORM_VEC2);
+        }
+        if (window.painter_viewport_loc >= 0) {
+            SetShaderValue(window.painter, window.painter_viewport_loc, viewport_data, SHADER_UNIFORM_VEC4);
+        }
+        if (window.painter_zoom_loc >= 0) {
+            SetShaderValue(window.painter, window.painter_zoom_loc, &camera_zoom_value, SHADER_UNIFORM_FLOAT);
+        }
+        if (window.painter_time_loc >= 0) {
+            SetShaderValue(window.painter, window.painter_time_loc, &time_value, SHADER_UNIFORM_FLOAT);
+        }
 
         BeginShaderMode(window.painter);
         DrawTexturePro(

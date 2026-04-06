@@ -74,22 +74,21 @@ Window::Window (const char * title, bool edit) {
     // ******************* LOAD SHADERS HERE *****************************
 
     painter = LoadShader(0, "assets/shaders/painter.fs");
-    
+
     painter_camera_pos_loc = GetShaderLocation(painter, "u_camera_pos");
     painter_resolution_loc = GetShaderLocation(painter, "u_resolution");
     painter_viewport_loc = GetShaderLocation(painter, "u_viewport");
     painter_zoom_loc = GetShaderLocation(painter, "u_zoom");
     painter_time_loc = GetShaderLocation(painter, "time");
 
-    painter_ready = painter.id > 0
-        && painter_camera_pos_loc >= 0
-        && painter_resolution_loc >= 0
-        && painter_viewport_loc >= 0
-        && painter_zoom_loc >= 0
-        && painter_time_loc >= 0;
+    painter_ready = painter.id > 0;
 
     if (!painter_ready) {
         TraceLog(LOG_WARNING, "Painter shader unavailable; running without post-process shader.");
+    } else {
+        if (painter_camera_pos_loc < 0 || painter_resolution_loc < 0 || painter_viewport_loc < 0 || painter_zoom_loc < 0 || painter_time_loc < 0) {
+            TraceLog(LOG_WARNING, "Painter shader loaded with missing optional uniforms; effect will run with partial data.");
+        }
     }
 
     

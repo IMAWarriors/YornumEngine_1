@@ -7,55 +7,34 @@ out vec4 finalColor;
 
 uniform sampler2D texture0;
 uniform float time;
+uniform vec2 u_camera_pos;
+uniform vec2 u_resolution;
+uniform vec4 u_viewport;
+uniform float u_zoom;
 
-// ---------------- NOISE ----------------
-float hash(vec2 p)
+
+// ---------------- HASH ----------------
+float hash12(vec2 p)
 {
     p = fract(p * vec2(123.34, 456.21));
+    p += dot(p, p + 34.23);
     return fract(p.x * p.y);
 }
 
+// ---------------- SMOOTH NOISE (NO LOOP) ----------------
 float noise(vec2 p)
 {
     vec2 i = floor(p);
     vec2 f = fract(p);
 
-    float a = hash(i);
-    float b = hash(i + vec2(1.0, 0.0));
-    float c = hash(i + vec2(0.0, 1.0));
-    float d = hash(i + vec2(1.0, 1.0));
+    float a = hash12(i);
+    float b = hash12(i + vec2(1,0));
+    float c = hash12(i + vec2(0,1));
+    float d = hash12(i + vec2(1,1));
 
     vec2 u = f * f * (3.0 - 2.0 * f);
 
-    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
-}
-
-// ---------------- STRONGER FBM ----------------
-float fbm(vec2 p)
-{
-    float v = 0.0;
-    float a = 0.5;
-
-    for (int i = 0; i < 3; i++)
-    {
-        v += a * noise(p);
-        p *= 2.0;
-        a *= 0.5;
-    }
-
-    return v;
-}
-
-// ---------------- BRUSH LINES ----------------
-float brush(vec2 uv)
-{
-    // directional stroke pattern
-    float angle = 0.6; // fixed brush direction
-
-    vec2 dir = vec2(cos(angle), sin(angle));
-    float stroke = dot(uv, dir) * 10.0;
-
-    return sin(stroke + fbm(uv * 4.0) * 6.0 + time * 0.3);
+    return mix(mix(a,b,u.x), mix(c,d,u.x), u.y);
 }
 
 // ---------------- MAIN ----------------
@@ -63,37 +42,63 @@ void main()
 {
     vec4 base = texture(texture0, fragTexCoord) * fragColor;
 
-    vec2 uv = fragTexCoord;
+    // --- WORLD SPACE (UNCHANGED) ---
+    vec2 screenUv = (gl_FragCoord.xy - u_viewport.xy) / max(u_viewport.zw, vec2(1.0));
+    screenUv.y = 1.0 - screenUv.y;
 
-    // ---------------- INK FIELD ----------------
-    float n = fbm(uv * 6.0);
+    vec2 worldPx = (screenUv - 0.5) * (u_resolution / max(u_zoom, 0.001)) + u_camera_pos;
 
-    // MAKE IT VISIBLE (important change)
-    float ink = smoothstep(0.3, 0.7, n);
+    // --- BASE COORD ---
+    vec2 p = worldPx * 0.05;
 
-    // ---------------- BRUSH STRUCTURE ----------------
-    float stroke = brush(uv);
+    // --- CHEAP FLOW DISTORTION (NOT TRUE WARP) ---
+    float n1 = noise(p + vec2(0.0, time * 0.05));
+    float n2 = noise(p * 1.3 + vec2(5.2, -3.1));
 
-    stroke = smoothstep(-0.2, 0.2, stroke);
+    p += vec2(n1 - 0.5, n2 - 0.5) * 0.8;
 
-    // combine ink + stroke
-    float paint = mix(ink, stroke, 0.55);
+    // --- MULTI-DIRECTIONAL BRUSHES (BLENDED, NOT CELLS) ---
+    vec2 d1 = normalize(vec2(0.8, 0.6));
+    vec2 d2 = normalize(vec2(-0.6, 0.9));
+    vec2 d3 = normalize(vec2(-0.9, -0.4));
 
-    // ---------------- APPLY EFFECT ----------------
+    float s1 = sin(dot(p, d1) * 6.0);
+    float s2 = sin(dot(p, d2) * 5.0);
+    float s3 = sin(dot(p, d3) * 4.5);
+
+    // smooth brush shapes
+    s1 = smoothstep(-0.3, 0.5, s1);
+    s2 = smoothstep(-0.4, 0.4, s2);
+    s3 = smoothstep(-0.35, 0.45, s3);
+
+    // blend using noise (THIS removes patchwork)
+    float blend = noise(p * 0.7);
+
+    float strokes = mix(mix(s1, s2, blend), s3, blend * 0.5);
+
+    // --- INK DENSITY (WASH) ---
+    float wash = noise(p * 0.6 + vec2(2.0, 8.0));
+    wash = smoothstep(0.2, 0.9, wash);
+
+    // --- BREAKUP (VERY IMPORTANT) ---
+    float breakup = noise(p * 1.8);
+    strokes *= 0.6 + breakup * 0.6;
+
+    // --- FINAL MASK ---
+    float paintMask = mix(wash, strokes, 0.65);
+    paintMask = smoothstep(0.2, 0.95, paintMask);
+
     vec3 col = base.rgb;
 
-    // strong enough to SEE
-    col *= (1.0 - paint * 0.35);
+    // --- INK DARKEN ---
+    col *= 1.0 - paintMask * 0.28;
 
-    // ink tint (slightly warm/aged)
-    col = mix(col, col * vec3(0.92, 0.95, 1.02), paint);
+    // --- PAPER WARMTH ---
+    col = mix(col, col * vec3(1.04, 1.01, 0.94), paintMask * 0.22);
 
-    // paper wash (visible but not overpowering)
-    col += paint * 0.08;
+    // --- SUBTLE GRAIN ---
+    float grain = hash12(gl_FragCoord.xy + time * 8.0);
+    col += (grain - 0.5) * 0.015;
 
-    // subtle grain (helps “paint feel” a lot)
-    float grain = noise(uv * 200.0);
-    col += (grain - 0.5) * 0.05;
-
-    finalColor = vec4(col, base.a);
+    finalColor = vec4(clamp(col, 0.0, 1.0), base.a);
 }
