@@ -13,7 +13,7 @@ void Renderer::present (RenderTexture2D & canvas, GameEngine & game, float alpha
     /* START TAG */ BeginDrawing();
     // ==============================================================
 
-    BeginShaderMode(window.painter);
+    // BeginShaderMode(window.painter);
 
     ClearBackground(BLACK);
 
@@ -49,7 +49,7 @@ void Renderer::present (RenderTexture2D & canvas, GameEngine & game, float alpha
 
     rlImGuiEnd();
 
-    EndShaderMode();
+    // EndShaderMode();
 
 
     // ==============================================================

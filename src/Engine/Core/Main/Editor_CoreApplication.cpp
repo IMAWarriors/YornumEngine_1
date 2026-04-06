@@ -45,10 +45,6 @@ void CoreApplication::RunCoreEngineMainEditor (GameEngine & game) {
 
         // STEP 0:          SHADER HANDLING???
 
-        float time = GetTime();
-        SetShaderValue(window.painter, GetShaderLocation(window.painter, "time"), &time, SHADER_UNIFORM_FLOAT);
-
-
 
         // STEP 1:          LOGIC  | Update logic and game frame state
         // ==========================================
