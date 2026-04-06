@@ -6,21 +6,15 @@ in vec4 fragColor;
 out vec4 finalColor;
 
 uniform sampler2D texture0;
-
-uniform vec2 u_camera_pos;
-uniform vec2 u_resolution;
-uniform float u_zoom;
 uniform float time;
 
-// ---------------- HASH ----------------
+// ---------------- NOISE ----------------
 float hash(vec2 p)
 {
     p = fract(p * vec2(123.34, 456.21));
-    p += dot(p, p + 34.345);
     return fract(p.x * p.y);
 }
 
-// ---------------- NOISE ----------------
 float noise(vec2 p)
 {
     vec2 i = floor(p);
@@ -36,13 +30,12 @@ float noise(vec2 p)
     return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
 }
 
-// ---------------- FBM ----------------
+// ---------------- STRONGER FBM ----------------
 float fbm(vec2 p)
 {
     float v = 0.0;
     float a = 0.5;
 
-     // Keep octave count low: this shader runs on every pixel of the frame.
     for (int i = 0; i < 3; i++)
     {
         v += a * noise(p);
@@ -53,20 +46,16 @@ float fbm(vec2 p)
     return v;
 }
 
-// ---------------- DOMAIN WARP ----------------
-vec2 warp(vec2 p)
+// ---------------- BRUSH LINES ----------------
+float brush(vec2 uv)
 {
-    vec2 q = vec2(
-        fbm(p + vec2(0.0, 0.0)),
-        fbm(p + vec2(5.2, 1.3))
-    );
+    // directional stroke pattern
+    float angle = 0.6; // fixed brush direction
 
-    vec2 r = vec2(
-        fbm(p + 2.6 * q + vec2(1.7, 9.2)),
-        fbm(p + 2.6 * q + vec2(8.3, 2.8))
-    );
+    vec2 dir = vec2(cos(angle), sin(angle));
+    float stroke = dot(uv, dir) * 10.0;
 
-    return p + r * 1.9;
+    return sin(stroke + fbm(uv * 4.0) * 6.0 + time * 0.3);
 }
 
 // ---------------- MAIN ----------------
@@ -74,48 +63,37 @@ void main()
 {
     vec4 base = texture(texture0, fragTexCoord) * fragColor;
 
-    // Compute local UV in the destination viewport so letterboxing/fullscreen stays aligned.
-    vec2 local_uv = (gl_FragCoord.xy - u_viewport.xy) / max(u_viewport.zw, vec2(1.0));
-    local_uv = clamp(local_uv, 0.0, 1.0);
-    vec2 screen = local_uv * u_resolution;
-    vec2 world = (screen - (u_resolution * 0.5)) / max(u_zoom, 0.001) + u_camera_pos;
+    vec2 uv = fragTexCoord;
 
-    // ---------------- PAINTER EFFECT ----------------
+    // ---------------- INK FIELD ----------------
+    float n = fbm(uv * 6.0);
 
-    // Scale controls brush size
-    vec2 p = world * 0.0065;
+    // MAKE IT VISIBLE (important change)
+    float ink = smoothstep(0.3, 0.7, n);
 
-    // Flowing warp (brush strokes)
-    vec2 flow = warp(p * 1.5);
+    // ---------------- BRUSH STRUCTURE ----------------
+    float stroke = brush(uv);
 
-    float ink = fbm(flow);
+    stroke = smoothstep(-0.2, 0.2, stroke);
 
-    // Directional strokes with subtle movement.
-    float stroke = sin((flow.x * 2.4) + (flow.y * 0.7) + ink * 3.5 + time * 0.12);
+    // combine ink + stroke
+    float paint = mix(ink, stroke, 0.55);
 
-    // Blend structure
-    float density = mix(ink, stroke * 0.5 + 0.5, 0.35);
-
-    // Ink pooling / banding
-    density = floor(density * 4.0) / 4.0;
-
+    // ---------------- APPLY EFFECT ----------------
     vec3 col = base.rgb;
 
-    // Darken like ink wash
-    col *= (1.0 - density * 0.6);
+    // strong enough to SEE
+    col *= (1.0 - paint * 0.35);
 
-    // Paper tone
-    vec3 paper = vec3(0.96, 0.93, 0.85);
-    col = mix(col, paper, 0.3);
+    // ink tint (slightly warm/aged)
+    col = mix(col, col * vec3(0.92, 0.95, 1.02), paint);
 
-    // Ink color shift
-    col.r += density * 0.025;
-    col.g += density * 0.012;
-    col.b -= density * 0.035;
+    // paper wash (visible but not overpowering)
+    col += paint * 0.08;
 
-    // Subtle paper grain
-    float grain = noise(world * 0.2 + vec2(time * 0.05, -time * 0.03));
-    col *= 0.95 + grain * 0.05;
+    // subtle grain (helps “paint feel” a lot)
+    float grain = noise(uv * 200.0);
+    col += (grain - 0.5) * 0.05;
 
     finalColor = vec4(col, base.a);
 }

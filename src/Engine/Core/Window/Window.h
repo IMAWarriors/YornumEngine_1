@@ -39,6 +39,7 @@ class Window {
         int painter_viewport_loc = -1;
         int painter_zoom_loc = -1;
         int painter_time_loc = -1;
+        bool painter_ready = false;
 
 
     // Functions
