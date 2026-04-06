@@ -12,8 +12,6 @@ void Renderer::present (RenderTexture2D & canvas, GameEngine & game, float alpha
     /* START TAG */ BeginDrawing();
     // ==============================================================
 
-    BeginShaderMode(window.painter);
-
     ClearBackground(BLACK);
 
     float scaleX = (float)GetScreenWidth()  / config::GAME_WORLD_WIDTH;
@@ -30,6 +28,24 @@ void Renderer::present (RenderTexture2D & canvas, GameEngine & game, float alpha
     float height = config::GAME_WORLD_HEIGHT * scale;
     float offsetX = (GetScreenWidth()  - width)  / 2.0f;
     float offsetY = (GetScreenHeight() - height) / 2.0f;
+
+    Vec2 camera_pos = get_camera_position();
+    const float camera_pos_data[2] = {camera_pos.x, camera_pos.y};
+    const float resolution_data[2] = {
+        (float)config::GAME_WORLD_WIDTH,
+        (float)config::GAME_WORLD_HEIGHT
+    };
+    const float viewport_data[4] = {offsetX, offsetY, width, height};
+    float camera_zoom_value = get_camera_zoom();
+    float time_value = GetTime();
+
+    SetShaderValue(window.painter, window.painter_camera_pos_loc, camera_pos_data, SHADER_UNIFORM_VEC2);
+    SetShaderValue(window.painter, window.painter_resolution_loc, resolution_data, SHADER_UNIFORM_VEC2);
+    SetShaderValue(window.painter, window.painter_viewport_loc, viewport_data, SHADER_UNIFORM_VEC4);
+    SetShaderValue(window.painter, window.painter_zoom_loc, &camera_zoom_value, SHADER_UNIFORM_FLOAT);
+    SetShaderValue(window.painter, window.painter_time_loc, &time_value, SHADER_UNIFORM_FLOAT);
+
+    BeginShaderMode(window.painter);
 
     // Draw onto texture here:
     DrawTexturePro(

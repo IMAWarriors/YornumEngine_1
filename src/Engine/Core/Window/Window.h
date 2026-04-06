@@ -34,6 +34,11 @@ class Window {
         // SHADERS
 
         Shader painter;
+        int painter_camera_pos_loc = -1;
+        int painter_resolution_loc = -1;
+        int painter_viewport_loc = -1;
+        int painter_zoom_loc = -1;
+        int painter_time_loc = -1;
 
 
     // Functions

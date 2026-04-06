@@ -74,6 +74,11 @@ Window::Window (const char * title, bool edit) {
     // ******************* LOAD SHADERS HERE *****************************
 
     painter = LoadShader(0, "assets/shaders/painter.fs");
+    painter_camera_pos_loc = GetShaderLocation(painter, "u_camera_pos");
+    painter_resolution_loc = GetShaderLocation(painter, "u_resolution");
+    painter_viewport_loc = GetShaderLocation(painter, "u_viewport");
+    painter_zoom_loc = GetShaderLocation(painter, "u_zoom");
+    painter_time_loc = GetShaderLocation(painter, "time");
 
 
     // *******************************************************************
