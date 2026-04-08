@@ -43,52 +43,55 @@ void CoreApplication::RunCoreEngineMainEditor (GameEngine & game) {
 
         // STEP 0:          SHADER HANDLING???
 
+        bool next_frame = (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER));
 
-        // STEP 1:          LOGIC  | Update logic and game frame state
-        // ==========================================
-    
+        if (!G_DEBUGGER.MODE_ONEFRAME || (G_DEBUGGER.MODE_ONEFRAME && next_frame)) {
+
+            // STEP 1:          LOGIC  | Update logic and game frame state
+            // ==========================================
         
+            
 
-        frame_cps = (float)(GetFPS());
-        frame_deltatime = GetFrameTime();
-        frame_deltatime = std::min(frame_deltatime, config::MAX_FRAME_LAG);
+            frame_cps = (float)(GetFPS());
+            frame_deltatime = GetFrameTime();
+            frame_deltatime = std::min(frame_deltatime, config::MAX_FRAME_LAG);
 
-        accumulator += frame_deltatime; // Store how much time passed last frame
-        window.ListenFullscreenToggle();
-        
-        //  Input Logic, VARIABLE TIME
-        game.TickPhase(Phases::INPUT, frame_deltatime);
+            accumulator += frame_deltatime; // Store how much time passed last frame
+            window.ListenFullscreenToggle();
+            
+            //  Input Logic, VARIABLE TIME
+            game.TickPhase(Phases::INPUT, frame_deltatime);
 
-        //  Simulaiton Logic, FIXED TIME
+            //  Simulaiton Logic, FIXED TIME
+            int simulation_ticks = 0;
 
-        int simulation_ticks = 0;
-        while (accumulator >= config::FIXED_DELTATIME) {
-            // Normal Simulation Tick
-            game.TickPhase(Phases::SIMULATION, config::FIXED_DELTATIME);
-            accumulator -= config::FIXED_DELTATIME;
-            simulation_ticks++;
+            while (accumulator >= config::FIXED_DELTATIME) {
+                // Normal Simulation Tick
+                game.TickPhase(Phases::SIMULATION, config::FIXED_DELTATIME);
+                accumulator -= config::FIXED_DELTATIME;
+                simulation_ticks++;
+            }
+
+            frame_simulation_ticks = simulation_ticks;
+            alpha = accumulator / config::FIXED_DELTATIME;
+            frame.update(frame_deltatime, accumulator, simulation_ticks, frame_cps);
+
+            // STEP 2:          TEXTURE | Draw to texture cycle
+            // ===========================================
+
+            renderer.begin_texture_frame(canvas);
+
+            // BeginShaderMode(window.painter);
+
+            //  Render Logic, VARIABLE TIME
+            game.TickPhase(Phases::RENDERING, alpha);
+
+            // EndShaderMode();
+
+            renderer.end_texture_frame();
+            renderer.present(canvas, game, alpha, window);   // Begin Draw -> Draw Pro texture -> End Draw
+
         }
-
-        frame_simulation_ticks = simulation_ticks;
-        alpha = accumulator / config::FIXED_DELTATIME;
-        frame.update(frame_deltatime, accumulator, simulation_ticks, frame_cps);
-       
-        // STEP 2:          TEXTURE | Draw to texture cycle
-        // ===========================================
-
-        renderer.begin_texture_frame(canvas);
-
-        // BeginShaderMode(window.painter);
-
-        //  Render Logic, VARIABLE TIME
-        game.TickPhase(Phases::RENDERING, alpha);
-
-        // EndShaderMode();
-
-        renderer.end_texture_frame();
-        renderer.present(canvas, game, alpha, window);   // Begin Draw -> Draw Pro texture -> End Draw
-
-        
 
     }
 

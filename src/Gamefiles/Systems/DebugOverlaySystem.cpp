@@ -4,6 +4,10 @@
 
 #include "../World/Overhead/Gwconst.h"
 
+#include <sstream>
+#include <iomanip>
+
+
 
 void DebugOverlaySystem::update (Registry & registry, float deltatime)  {
 
@@ -19,14 +23,42 @@ void DebugOverlaySystem::update (Registry & registry, float deltatime)  {
     }
     */
 
+    
+    auto to_string_dp = [&](float value, int dp) {
+        std::ostringstream out;
+        out << std::fixed << std::setprecision(dp) << value;
+        return out.str();
+    };
+
+
+    
+
 
     // DRAW FRAME STATS
 
     for (Entity entity : registry.view<tag::EngineManager>()) {
+
         const auto & frame = registry.get_component<comp::FramerateTracker>(entity);
         const auto & mouse = registry.get_component<comp::MouseTracker>(entity);
 
-        G_DEBUGGER.push({std::to_string((int)frame.frames_per_second) + " FPS", {15,15}, 18, WHITE});
+        if (IsKeyPressed(KEY_RIGHT_SHIFT)) {
+            // Right Shift pressed
+            G_DEBUGGER.MODE_ONEFRAME = !G_DEBUGGER.MODE_ONEFRAME;
+        }
+
+
+
+        if (G_DEBUGGER.MODE_ONEFRAME == true) {
+
+            G_DEBUGGER.push({"ONE FRAME | " + std::to_string((int)frame.frames_per_second) + " FPS", {15,15}, 18, WHITE});
+            
+        } else {
+
+            G_DEBUGGER.push({std::to_string((int)frame.frames_per_second) + " FPS", {15,15}, 18, WHITE});
+            
+        }
+
+
         G_DEBUGGER.push({std::to_string((int)mouse.screen_mouse_position.x) + " , " + std::to_string((int)mouse.screen_mouse_position.y), {15,35}, 18, WHITE});
 
         G_DEBUGGER.push({"World", {15,60}, 18, WHITE});
@@ -47,10 +79,19 @@ void DebugOverlaySystem::update (Registry & registry, float deltatime)  {
 
         const auto & player_body = registry.get_component<comp::PhysicsBody>(entity);
 
+
+
+        std::string posx, posy, velx, vely;
+
+        posx = to_string_dp(player_pos.position.x, 2);
+        posy = to_string_dp(player_pos.position.y, 2);
+        velx = to_string_dp(player_vel.magnitude.x, 2);
+        vely = to_string_dp(player_vel.magnitude.y, 2);
+
         G_DEBUGGER.push({"Player", {1000,15}, 18, WHITE});
         G_DEBUGGER.push({"[ " + std::to_string(player_input.horz_axis) + " , " + std::to_string(player_input.vert_axis) + " ] ", {1000,35}, 18, WHITE});
-        G_DEBUGGER.push({"( " + std::to_string((int)player_pos.position.x) + " , " + std::to_string((int)player_pos.position.y) + " ) ", {1000,55}, 18, WHITE});
-        G_DEBUGGER.push({"< " + std::to_string((int)player_vel.magnitude.x) + " , " + std::to_string((int)player_vel.magnitude.y) + " > ", {1000,75}, 18, WHITE});
+        G_DEBUGGER.push({"( " + posx + " , " + posy + " ) ", {1000,55}, 18, WHITE});
+        G_DEBUGGER.push({"< " + velx + " , " + vely + " > ", {1000,75}, 18, WHITE});
         if (player_body.inColl) {
             G_DEBUGGER.push({"Body Collision: INSIDE", {1000,150}, 18, RED});
         } else {

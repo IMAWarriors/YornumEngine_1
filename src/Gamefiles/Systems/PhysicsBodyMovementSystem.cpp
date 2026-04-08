@@ -136,7 +136,7 @@ void PhysicsBodyMovementSystem::update (Registry & registry, float deltatime) {
 
 
                 while (skin_colliding) {
-                    new_position.x -= scene.get_tilesize();
+                    new_position.x -= 1.0f; //scene.get_tilesize();
                     skin_colliding = inside_collision(scene, {new_position.x, transform.position.y}, body, true);
                 }
 
@@ -148,7 +148,7 @@ void PhysicsBodyMovementSystem::update (Registry & registry, float deltatime) {
                 skin_colliding = inside_collision(scene, {new_position.x, transform.position.y}, body, true);
 
                 while (skin_colliding) {
-                    new_position.x += scene.get_tilesize();
+                    new_position.x += 1.0f;  // scene.get_tilesize();
                     skin_colliding = inside_collision(scene, {new_position.x, transform.position.y}, body, true);
                 }
             }
@@ -175,7 +175,7 @@ void PhysicsBodyMovementSystem::update (Registry & registry, float deltatime) {
                 skin_colliding = inside_collision(scene, {transform.position.x, new_position.y}, body, true);
 
                 while (skin_colliding) {
-                    new_position.y -= scene.get_tilesize();
+                    new_position.y -= 1.0f; // scene.get_tilesize();
                     skin_colliding = inside_collision(scene, {transform.position.x, new_position.y}, body, true);
                 }
 
@@ -186,7 +186,7 @@ void PhysicsBodyMovementSystem::update (Registry & registry, float deltatime) {
                 skin_colliding = inside_collision(scene, {transform.position.x, new_position.y}, body, true);
 
                 while (skin_colliding) {
-                    new_position.y += scene.get_tilesize();
+                    new_position.y += 1.0f; // scene.get_tilesize();
                     skin_colliding = inside_collision(scene, {transform.position.x, new_position.y}, body, true);
                 }
 
@@ -195,7 +195,6 @@ void PhysicsBodyMovementSystem::update (Registry & registry, float deltatime) {
 
        
         transform.position.x = new_position.x;
-
         transform.position.y = new_position.y;
 
 

@@ -78,7 +78,11 @@ class Scene {
 
             bool success = false;
 
-            _assets.UnloadAllTilesetTextureAssets();
+            // NOTE:
+            // Do not unload tileset textures before we know the new scene loaded successfully.
+            // A failed load can leave existing tile layers alive for this frame, and unloading
+            // their textures first turns those atlas pointers into invalid references.
+            // _assets.UnloadAllTilesetTextureAssets();
 
             success = serial::LoadSceneFromFile(*this, _assets, _path);
 
@@ -111,7 +115,9 @@ class Scene {
              
             _path = std::string(DEFAULT_PATH_SCENEFILES + _path + ".scene");
 
-            _assets.UnloadAllTilesetTextureAssets();
+            // NOTE:
+            // Keep currently loaded tileset textures alive unless scene load succeeds.
+            // _assets.UnloadAllTilesetTextureAssets();
 
             success = serial::LoadSceneFromFile(*this, _assets, _path);
 
