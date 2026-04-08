@@ -21,6 +21,7 @@ struct PhysicsBody {
     // State?
     bool inColl;
     bool innerSkinInColl;
+    bool onSolidGround;
 
 
 };
