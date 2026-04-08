@@ -18,6 +18,9 @@ struct PhysicsBody {
     bool render_hitbox;
     
 
+    // State?
+    bool inColl;
+    bool innerSkinInColl;
 
 
 };

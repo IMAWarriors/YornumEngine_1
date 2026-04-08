@@ -9,6 +9,8 @@
 #include "../../Gamefiles/World/Tile.h"
 #include "../../Gamefiles/World/Overhead/Gwconst.h"
 
+#include "../../Tooling/Debug/DebugManager.h"
+
 
 
 
@@ -223,6 +225,24 @@ void RenderSystem::update (Registry & registry, float deltatime) {
                                 screen_w,
                                 screen_h}
                             );
+
+                            
+                            if (G_DEBUGGER.show == true) {
+                                if (layer.get_tile_coll(scene, world_column, world_row) == CollisionType::COLL_FULL_SOLID) {
+                                    Rectangle thisTileDestination = {
+                                        screen_x,
+                                        screen_y,
+                                        (float)gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS * camera_zoom,
+                                        (float)gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS * camera_zoom
+                                    };
+                                    DrawRectangleLinesEx(thisTileDestination, 1.0f, RED);
+                                }
+
+                            }
+
+
+
+
                     }
 
 
@@ -320,8 +340,21 @@ void RenderSystem::update (Registry & registry, float deltatime) {
 
 
             if (body.render_hitbox) {
-                Color col_body = Color({255, 0, 0, 180});
-                Color col_skin = Color({20, 30, 255, 210});
+                Color col_body;
+                if (body.inColl) {
+                    col_body = Color({0, 255, 255, 110});
+                } else {
+                    col_body = Color({0, 255, 0, 110});
+                }
+
+                Color col_skin;
+                if (body.innerSkinInColl) {
+                    col_skin = Color({255, 0, 255, 180});
+                } else {
+                    col_skin = Color({255, 0, 0, 180});
+                }
+
+                
 
                 Vec2 top_left;
                 Vec2 bottom_right;
@@ -332,10 +365,10 @@ void RenderSystem::update (Registry & registry, float deltatime) {
                 bottom_right.y = transform.position.y + (body.size.y / 2.0f);
 
                 renderer.rdraw_rect(
-                    top_left.x - (body.skin / 2.0f), 
-                    top_left.y - (body.skin / 2.0f), 
-                    body.size.x + body.skin, 
-                    body.size.y + body.skin, 
+                    top_left.x + (body.skin), 
+                    top_left.y + (body.skin), 
+                    body.size.x - (body.skin*2.0f), 
+                    body.size.y - (body.skin*2.0f), 
                     col_skin
                 );
 

@@ -46,7 +46,6 @@ class InputManager {
 
         int get_move_axis ();
 
-        int get_vert_axis ();
 
         bool get_jump_key ();
 

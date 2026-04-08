@@ -36,8 +36,9 @@ class TileGrid {
         int translate_world_y_row (float world_y) const;
 
 
+        CollisionType get_tile_coll (Scene & scene, int col, int row) const;
 
-        float raycast (const Scene & scene, Vec2 start_wc, Vec2 step, int max_steps);
+        CollisionType get_tile_coll_pos (Scene & scene, Vec2 position) const;
 
 
 

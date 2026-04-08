@@ -12,7 +12,7 @@
 
 void CoreApplication::RunCoreEngineMainEditor (GameEngine & game) {
 
-    game.SetEditorMode();
+    game.SetGameFlag(Flags::EDITOR, true);
 
     // Initialize window and program
     Window window("Scene Editor & Manager", true);
@@ -24,13 +24,11 @@ void CoreApplication::RunCoreEngineMainEditor (GameEngine & game) {
     Renderer            renderer;         
     RenderTexture2D     canvas;           // Intialize CANVAS to draw game onto
     InputManager        inputManager;
-    DebugStats          debugInfo;
+    FrameStats          frame;
 
     renderer.init_canvas(canvas);
-    game.Initialize(renderer, inputManager, debugInfo, window);
+    game.Initialize(renderer, inputManager, frame, window);
     
-
-
     float accumulator = 0.0f;   // Time bucket
     float frame_deltatime = 0.0f;
     float frame_cps = 0.0f;
@@ -73,7 +71,7 @@ void CoreApplication::RunCoreEngineMainEditor (GameEngine & game) {
 
         frame_simulation_ticks = simulation_ticks;
         alpha = accumulator / config::FIXED_DELTATIME;
-        debugInfo.set_frame_stats(frame_deltatime, accumulator, simulation_ticks, frame_cps);
+        frame.update(frame_deltatime, accumulator, simulation_ticks, frame_cps);
        
         // STEP 2:          TEXTURE | Draw to texture cycle
         // ===========================================

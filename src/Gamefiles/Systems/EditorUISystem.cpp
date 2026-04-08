@@ -138,16 +138,14 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 30.0f * fullscreenScale.y
             );
 
-            ImGui::SetNextWindowPos(windowPos, ImGuiCond_Always);
-            ImGui::SetNextWindowSize(windowSize, ImGuiCond_Always);
+            ImGui::SetNextWindowPos(windowPos, ImGuiCond_Once);
+            ImGui::SetNextWindowSize(windowSize, ImGuiCond_Once);
 
             ImGui::PushStyleColor(ImGuiCol_TitleBg, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.2f, 0.2f, 0.7f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_TitleBgCollapsed, ImVec4(0.1f, 0.1f, 0.3f, 1.0f));
 
-            if (ImGui::Begin("Layer Manager", nullptr,
-                ImGuiWindowFlags_NoResize |
-                ImGuiWindowFlags_NoCollapse))
+            if (ImGui::Begin("Layer Manager", nullptr ))
             {
                 scene.uiCapturesMouse |= ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
 

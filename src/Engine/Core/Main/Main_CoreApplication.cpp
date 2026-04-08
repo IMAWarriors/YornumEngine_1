@@ -18,10 +18,10 @@ void CoreApplication::RunCoreEngine(GameEngine & game, const std::string & scene
     Renderer            renderer;         
     RenderTexture2D     canvas;           // Intialize CANVAS to draw game onto
     InputManager        inputManager;
-    DebugStats          debugInfo;
+    FrameStats          frame;
 
     renderer.init_canvas(canvas);
-    game.Initialize(renderer, inputManager, debugInfo, window);
+    game.Initialize(renderer, inputManager, frame, window);
 
     if (scenename != "NOFILE.NONE") {
         game.LoadScene(scenename);
@@ -84,7 +84,7 @@ void CoreApplication::RunCoreEngine(GameEngine & game, const std::string & scene
 
         frame_simulation_ticks = simulation_ticks;
         alpha = accumulator / config::FIXED_DELTATIME;
-        debugInfo.set_frame_stats(frame_deltatime, accumulator, simulation_ticks, frame_cps);
+        frame.update(frame_deltatime, accumulator, simulation_ticks, frame_cps);
        
         // STEP 2:          TEXTURE | Draw to texture cycle
         // ===========================================

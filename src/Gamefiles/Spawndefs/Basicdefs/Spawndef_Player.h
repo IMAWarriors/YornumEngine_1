@@ -27,7 +27,7 @@ namespace spawndef {
         bool render_hitbox;
         */
 
-        registry.apply_component<comp::PhysicsBody>     (entity, {{32.0f, 64.0f}, 2.0f, true, true, 20.0f, true});
+        registry.apply_component<comp::PhysicsBody>     (entity, {{32.0f, 64.0f}, 0.25f, true, true, 3400.0f, true});
 
         // registry.apply_component<comp::CircleRenderer>  (entity, {50.0f , { 255, 0 , 0 , 255 } });
         registry.apply_component<comp::InputState>      (entity, {0, false});

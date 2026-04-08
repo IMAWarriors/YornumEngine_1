@@ -14,18 +14,18 @@
 // Get Specific Components
 #include "../Components/Components.h"
 
-#include "../../Engine/Core/Overhead/DebugStats.h"
+#include "../../Engine/Core/Overhead/FrameStats.h"
 
 
 class EngineManagerSystem : public System {
 
     private:
 
-        DebugStats & debugInfo;
+        FrameStats & frame;
 
     public: 
 
-        EngineManagerSystem (DebugStats & _debug) : debugInfo(_debug) {}
+        EngineManagerSystem (FrameStats & _frame) : frame(_frame) {}
     
         void update (Registry & registry, float deltatime) override;
 

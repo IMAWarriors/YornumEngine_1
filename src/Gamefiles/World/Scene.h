@@ -269,6 +269,22 @@ class Scene {
         }
 
 
+        int translate_world_x_col (float world_x) const {
+            return (int)(std::floor(world_x / gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS));
+        }
+
+        int translate_world_y_row (float world_y) const {
+            return (int)(std::floor(world_y / gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS));
+        }
+
+        Vec2 get_tile_pos_UL (int col, int row) const {
+            Vec2 position = {(float)(col * gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS), (float)(row * gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS)};
+            return position;
+        }
+
+        int get_tilesize () const {
+            return gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS;
+        }
 
 
 

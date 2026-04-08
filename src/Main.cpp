@@ -50,9 +50,9 @@ int main (int argc, char * argv[]) {
     LaunchRequest launch;
 
 
-    auto same = [](char* str1, char* str2) -> bool {
-        char * ptr1 = str1;
-        char * ptr2 = str2;
+    auto same = [](const char* str1, const char* str2) -> bool {
+        const char * ptr1 = str1;
+        const char * ptr2 = str2;
 
         while (true) {
             
@@ -110,7 +110,7 @@ int main (int argc, char * argv[]) {
     GameEngine game;
 
     if (launch.FLAG_DEBUG) {
-        game.SetGameFlag(0, true);
+        game.SetGameFlag(Flags::DEBUG, true);
     }
 
     if (launch.FLAG_INTO_SCENE) {

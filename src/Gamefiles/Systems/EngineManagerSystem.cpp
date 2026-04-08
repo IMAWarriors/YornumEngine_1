@@ -44,10 +44,10 @@ void EngineManagerSystem::update (Registry & registry, float deltatime) {
 
         // frames_per_second
 
-        frames_per_second = debugInfo.frames_per_second;
-        frame_deltatime = debugInfo.frame_deltatime;
-        accumulator = debugInfo.frame_accumulator;
-        frame_simulation_ticks = debugInfo.frame_simulation_ticks;
+        frames_per_second = frame.fps;
+        frame_deltatime = frame.deltatime;
+        accumulator = frame.accumulator;
+        frame_simulation_ticks = frame.simulation_ticks;
         
         // Aniamation frame
         

@@ -42,9 +42,8 @@ void InputManager::set_keybinds (int _r, int _l, int _u, int _d, int _act, int _
 
 int InputManager::get_move_axis () { return ( IsKeyDown(BIND_RDIR) - IsKeyDown(BIND_LDIR) ); }
 
-int InputManager::get_vert_axis () { return ( IsKeyDown(BIND_DDIR) - IsKeyDown(BIND_UDIR) ); }
 
-bool InputManager::get_jump_key () { return (IsKeyDown(BIND_UDIR)); }
+bool InputManager::get_jump_key () { return (IsKeyPressed(BIND_UDIR)); }
 
 
 

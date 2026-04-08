@@ -13,7 +13,8 @@
 #include "../Components/Components.h"
 
 #include "../../Engine/Core/Rendering/Renderer.h"
-#include "../../Engine/Core/Overhead/DebugStats.h"
+#include "../../Engine/Core/Overhead/FrameStats.h"
+#include "../../Tooling/Debug/DebugManager.h"
 
 #include <string>
 
@@ -22,20 +23,16 @@ class DebugOverlaySystem : public System {
 
     private:
 
-
         Renderer & renderer;
-
-        DebugStats & debug_info;
+        FrameStats & frame;
 
     public: 
 
-        DebugOverlaySystem (Renderer & _renderer, DebugStats & debug) : renderer(_renderer), debug_info(debug) {}
+        DebugOverlaySystem (Renderer & _renderer, FrameStats & _frame) : renderer(_renderer), frame(_frame) {}
         
-    
         void update (Registry & registry, float deltatime) override;
 
-    
-
+        //void draw_text (const std::string & text, Vec2 position, int size, ColorRGBA color);
 
 };
 
