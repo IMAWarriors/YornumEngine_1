@@ -149,12 +149,19 @@ bool serial::LoadSceneFromFile(Scene & scene, AssetManager & assets, const std::
     file.read((char*)layer_header, sizeof(layer_header));
 
     int layer_count = layer_header[0];
+    if (!file.good() || layer_count < 0) {
+        return false;
+    }
 
     
 
     // ================= ATLAS COUNT =================
     int atlas_count;
     file.read((char*)&atlas_count, sizeof(int));
+
+    if (!file.good() || atlas_count < 0) {
+        return false;
+    }
 
     scene.loaded_atlases.clear();
 
@@ -164,11 +171,21 @@ bool serial::LoadSceneFromFile(Scene & scene, AssetManager & assets, const std::
         // name
         int len;
         file.read((char*)&len, sizeof(int));
+        if (!file.good() || len < 0) {
+            return false;
+        }
+
+
         std::string name(len, '\0');
         file.read(name.data(), len);
 
         // path
         file.read((char*)&len, sizeof(int));
+        if (!file.good() || len < 0) {
+            return false;
+        }
+
+
         std::string path(len, '\0');
         file.read(path.data(), len);
 
@@ -182,12 +199,18 @@ bool serial::LoadSceneFromFile(Scene & scene, AssetManager & assets, const std::
         file.read((char*)&tilesize, sizeof(int));
         file.read((char*)&tpr, sizeof(int));
         file.read((char*)&tpc, sizeof(int));
+        if (!file.good() || tilesize <= 0 || tpr <= 0 || tpc <= 0) {
+            return false;
+        }
 
         scene.import_new_tileset(assets, name, path, tilesize, tpr, tpc);
 
         // tile data
         int tiledata_count;
         file.read((char*)&tiledata_count, sizeof(int));
+        if (!file.good() || tiledata_count < 0) {
+            return false;
+        }
 
         scene.loaded_atlases[i].tile_data.resize(tiledata_count);
 
@@ -204,6 +227,9 @@ bool serial::LoadSceneFromFile(Scene & scene, AssetManager & assets, const std::
             file.read((char*)&afc, sizeof(int));
             file.read((char*)&afs, sizeof(float));
             file.read((char*)&col, sizeof(uint8_t));
+            if (!file.good()) {
+                return false;
+            }
 
             TileData & td = scene.loaded_atlases[i].tile_data[j];
 
@@ -227,13 +253,33 @@ bool serial::LoadSceneFromFile(Scene & scene, AssetManager & assets, const std::
 
         std::vector<int> atlas_idxs;
         file.read((char*)&count, sizeof(int));
+        if (!file.good() || count < 0) {
+            return false;
+        }
+
         atlas_idxs.resize(count);
         file.read((char*)atlas_idxs.data(), count * sizeof(int));
+        if (!file.good()) {
+            return false;
+        }
 
         std::vector<int> tile_idxs;
         file.read((char*)&count, sizeof(int));
+        if (!file.good() || count < 0) {
+            return false;
+        }
+
         tile_idxs.resize(count);
         file.read((char*)tile_idxs.data(), count * sizeof(int));
+        if (!file.good()) {
+            return false;
+        }
+
+        const int expected_tiles = gwconst::WORLD_TILEGRID_WIDTH * gwconst::WORLD_TILEGRID_HEIGHT;
+        if ((int)atlas_idxs.size() != expected_tiles || (int)tile_idxs.size() != expected_tiles) {
+            return false;
+        }
+
 
         int idx = 0;
 
@@ -243,7 +289,16 @@ bool serial::LoadSceneFromFile(Scene & scene, AssetManager & assets, const std::
             for (int c = gwconst::WORLD_TILEGRID_X_BOUND_MIN_TILE;
                  c <= gwconst::WORLD_TILEGRID_X_BOUND_MAX_TILE; c++) {
 
-                layer.get_tile(c, r) = {atlas_idxs[idx], tile_idxs[idx]};
+                const int atlas_idx = atlas_idxs[idx];
+                const int tile_idx = tile_idxs[idx];
+
+                if (atlas_idx < 0 || tile_idx < 0) {
+                    layer.get_tile(c, r) = {-1, -1};
+                } else if (atlas_idx >= (int)scene.loaded_atlases.size() || tile_idx >= (int)scene.loaded_atlases[atlas_idx].tile_data.size()) {
+                    layer.get_tile(c, r) = {-1, -1};
+                } else {
+                    layer.get_tile(c, r) = {atlas_idx, tile_idx};
+                }
 
                 idx++;
             }

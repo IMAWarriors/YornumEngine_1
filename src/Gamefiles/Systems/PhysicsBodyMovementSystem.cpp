@@ -23,7 +23,7 @@ static bool inside_collision (Scene & scene, Vec2 position, comp::PhysicsBody bo
     bool coll_skin = false;
     bool coll_body = false;
     
-    for (TileGrid layer : scene.tile_layers) {
+    for (const TileGrid & layer : scene.tile_layers) {
         skin_UL = {    (position.x - half_w) + skin, (position.y - half_h) + skin};
         skin_UR = {    (position.x + half_w) - skin, (position.y - half_h) + skin};
         skin_BL = {    (position.x - half_w) + skin, (position.y + half_h) - skin};

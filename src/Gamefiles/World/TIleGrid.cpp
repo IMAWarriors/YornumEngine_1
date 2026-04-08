@@ -135,11 +135,23 @@ int TileGrid::translate_world_y_row (float world_y) const {
 
 CollisionType TileGrid::get_tile_coll (Scene & scene, int col, int row) const {
 
-    CollisionType tile_colltype;
-    Tile tile_hit = get_tile(col, row);
+    const Tile tile_hit = get_tile(col, row);
 
-    tile_colltype = (tile_hit.atlas_idx<0||tile_hit.tile_idx<0) ? CollisionType::COLL_EMPTY : scene.loaded_atlases[tile_hit.atlas_idx].tile_data[tile_hit.tile_idx].collision_data;
-    return tile_colltype;
+    if (tile_hit.atlas_idx < 0 || tile_hit.tile_idx < 0) {
+        return CollisionType::COLL_EMPTY;
+    }
+
+    if (tile_hit.atlas_idx >= (int)scene.loaded_atlases.size()) {
+        return CollisionType::COLL_EMPTY;
+    }
+
+    const TileAtlas & atlas = scene.loaded_atlases[tile_hit.atlas_idx];
+
+    if (tile_hit.tile_idx >= (int)atlas.tile_data.size()) {
+        return CollisionType::COLL_EMPTY;
+    }
+
+    return atlas.tile_data[tile_hit.tile_idx].collision_data;
 }
 
 
@@ -148,11 +160,23 @@ CollisionType TileGrid::get_tile_coll_pos (Scene & scene, Vec2 position) const {
     int col = translate_world_x_col(position.x);
     int row = translate_world_y_row(position.y);
 
-    CollisionType tile_colltype;
-    Tile tile_hit = get_tile(col, row);
+    const Tile tile_hit = get_tile(col, row);
 
-    tile_colltype = (tile_hit.atlas_idx<0||tile_hit.tile_idx<0) ? CollisionType::COLL_EMPTY : scene.loaded_atlases[tile_hit.atlas_idx].tile_data[tile_hit.tile_idx].collision_data;
-    return tile_colltype;
+    if (tile_hit.atlas_idx < 0 || tile_hit.tile_idx < 0) {
+        return CollisionType::COLL_EMPTY;
+    }
+
+    if (tile_hit.atlas_idx >= (int)scene.loaded_atlases.size()) {
+        return CollisionType::COLL_EMPTY;
+    }
+
+    const TileAtlas & atlas = scene.loaded_atlases[tile_hit.atlas_idx];
+
+    if (tile_hit.tile_idx >= (int)atlas.tile_data.size()) {
+        return CollisionType::COLL_EMPTY;
+    }
+
+    return atlas.tile_data[tile_hit.tile_idx].collision_data;
 }
 
 
