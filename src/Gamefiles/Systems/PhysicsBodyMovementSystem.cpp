@@ -135,9 +135,9 @@ void PhysicsBodyMovementSystem::update (Registry & registry, float deltatime) {
                 skin_colliding = inside_collision(scene, {new_position.x, transform.position.y}, body, true);
 
 
-                while (skin_colliding) {
+                while (body_colliding) {
                     new_position.x -= 1.0f; //scene.get_tilesize();
-                    skin_colliding = inside_collision(scene, {new_position.x, transform.position.y}, body, true);
+                    body_colliding = inside_collision(scene, {new_position.x, transform.position.y}, body, false);
                 }
 
             } else {
@@ -147,9 +147,9 @@ void PhysicsBodyMovementSystem::update (Registry & registry, float deltatime) {
                 body_colliding = inside_collision(scene, {new_position.x, transform.position.y}, body, false);
                 skin_colliding = inside_collision(scene, {new_position.x, transform.position.y}, body, true);
 
-                while (skin_colliding) {
+                while (body_colliding) {
                     new_position.x += 1.0f;  // scene.get_tilesize();
-                    skin_colliding = inside_collision(scene, {new_position.x, transform.position.y}, body, true);
+                    body_colliding = inside_collision(scene, {new_position.x, transform.position.y}, body, false);
                 }
             }
         } 
@@ -174,9 +174,9 @@ void PhysicsBodyMovementSystem::update (Registry & registry, float deltatime) {
                 body_colliding = inside_collision(scene, {transform.position.x, new_position.y}, body, false);
                 skin_colliding = inside_collision(scene, {transform.position.x, new_position.y}, body, true);
 
-                while (skin_colliding) {
+                while (body_colliding) {
                     new_position.y -= 1.0f; // scene.get_tilesize();
-                    skin_colliding = inside_collision(scene, {transform.position.x, new_position.y}, body, true);
+                    body_colliding = inside_collision(scene, {new_position.x, transform.position.y}, body, false);
                 }
 
             } else {
@@ -185,9 +185,9 @@ void PhysicsBodyMovementSystem::update (Registry & registry, float deltatime) {
                 body_colliding = inside_collision(scene, {transform.position.x, new_position.y}, body, false);
                 skin_colliding = inside_collision(scene, {transform.position.x, new_position.y}, body, true);
 
-                while (skin_colliding) {
+                while (body_colliding) {
                     new_position.y += 1.0f; // scene.get_tilesize();
-                    skin_colliding = inside_collision(scene, {transform.position.x, new_position.y}, body, true);
+                    body_colliding = inside_collision(scene, {new_position.x, transform.position.y}, body, false);
                 }
 
             }

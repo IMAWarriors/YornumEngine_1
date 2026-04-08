@@ -1,0 +1,187 @@
+ (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
+diff --git a/src/Engine/Core/Main/Main_CoreApplication.cpp b/src/Engine/Core/Main/Main_CoreApplication.cpp
+index 9b246f1942d1e1c01b9caeb2fd001cb1cd4d8264..f60edbf9eb274eb3933e0b9d7b78e9475a87610b 100644
+--- a/src/Engine/Core/Main/Main_CoreApplication.cpp
++++ b/src/Engine/Core/Main/Main_CoreApplication.cpp
+@@ -15,116 +15,122 @@ void CoreApplication::RunCoreEngine(GameEngine & game, const std::string & scene
+     Window window("古残阳: Old Sun || Alpha v1.0.0 ");
+ 
+     // Initialize Raylib Drawing Aspects
+     Renderer            renderer;         
+     RenderTexture2D     canvas;           // Intialize CANVAS to draw game onto
+     InputManager        inputManager;
+     FrameStats          frame;
+ 
+     renderer.init_canvas(canvas);
+     game.Initialize(renderer, inputManager, frame, window);
+ 
+     if (scenename != "NOFILE.NONE") {
+         game.LoadScene(scenename);
+     }
+ 
+     float accumulator = 0.0f;               // Store Time bucket
+     float frame_deltatime = 0.0f;           // Store time from last frame
+     float frame_cps = 0.0f;                 // Store FPS
+     float frame_simulation_ticks = 0.0f;    // Store number of ticks executed in last computed frame
+ 
+     float alpha = 0.0f;                     // Store the deltatime as an alpha
+ 
+     while ( window.IsRunning() ) {
+ 
+         bool next_frame = (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER));
++        bool one_frame_mode = G_DEBUGGER.MODE_ONEFRAME;
+ 
+-        if (!G_DEBUGGER.MODE_ONEFRAME || (G_DEBUGGER.MODE_ONEFRAME && next_frame)) {
+-
+-            // STEP 1:          LOGIC  | Update logic and game frame state
+-            // ==========================================
+-
+-            float time = GetTime();
+-            SetShaderValue(window.painter, GetShaderLocation(window.painter, "time"), &time, SHADER_UNIFORM_FLOAT);
+-
+-            Vec2 camPos = renderer.get_camera_position();
+-            SetShaderValue(window.painter,
+-                GetShaderLocation(window.painter, "u_camera_pos"),
+-                &camPos,
+-                SHADER_UNIFORM_VEC2);
+-
+-            Vec2 resolution = {
+-                (float)config::GAME_WORLD_WIDTH,
+-                (float)config::GAME_WORLD_HEIGHT
+-            };
+-            SetShaderValue(window.painter,
+-                GetShaderLocation(window.painter, "u_resolution"),
+-                &resolution,
+-                SHADER_UNIFORM_VEC2);
+-
+-            float zoom = renderer.get_camera_zoom();
+-            SetShaderValue(window.painter,
+-                GetShaderLocation(window.painter, "u_zoom"),
+-                &zoom,
+-                SHADER_UNIFORM_FLOAT);
+-            
+-
+-            frame_cps = (float)(GetFPS());
+-            frame_deltatime = GetFrameTime();
+-            frame_deltatime = std::min(frame_deltatime, config::MAX_FRAME_LAG);
+-            accumulator += frame_deltatime; // Store how much time passed last frame
++        // Keep window controls responsive no matter what mode we are in.
++        window.ListenFullscreenToggle();
+ 
+-            window.ListenFullscreenToggle();
+-            
+-            //  Input Logic, VARIABLE TIME
+-            game.TickPhase(Phases::INPUT, frame_deltatime);
++        // STEP 1:          LOGIC  | Update logic and game frame state
++        // ==========================================
++
++        float time = GetTime();
++        SetShaderValue(window.painter, GetShaderLocation(window.painter, "time"), &time, SHADER_UNIFORM_FLOAT);
++
++        Vec2 camPos = renderer.get_camera_position();
++        SetShaderValue(window.painter,
++            GetShaderLocation(window.painter, "u_camera_pos"),
++            &camPos,
++            SHADER_UNIFORM_VEC2);
++
++        Vec2 resolution = {
++            (float)config::GAME_WORLD_WIDTH,
++            (float)config::GAME_WORLD_HEIGHT
++        };
++        SetShaderValue(window.painter,
++            GetShaderLocation(window.painter, "u_resolution"),
++            &resolution,
++            SHADER_UNIFORM_VEC2);
+ 
+-            //  Simulaiton Logic, FIXED TIME
++        float zoom = renderer.get_camera_zoom();
++        SetShaderValue(window.painter,
++            GetShaderLocation(window.painter, "u_zoom"),
++            &zoom,
++            SHADER_UNIFORM_FLOAT);
+ 
+-            int simulation_ticks = 0;
++        frame_cps = (float)(GetFPS());
++        frame_deltatime = GetFrameTime();
++        frame_deltatime = std::min(frame_deltatime, config::MAX_FRAME_LAG);
+ 
++        int simulation_ticks = 0;
++
++        if (!one_frame_mode) {
++            accumulator += frame_deltatime; // Store how much time passed last frame
++
++            // Input Logic, VARIABLE TIME
++            game.TickPhase(Phases::INPUT, frame_deltatime);
++
++            // Simulation Logic, FIXED TIME
+             while (accumulator >= config::FIXED_DELTATIME) {
+-                // Normal Simulation Tick
+                 game.TickPhase(Phases::SIMULATION, config::FIXED_DELTATIME);
+                 accumulator -= config::FIXED_DELTATIME;
+                 simulation_ticks++;
+             }
+ 
+-            frame_simulation_ticks = simulation_ticks;
+             alpha = accumulator / config::FIXED_DELTATIME;
+-            frame.update(frame_deltatime, accumulator, simulation_ticks, frame_cps);
++        } else {
++            // Paused. Only execute exactly one deterministic tick on demand.
++            accumulator = 0.0f;
++            alpha = 0.0f;
++
++            if (next_frame) {
++                game.TickPhase(Phases::INPUT, config::FIXED_DELTATIME);
++                game.TickPhase(Phases::SIMULATION, config::FIXED_DELTATIME);
++                simulation_ticks = 1;
++                alpha = 1.0f;
++            }
++        }
+ 
+-            
+-            
+-            // STEP 2:          TEXTURE | Draw to texture cycle
+-            // ===========================================
++        frame_simulation_ticks = simulation_ticks;
++        frame.update(frame_deltatime, accumulator, simulation_ticks, frame_cps);
+ 
+-            renderer.begin_texture_frame(canvas);
++        // STEP 2:          TEXTURE | Draw to texture cycle
++        // ===========================================
+ 
+-            //  Render Logic, VARIABLE TIME
+-            game.TickPhase(Phases::RENDERING, alpha);
+-            renderer.end_texture_frame();
+-            renderer.present(canvas, game, alpha, window);   // Begin Draw -> Draw Pro texture -> End Draw
+-        
+-        }
+-    
++        renderer.begin_texture_frame(canvas);
++
++        // Render every loop so the app stays responsive while paused in one-frame mode.
++        game.TickPhase(Phases::RENDERING, alpha);
++        renderer.end_texture_frame();
++        renderer.present(canvas, game, alpha, window);   // Begin Draw -> Draw Pro texture -> End Draw
+     }
+ 
+     game.CleanUp();
+ 
+     // Close the program
+     window.EndProgram();
+ } 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ void CoreApplication::RunCoreEngineMainEditor (GameEngine & game) {
+ 
+     // Do nothing
+ 
+ }
+ 
+-
+ 
+EOF
+)

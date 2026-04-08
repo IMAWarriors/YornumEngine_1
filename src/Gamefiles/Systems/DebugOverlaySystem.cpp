@@ -51,6 +51,7 @@ void DebugOverlaySystem::update (Registry & registry, float deltatime)  {
         if (G_DEBUGGER.MODE_ONEFRAME == true) {
 
             G_DEBUGGER.push({"ONE FRAME | " + std::to_string((int)frame.frames_per_second) + " FPS", {15,15}, 18, WHITE});
+            G_DEBUGGER.push({"Press ENTER to step simulation by 1 fixed tick", {15,140}, 18, YELLOW});
             
         } else {
 
