@@ -84,25 +84,30 @@ void PhysicsBodyMovementSystem::update (Registry & registry, float deltatime) {
         transform.previous_position = transform.position;
         float tile_size = gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS;
 
-        Vec2 new_position = { transform.position.x + (velocity.magnitude.x * deltatime), transform.position.y + (velocity.magnitude.y * deltatime) };
+        Vec2 new_position = transform.position;
 
         bool body_colliding = false;
         bool skin_colliding = false;
 
+
+
+
+        // Handle horizontal state (direction and stuff)
+        // ***************************
+
         int x_dir = 0;
-        int y_dir = 0;
-
         x_dir = (velocity.magnitude.x > 0) ? 1 : (velocity.magnitude.x < 0) ? -1 : x_dir;
-        y_dir = (velocity.magnitude.y > 0) ? 1 : (velocity.magnitude.y < 0) ? -1 : y_dir;
 
-        // =================================================================================================
+
+
 
         // Handle grounding state / vertical positioning from last frame
         // before doing collision check
+        // ***************************
 
         const float GROUNDED_CHECK_DIST = 0.5f;
 
-        bool previous_onSolidGround = inside_collision(scene, {transform.position.x, transform.position.y + GROUNDED_CHECK_DIST}, body, true);
+        bool previous_onSolidGround = inside_collision(scene, {transform.position.x, transform.position.y + GROUNDED_CHECK_DIST}, body, false);
 
         body.onSolidGround = previous_onSolidGround;
 
@@ -115,6 +120,11 @@ void PhysicsBodyMovementSystem::update (Registry & registry, float deltatime) {
         if (velocity.magnitude.y > 2800.0f) {
             velocity.magnitude.y = 2800.0f;
         }
+
+        int y_dir = 0;
+        y_dir = (velocity.magnitude.y > 0) ? 1 : (velocity.magnitude.y < 0) ? -1 : y_dir;
+        
+        new_position = { transform.position.x + (velocity.magnitude.x * deltatime), transform.position.y + (velocity.magnitude.y * deltatime) };
 
         // =================================================================================================
 

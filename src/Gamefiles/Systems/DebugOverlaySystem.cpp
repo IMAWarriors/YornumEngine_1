@@ -104,6 +104,14 @@ void DebugOverlaySystem::update (Registry & registry, float deltatime)  {
             G_DEBUGGER.push({"Inskin Collision: outside", {1000,170}, 18, GREEN});
         }
 
+        /*
+        if (player_body.onSolidGround) {
+            G_DEBUGGER.push({"Grounded", {1000,190}, 18, GREEN});
+        } else {
+            G_DEBUGGER.push({"Airborne", {1000,190}, 18, RED});
+        }
+            */
+
     }
 
     // DRAW CAMERA STATS
