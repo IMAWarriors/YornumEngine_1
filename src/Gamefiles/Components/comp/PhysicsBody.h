@@ -23,6 +23,16 @@ struct PhysicsBody {
     bool innerSkinInColl;
     bool onSolidGround;
 
+    int falling;
+    int vjump_window;
+
+    int wallPush;
+    bool againstWall;
+    int walljumpBuffer;
+    int lastWalljumpDir;
+    int walljumpWindow;
+    int lastWallPush;
+
 
 };
 

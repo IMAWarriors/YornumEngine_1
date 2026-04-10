@@ -12,7 +12,6 @@ void CameraSystem::update (Registry & registry, float deltatime) {
 
     for (Entity entity : registry.view<comp::Camera>()) {      // For each iteration of Entity
 
-
         comp::Camera & camera = registry.get_component<comp::Camera>(entity);
         comp::Transform & transform = registry.get_component<comp::Transform>(entity);
         
@@ -22,22 +21,46 @@ void CameraSystem::update (Registry & registry, float deltatime) {
         bool target_exists = false;
 
         if (registry.has_component<comp::Transform>(camera.target)) {
+
             Vec2 camera_position = registry.get_component<comp::Transform>(camera.target).position;
             target_position = {camera_position.x + camera.offset.x, camera_position.y + camera.offset.y};
             target_exists = true;
+
         }
 
         if (!camera.isFrozen) {
+
+
+
             if (target_exists) {
 
-                float smoothing = camera.followSmoothing;
-
-                float factor = 1.0f - exp(-smoothing * deltatime);
+                // ======================= ACTUAL MOVEMENT LOGIC ===============================
+                
                 transform.previous_position = transform.position;
                 camera.previous_zoom = camera.zoom;
 
-                transform.position.x += (target_position.x - transform.position.x) * factor;
-                transform.position.y += (target_position.y - transform.position.y) * factor;
+                Vec2 offset = {(target_position.x - transform.position.x), (target_position.y - transform.position.y)};
+                Vec2 dist = {fabs(offset.x), fabs(offset.y)};
+
+                float base_smoothing = camera.followSmoothing;
+                float gain = 0.015f;
+                float peak = 4.0f;
+
+                Vec2 smoothing = {
+                    (1.0f + std::min(dist.x * gain, peak)) * base_smoothing,
+                    (1.0f + std::min(dist.y * gain, peak)) * base_smoothing
+                };
+
+                Vec2 factor = {
+                    1.0f - exp(-smoothing.x * deltatime),
+                    1.0f - exp(-smoothing.y * deltatime)
+                };
+
+
+                transform.position.x += offset.x * factor.x;
+                transform.position.y += offset.y * factor.y;
+
+                // ==============================================================================
                 
             }
 
@@ -53,15 +76,7 @@ void CameraSystem::update (Registry & registry, float deltatime) {
                 if (camera.zoom < camera.minZoom) {
                     camera.zoom = camera.minZoom;
                 }
-            }   
-
-            
-
+            }  
         }
-
-        
-
-        //
-
     }
 }

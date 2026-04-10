@@ -10,7 +10,12 @@ void InputSystem::update (Registry & registry, float deltatime)  {
         comp::InputState & inputState = registry.get_component<comp::InputState>(entity);
 
         inputState.horz_axis = (float)(input.get_move_axis());
-        inputState.jump_key = input.get_jump_key();
+
+        if (input.get_jump_key()) {
+            inputState.jump_key++;
+        } else {
+            inputState.jump_key = 0;
+        }
 
     }
 

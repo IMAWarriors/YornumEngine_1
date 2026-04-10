@@ -3,7 +3,9 @@
 #include "InputManager.h"
 
 InputManager::InputManager() {
-    set_keybinds (KEY_RIGHT, KEY_LEFT, KEY_UP, KEY_DOWN, KEY_Z, KEY_X, KEY_C, KEY_V, KEY_F11);
+
+    set_keybinds (KEY_D, KEY_A, KEY_SPACE, KEY_S, KEY_E, KEY_Q, KEY_LEFT, KEY_RIGHT, KEY_F11);
+
 };
 
 
@@ -43,7 +45,7 @@ void InputManager::set_keybinds (int _r, int _l, int _u, int _d, int _act, int _
 int InputManager::get_move_axis () { return ( IsKeyDown(BIND_RDIR) - IsKeyDown(BIND_LDIR) ); }
 
 
-bool InputManager::get_jump_key () { return (IsKeyPressed(BIND_UDIR)); }
+bool InputManager::get_jump_key () { return (IsKeyDown(BIND_UDIR)); }
 
 
 

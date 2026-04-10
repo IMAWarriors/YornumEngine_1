@@ -89,22 +89,17 @@ void PhysicsBodyMovementSystem::update (Registry & registry, float deltatime) {
         bool body_colliding = false;
         bool skin_colliding = false;
 
-
-
-
         // Handle horizontal state (direction and stuff)
         // ***************************
-
         int x_dir = 0;
         x_dir = (velocity.magnitude.x > 0) ? 1 : (velocity.magnitude.x < 0) ? -1 : x_dir;
-
 
 
 
         // Handle grounding state / vertical positioning from last frame
         // before doing collision check
         // ***************************
-
+        const float EPS = 0.001f;
         const float GROUNDED_CHECK_DIST = 0.5f;
 
         bool previous_onSolidGround = inside_collision(scene, {transform.position.x, transform.position.y + GROUNDED_CHECK_DIST}, body, false);
@@ -112,9 +107,27 @@ void PhysicsBodyMovementSystem::update (Registry & registry, float deltatime) {
         body.onSolidGround = previous_onSolidGround;
 
         if (!(previous_onSolidGround && velocity.magnitude.y >= 0.0f)) {
-            velocity.magnitude.y += body.gravity * deltatime;
+
+            if (body.wallPush != 0 && velocity.magnitude.y > 0.0f && body.falling > 5) {
+                if (velocity.magnitude.y > 250) {
+                    velocity.magnitude.y = 250;
+                }
+                velocity.magnitude.y += ((150 - velocity.magnitude.y) / 2.0f) * deltatime;
+                
+            } else {
+                if (velocity.magnitude.y < 0) {
+                    velocity.magnitude.y += body.gravity * deltatime;
+                } else {
+                    velocity.magnitude.y += 1.5f * body.gravity * deltatime;
+                } 
+            }
+            
         } else {
+            // If stable on the ground
             velocity.magnitude.y = 0.0f;
+            body.onSolidGround = true;
+            body.falling = 0;
+            body.vjump_window = 0;
         }
 
         if (velocity.magnitude.y > 2800.0f) {
@@ -125,6 +138,14 @@ void PhysicsBodyMovementSystem::update (Registry & registry, float deltatime) {
         y_dir = (velocity.magnitude.y > 0) ? 1 : (velocity.magnitude.y < 0) ? -1 : y_dir;
         
         new_position = { transform.position.x + (velocity.magnitude.x * deltatime), transform.position.y + (velocity.magnitude.y * deltatime) };
+
+        if (body.walljumpWindow <= 0) {
+            body.againstWall = false;
+            body.walljumpWindow = 0;
+        }
+
+        
+        body.wallPush = 0;
 
         // =================================================================================================
 
@@ -138,13 +159,23 @@ void PhysicsBodyMovementSystem::update (Registry & registry, float deltatime) {
             //      1.) if {Move X} > 0 : Clamp player to the outside of the LEFT of tile 
             //          if {Move X} < 0 : Clamp player to the outside of the RIGHT of the tile
             //
+
+            if (registry.has_component<comp::InputState>(entity)) {            
+                auto input = registry.get_component<comp::InputState>(entity);
+                body.wallPush = input.horz_axis;
+                body.lastWallPush = body.wallPush;
+                body.walljumpBuffer = 0;
+                body.walljumpWindow = 6;
+                body.againstWall = true;
+            }
+
             velocity.magnitude.x = 0;
             int in_tile_col = scene.translate_world_x_col(new_position.x);
             int in_tile_row = scene.translate_world_y_row(transform.position.y);
 
             if (x_dir > 0) {
                 // Snap player to flush edge of tile
-                new_position.x = scene.get_tile_pos_UL(in_tile_col + 1, in_tile_row).x - ((body.size.x / 2.0f));
+                new_position.x = scene.get_tile_pos_UL(in_tile_col + 1, in_tile_row).x - ((body.size.x / 2.0f)) - EPS;
                 body_colliding = inside_collision(scene, {new_position.x, transform.position.y}, body, false);
                 skin_colliding = inside_collision(scene, {new_position.x, transform.position.y}, body, true);
 
@@ -157,7 +188,7 @@ void PhysicsBodyMovementSystem::update (Registry & registry, float deltatime) {
             } else {
 
                 // Snap player to flush edge of tile
-                new_position.x = scene.get_tile_pos_UL(in_tile_col, in_tile_row).x + ((body.size.x / 2.0f));
+                new_position.x = scene.get_tile_pos_UL(in_tile_col, in_tile_row).x + ((body.size.x / 2.0f)) + EPS;
                 body_colliding = inside_collision(scene, {new_position.x, transform.position.y}, body, false);
                 skin_colliding = inside_collision(scene, {new_position.x, transform.position.y}, body, true);
 
@@ -195,6 +226,12 @@ void PhysicsBodyMovementSystem::update (Registry & registry, float deltatime) {
                     body_colliding = inside_collision(scene, {new_position.x, new_position.y}, body, false);
                 }
 
+                body.onSolidGround = true;
+                body.falling = 0;
+                body.vjump_window = 0;
+                body.lastWalljumpDir = 0;
+                body.walljumpBuffer = 0;
+
             } else {
                 // Snap player to flush edge of tile
                 new_position.y = scene.get_tile_pos_UL(in_tile_col, in_tile_row).y + ((body.size.y / 2.0f));
@@ -205,12 +242,18 @@ void PhysicsBodyMovementSystem::update (Registry & registry, float deltatime) {
                     new_position.y += 1.0f; // scene.get_tilesize();
                     body_colliding = inside_collision(scene, {new_position.x, new_position.y}, body, false);
                 }
-
-                body.onSolidGround = true;
-
+                
             }
         } else {
-            body.onSolidGround = false;
+
+            if (y_dir != 0) {
+                body.onSolidGround = false;
+                body.falling++;
+            }
+        }
+        
+        if (body.wallPush == 0 && body.falling > 3) {
+            body.walljumpWindow--;
         }
 
        

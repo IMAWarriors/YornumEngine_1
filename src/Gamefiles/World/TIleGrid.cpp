@@ -135,6 +135,11 @@ int TileGrid::translate_world_y_row (float world_y) const {
 
 CollisionType TileGrid::get_tile_coll (Scene & scene, int col, int row) const {
 
+    if (col < gwconst::WORLD_TILEGRID_X_BOUND_MIN_TILE || col > gwconst::WORLD_TILEGRID_X_BOUND_MAX_TILE ||
+        row < gwconst::WORLD_TILEGRID_Y_BOUND_MIN_TILE || row > gwconst::WORLD_TILEGRID_Y_BOUND_MAX_TILE) {
+        return CollisionType::COLL_FULL_SOLID;
+    }
+
     const Tile tile_hit = get_tile(col, row);
 
     if (tile_hit.atlas_idx < 0 || tile_hit.tile_idx < 0) {
@@ -159,6 +164,11 @@ CollisionType TileGrid::get_tile_coll_pos (Scene & scene, Vec2 position) const {
 
     int col = translate_world_x_col(position.x);
     int row = translate_world_y_row(position.y);
+
+     if (col < gwconst::WORLD_TILEGRID_X_BOUND_MIN_TILE || col > gwconst::WORLD_TILEGRID_X_BOUND_MAX_TILE ||
+        row < gwconst::WORLD_TILEGRID_Y_BOUND_MIN_TILE || row > gwconst::WORLD_TILEGRID_Y_BOUND_MAX_TILE) {
+        return CollisionType::COLL_FULL_SOLID;
+    }
 
     const Tile tile_hit = get_tile(col, row);
 

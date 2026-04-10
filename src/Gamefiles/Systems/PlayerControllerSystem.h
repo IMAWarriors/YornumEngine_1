@@ -15,6 +15,23 @@
 //
 #include <cmath>
 
+static float approach_x (float init_vel_x, float target_vel_x, float step_vel_x) {
+
+    float change_x = 0.0f;
+
+    if (init_vel_x < target_vel_x) {        // Moving to the right
+        
+        change_x = std::min(target_vel_x, init_vel_x + step_vel_x);
+
+    } else {
+
+        change_x = std::max(target_vel_x, init_vel_x - step_vel_x);
+
+    }
+
+    return change_x;
+
+}
 
 
 class PlayerControllerSystem : public System {
@@ -25,45 +42,54 @@ class PlayerControllerSystem : public System {
 
             for (Entity entity : registry.view<comp::InputState, comp::Velocity, tag::Player>()) {
 
-                comp::InputState input = registry.get_component<comp::InputState>(entity);
+                comp::InputState & input = registry.get_component<comp::InputState>(entity);
+
+                comp::PhysicsBody & body = registry.get_component<comp::PhysicsBody>(entity);
 
                 comp::Velocity & player_velocity = registry.get_component<comp::Velocity>(entity);
 
 
-                float MAX_VELOCITY_X    = 900.0f;
-                float ACCELERATION      = 2100.0f;
-                float FRICTION          = 2900.0f;
+                float MAX_VELOCITY_X    = 800.0f;
+                float ACCELERATION      = 1800.0f;
+                float FRICTION          = 2700.0f;
                 float JUMP_FORCE        = 1200.0f;
 
-                float target_player_velocity_x = 0.0f;
+                float target = input.horz_axis * MAX_VELOCITY_X;
 
-                target_player_velocity_x = MAX_VELOCITY_X * input.horz_axis;
-           
-                // If (user trying to speed up?) else, (user target for player vel_x is now 0)
-                if (std::abs(target_player_velocity_x) > 0) {
-                    if ( (target_player_velocity_x > 0 && player_velocity.magnitude.x < 0) || (target_player_velocity_x < 0 && player_velocity.magnitude.x > 0) ) {
-                        // Handle quick turn around for movement option with most velocity
-                        // so it doesn't make more sense to let friciton take you to 0 first
-                        // and then go other direction
-                        player_velocity.magnitude.x += input.horz_axis * ( fmax(FRICTION, ACCELERATION) * deltatime);
-                    } else {
-                        player_velocity.magnitude.x += input.horz_axis * (ACCELERATION * deltatime);
+                float control_multiplier = body.onSolidGround ? 1.0f : 0.75f;
+
+                if (body.walljumpBuffer > 0) {
+
+                    body.walljumpBuffer--;
+
+                    if (body.walljumpBuffer < 0) {
+                        body.walljumpBuffer = 0;
                     }
+
+                    if (input.horz_axis == body.lastWalljumpDir) {
+                        body.walljumpBuffer = 0;
+                    } else {
+                        control_multiplier = 0.5f;
+                    }
+                    
+                }
+
+                float accel = ACCELERATION * control_multiplier;
+                float decel = FRICTION * control_multiplier;
+
+                if (input.horz_axis == 0) {
+
+                    player_velocity.magnitude.x = approach_x(player_velocity.magnitude.x, 0.0f, decel * deltatime);
 
                 } else {
 
-                    if (player_velocity.magnitude.x > 0) {
-                        player_velocity.magnitude.x -= FRICTION * deltatime;
-                        if (player_velocity.magnitude.x <= 0) {
-                            player_velocity.magnitude.x = 0.0f;
-                        }
-                    } else if (player_velocity.magnitude.x < 0) {
-                        player_velocity.magnitude.x += FRICTION * deltatime;
-                        if (player_velocity.magnitude.x >= 0) {
-                            player_velocity.magnitude.x = 0.0f;
-                        }
+                    if (player_velocity.magnitude.x * input.horz_axis < 0) {
+                        accel = std::max(ACCELERATION, FRICTION);
                     }
+
+                    player_velocity.magnitude.x = approach_x(player_velocity.magnitude.x, target, accel * deltatime);
                 }
+                
 
 
         
@@ -72,9 +98,38 @@ class PlayerControllerSystem : public System {
 
                 // Velocity should be updated at this point
                 
-                if (input.jump_key) {
+                // Normal Jump
+                if ((0 < input.jump_key && input.jump_key < 20) && (body.falling < 9)) {
                     player_velocity.magnitude.y = -JUMP_FORCE;
+                    body.falling = 99;
+                    body.vjump_window = 10;
+                    input.jump_key = 20;
                 }
+
+                // Variable Jump Height (continue jumping if vjump window is open)
+                if ((input.jump_key > 0) && (body.vjump_window > 0)) {
+                    player_velocity.magnitude.y = std::min(-JUMP_FORCE, player_velocity.magnitude.y);
+                }
+
+                // Clamp / Iterate jump values
+                if (input.jump_key <= 0) {
+                    body.vjump_window = 0;
+                } 
+
+                if (body.vjump_window > 0) {
+                    body.vjump_window--;
+                }
+
+                // Wall Jump
+                if (input.jump_key == 1 && body.falling > 5 && body.againstWall == true) {
+                    player_velocity.magnitude.x = JUMP_FORCE * 2.0f * (body.lastWallPush * -1.0f);
+                    player_velocity.magnitude.y = -JUMP_FORCE * 1.35f;
+                    input.jump_key = 20;
+                    body.walljumpBuffer = 30;
+                    body.lastWalljumpDir = -body.lastWallPush;
+                }
+
+                
                 
 
             }

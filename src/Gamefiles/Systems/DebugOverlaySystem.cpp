@@ -90,7 +90,7 @@ void DebugOverlaySystem::update (Registry & registry, float deltatime)  {
         vely = to_string_dp(player_vel.magnitude.y, 2);
 
         G_DEBUGGER.push({"Player", {1000,15}, 18, WHITE});
-        G_DEBUGGER.push({"[ " + std::to_string(player_input.horz_axis) + " , " + std::to_string(player_input.vert_axis) + " ] ", {1000,35}, 18, WHITE});
+        G_DEBUGGER.push({"[ " + std::to_string(player_input.horz_axis) + " , " + std::to_string(player_input.jump_key) + " ] ", {1000,35}, 18, WHITE});
         G_DEBUGGER.push({"( " + posx + " , " + posy + " ) ", {1000,55}, 18, WHITE});
         G_DEBUGGER.push({"< " + velx + " , " + vely + " > ", {1000,75}, 18, WHITE});
         if (player_body.inColl) {
@@ -104,13 +104,43 @@ void DebugOverlaySystem::update (Registry & registry, float deltatime)  {
             G_DEBUGGER.push({"Inskin Collision: outside", {1000,170}, 18, GREEN});
         }
 
-        /*
+        G_DEBUGGER.push({"[ " + std::to_string(player_body.falling) + " , " + std::to_string(player_body.vjump_window) + " ] ", {1000,190}, 18, WHITE});
+
+        
         if (player_body.onSolidGround) {
-            G_DEBUGGER.push({"Grounded", {1000,190}, 18, GREEN});
+            G_DEBUGGER.push({"Grounded", {1000,210}, 18, GREEN});
         } else {
-            G_DEBUGGER.push({"Airborne", {1000,190}, 18, RED});
+            G_DEBUGGER.push({"Airborne", {1000,210}, 18, RED});
         }
-            */
+
+
+        if (player_body.wallPush > 0) {
+            G_DEBUGGER.push({"Pushing Against Right Wall", {1000,230}, 18, BLUE});
+        } else if (player_body.wallPush < 0) {
+            G_DEBUGGER.push({"Pushing Against Left Wall", {1000,230}, 18, PURPLE});
+        }  else {
+            G_DEBUGGER.push({"No active push", {1000,230}, 18, WHITE});
+        }
+
+
+        if (player_body.againstWall) {
+            G_DEBUGGER.push({"CAN WALLJUMP", {1000,250}, 18, GREEN});
+        } else {
+            G_DEBUGGER.push({"cannot walljump", {1000,250}, 18, RED});
+        }
+
+
+        if (player_body.lastWallPush == 1) {
+            G_DEBUGGER.push({"Carrying residual R. Wall Push", {1000,270}, 18, BLUE});
+        } else {
+            G_DEBUGGER.push({"Carrying residual L. Wall Push", {1000,270}, 18, BLUE});
+        }
+        
+
+
+        G_DEBUGGER.push({"WJ Buffer: " + std::to_string(player_body.walljumpBuffer), {1000, 290}, 18, ORANGE});
+        G_DEBUGGER.push({"WJ Window: " + std::to_string(player_body.walljumpWindow), {1000, 310}, 18, ORANGE});
+
 
     }
 
