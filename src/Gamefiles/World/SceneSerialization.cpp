@@ -6,6 +6,8 @@
 #include <filesystem>
 
 namespace {
+    constexpr int SCENE_FILE_VERSION_WITH_CAMERA_CLAMPS = 1;
+
     std::string ResolveTilesetPathFromSceneRecord(const std::string& rawPath) {
         namespace fs = std::filesystem;
 
@@ -27,6 +29,17 @@ namespace {
 
         return {};
     }
+
+    void WriteVec2(std::ofstream& file, const Vec2& value) {
+        file.write((char*)&value.x, sizeof(float));
+        file.write((char*)&value.y, sizeof(float));
+    }
+
+    bool ReadVec2(std::ifstream& file, Vec2& value) {
+        file.read((char*)&value.x, sizeof(float));
+        file.read((char*)&value.y, sizeof(float));
+        return file.good();
+    }
 }
 
 bool serial::SaveSceneToFile(const Scene & scene, const std::string& filepath) {
@@ -35,7 +48,7 @@ bool serial::SaveSceneToFile(const Scene & scene, const std::string& filepath) {
     if (!file.is_open()) return false;
 
     // ================= HEADER =================
-    SceneFileHeader header = {{'S','C','E','N','E','\0'}, 0};
+    SceneFileHeader header = {{'S','C','E','N','E','\0'}, SCENE_FILE_VERSION_WITH_CAMERA_CLAMPS};
     file.write((char*)&header, sizeof(header));
 
     // ================= LAYER INFO =================
@@ -125,6 +138,26 @@ bool serial::SaveSceneToFile(const Scene & scene, const std::string& filepath) {
         file.write((char*)tile_idxs.data(), count * sizeof(int));
     }
 
+    // ================= CAMERA CLAMPS =================
+    int clamp_count = (int)scene.active_clamps.size();
+    file.write((char*)&clamp_count, sizeof(int));
+
+    for (const CameraClamp& clamp : scene.active_clamps) {
+        WriteVec2(file, clamp.clamp_top_left);
+        WriteVec2(file, clamp.clamp_bottom_right);
+        WriteVec2(file, clamp.player_zone_top_left);
+        WriteVec2(file, clamp.player_zone_bottom_right);
+
+        file.write((char*)&clamp.smoothing_override, sizeof(float));
+
+        uint8_t snap_to_clamp = clamp.snap_to_clamp ? 1 : 0;
+        file.write((char*)&snap_to_clamp, sizeof(uint8_t));
+    }
+
+    if (!file.good()) {
+        return false;
+    }
+
     return true;
 }
 
@@ -141,7 +174,7 @@ bool serial::LoadSceneFromFile(Scene & scene, AssetManager & assets, const std::
 
     if (strncmp(header.magic, "SCENE", 5) != 0) return false;
 
-    if (header.version != 0) return false;
+    if (header.version < 0 || header.version > SCENE_FILE_VERSION_WITH_CAMERA_CLAMPS) return false;
     if (!file.good()) return false;
 
     // ================= LAYER INFO =================
@@ -305,9 +338,37 @@ bool serial::LoadSceneFromFile(Scene & scene, AssetManager & assets, const std::
         }
     }
 
+    // ================= LOAD CAMERA CLAMPS =================
+    scene.active_clamps.clear();
+
+    if (header.version >= SCENE_FILE_VERSION_WITH_CAMERA_CLAMPS) {
+        int clamp_count = 0;
+        file.read((char*)&clamp_count, sizeof(int));
+        if (!file.good() || clamp_count < 0) {
+            return false;
+        }
+
+        scene.active_clamps.resize(clamp_count);
+        for (CameraClamp& clamp : scene.active_clamps) {
+            if (!ReadVec2(file, clamp.clamp_top_left)) return false;
+            if (!ReadVec2(file, clamp.clamp_bottom_right)) return false;
+            if (!ReadVec2(file, clamp.player_zone_top_left)) return false;
+            if (!ReadVec2(file, clamp.player_zone_bottom_right)) return false;
+
+            file.read((char*)&clamp.smoothing_override, sizeof(float));
+            uint8_t snap_to_clamp = 0;
+            file.read((char*)&snap_to_clamp, sizeof(uint8_t));
+
+            if (!file.good()) {
+                return false;
+            }
+
+            clamp.snap_to_clamp = (snap_to_clamp != 0);
+        }
+    }
+
     return true;
 }
-
 
 
 

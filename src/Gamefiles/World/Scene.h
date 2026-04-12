@@ -49,6 +49,7 @@ class Scene {
         int EDITOR_ONLY_SELECTED_PALLET_TILE = -1;
         int EDITOR_ONLY_SELECTED_LAYER = 0;
         bool EDITOR_ONLY_ACTIVE_TAEDITOR = false;
+        bool EDITOR_ONLY_ONION_LAYER_MODE = false;
 
         bool uiCapturesMouse = false;
 

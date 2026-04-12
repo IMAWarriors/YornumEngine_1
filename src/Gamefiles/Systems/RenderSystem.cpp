@@ -218,13 +218,44 @@ void RenderSystem::update (Registry & registry, float deltatime) {
 
 
                     if (!is_empty_tile) {
-                        renderer.rdraw_sprite(*(scene.loaded_atlases[tile_to_draw.atlas_idx].image_sheet_source),
-                            scene.loaded_atlases[tile_to_draw.atlas_idx].getRect(current_tile_animation_frame, tile_to_draw.tile_idx),
-                            {screen_x,
-                                screen_y,
-                                screen_w,
-                                screen_h}
-                            );
+
+
+                        if (!scene.EDITOR_ONLY_ONION_LAYER_MODE) {
+                            renderer.rdraw_sprite(*(scene.loaded_atlases[tile_to_draw.atlas_idx].image_sheet_source),
+                                scene.loaded_atlases[tile_to_draw.atlas_idx].getRect(current_tile_animation_frame, tile_to_draw.tile_idx),
+                                {screen_x,
+                                    screen_y,
+                                    screen_w,
+                                    screen_h}
+                                );
+                        } else {
+
+                            if (ilayer == scene.EDITOR_ONLY_SELECTED_LAYER) {
+
+                                renderer.rdraw_sprite(*(scene.loaded_atlases[tile_to_draw.atlas_idx].image_sheet_source),
+                                scene.loaded_atlases[tile_to_draw.atlas_idx].getRect(current_tile_animation_frame, tile_to_draw.tile_idx),
+                                {screen_x,
+                                    screen_y,
+                                    screen_w,
+                                    screen_h}
+                                );
+
+                            } else {
+
+                                // Draw ghostly if onion layer mode is on and this is not the main layer
+                                renderer.rdraw_sprite_col(*(scene.loaded_atlases[tile_to_draw.atlas_idx].image_sheet_source),
+                                scene.loaded_atlases[tile_to_draw.atlas_idx].getRect(current_tile_animation_frame, tile_to_draw.tile_idx),
+                                {screen_x,
+                                    screen_y,
+                                    screen_w,
+                                    screen_h}, 
+                                    {255, 255, 255, 145}
+                                );
+                            }
+                        }
+
+
+                        
 
                             
                             if (G_DEBUGGER.show == true) {

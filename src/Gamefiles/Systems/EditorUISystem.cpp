@@ -198,15 +198,20 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 // Buttons
                 // =========================
 
+                float buttonWidth = (ImGui::GetContentRegionAvail().x - 3 * ImGui::GetStyle().ItemSpacing.x) / 4.0f;
+
+
                 // Add Layer
-                if (ImGui::Button("+ Add Layer", ImVec2(-1, 0))) {
+                if (ImGui::Button(" + ", ImVec2(buttonWidth, 0))) {
                     scene.tiles_push_new_layer();
                     selectedLayer = (int)scene.tile_layers.size() - 1;
                     scene.EDITOR_ONLY_SELECTED_LAYER = selectedLayer;
                 }
 
+                ImGui::SameLine();
+
                 // Delete Layer
-                if (ImGui::Button("- Delete Layer", ImVec2(-1, 0))) {
+                if (ImGui::Button(" - ", ImVec2(buttonWidth, 0))) {
                     if (!scene.tile_layers.empty() && selectedLayer >= 0 && selectedLayer < (int)scene.tile_layers.size()) {
                         scene.tile_layers.erase(scene.tile_layers.begin() + selectedLayer);
 
@@ -216,7 +221,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     }
                 }
 
-                if (ImGui::Button("^ Move Layer", ImVec2(-1, 0))) {
+                ImGui::SameLine();
+
+                if (ImGui::Button(" ^ ", ImVec2(buttonWidth, 0))) {
 
                     if (!scene.tile_layers.empty() && selectedLayer > 0 && selectedLayer < (int)scene.tile_layers.size()) {
 
@@ -229,7 +236,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                 }
 
-                if (ImGui::Button("v Move Layer", ImVec2(-1, 0))) {
+                ImGui::SameLine();
+
+                if (ImGui::Button(" v ", ImVec2(buttonWidth, 0))) {
 
                     if (!scene.tile_layers.empty() && selectedLayer >= 0 && selectedLayer < (int)scene.tile_layers.size() - 1) {
 
@@ -248,8 +257,14 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 ImGui::Separator();
                 ImGui::Text("Editing Layer: %d", selectedLayer);
 
-                // 🔴 THIS IS IMPORTANT:
+                ImGui::SameLine();
+
+                static bool onion = false;
+
+                ImGui::Checkbox(" | Onion: ", &onion);
+
                 // expose this to rest of editor
+                scene.EDITOR_ONLY_ONION_LAYER_MODE = onion;
                 scene.EDITOR_ONLY_SELECTED_LAYER = selectedLayer;
             }
 
@@ -485,7 +500,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 triggerSaveScenePopup = true;
             }
             ImGui::Separator();
-            if (ImGui::MenuItem("Exit")) {}
+            if (ImGui::MenuItem("Exit")) {
+                CloseWindow();
+            }
             ImGui::EndMenu();
         }
 
@@ -494,6 +511,60 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
             if (ImGui::MenuItem("Redo", "CTRL+Y")) {}
             ImGui::EndMenu();
         }
+
+        
+
+        if (ImGui::BeginMenu("Window")) {
+
+            if (WORKSPACE_WINDOW_DRAW) {
+                if (ImGui::MenuItem("Workspace", "x")) {
+                    WORKSPACE_WINDOW_DRAW = false;
+                }
+            } else {
+                if (ImGui::MenuItem("Workspace", "")) {
+                    WORKSPACE_WINDOW_DRAW = true;
+                }
+            }
+
+            if (showLayerManager) {
+                if (ImGui::MenuItem("Layer Manager", "x")) {
+                    showLayerManager = false;
+                }
+            } else {
+                if (ImGui::MenuItem("Layer Manager", "")) {
+                    showLayerManager = true;
+                }
+            }
+
+            
+
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Shaders")) {
+
+            if (/* Shader condition.... */ true ) {
+                if (ImGui::MenuItem("Activate Main Shader", "Inactive")) {
+                    // Load logic...
+
+
+
+
+                }
+            } else {
+                if (ImGui::MenuItem("Activate Main Shader", "ACTIVATED")) {
+                    // Unload logic...
+
+
+
+                }
+            }
+            
+
+            ImGui::EndMenu();
+        }
+
+        
 
 
         ImGui::EndMainMenuBar();
