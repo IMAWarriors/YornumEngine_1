@@ -26,14 +26,4 @@ struct Tile {
 };
 
 
-
-
-
-
-
-
-
-
-
-
 #endif

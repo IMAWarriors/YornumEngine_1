@@ -31,6 +31,7 @@ src\Gamefiles\Game\Func_GEAddEditorSystems.cpp ^
 src\Gamefiles\Game\GameEngine.cpp ^
 -o game.exe ^
 -mwindows ^
+-static -static-libgcc -static-libstdc++ ^
 -I%RAYLIB_PATH%\include ^
 -L%RAYLIB_PATH%\lib ^
 -lraylib ^

@@ -98,11 +98,6 @@ void DebugOverlaySystem::update (Registry & registry, float deltatime)  {
         } else {
             G_DEBUGGER.push({"Body Collision: outside", {1000,150}, 18, GREEN});
         }
-        if (player_body.innerSkinInColl) {
-            G_DEBUGGER.push({"Inskin Collision: INSIDE", {1000,170}, 18, RED});
-        } else {
-            G_DEBUGGER.push({"Inskin Collision: outside", {1000,170}, 18, GREEN});
-        }
 
         G_DEBUGGER.push({"[ " + std::to_string(player_body.falling) + " , " + std::to_string(player_body.vjump_window) + " ] ", {1000,190}, 18, WHITE});
 

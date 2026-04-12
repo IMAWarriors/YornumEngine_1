@@ -1,4 +1,4 @@
-// CoreApplication.cpp
+// Main_CoreApplication.cpp
 
 #include "CoreApplication.h"
 
@@ -109,6 +109,7 @@ void CoreApplication::RunCoreEngine(GameEngine & game, const std::string & scene
 
     // Close the program
     window.EndProgram();
+    
 } 
 
 

@@ -1,23 +1,26 @@
 // main.cpp
 
 /**    =======================================================================================================
- *      > MAIN FILE, Version E-Build Alpha 1.6.2
- *      > E-Build Alpha 1.6.2 [Stabilized Push!]: Fixed tile splitting
+ *      > MAIN FILE, Version E-Build Alpha 1.7.0
+ *      > E-Build Alpha 1.7.0 [Stabilized Push!]: Fixed tile splitting
  *     -------------------------------------------------------------------------------------------------------
  *      > by IMAWarriors
  *      >  -------------------------------------------
  *          VERSION 
  *         -------------------------------------------
  *          E-Build Alpha 
- *          1.6.1
+ *          1.7.0
  *          [Stabilized Push!]
- *          Refactored project structure
+ *          Added playforming collision
  *      ------------------------------------------------------------------------------------------------------
- *      > Stable working version pushed to Git on 04-04-2026, 9:05 PM 
+ *      > Stable working version pushed to Git on 04-11-2026, 9:45 PM 
  *      ======================================================================================================
  *      >>> New to this major build:                
  *      ======================================================================================================
  * 
+ *       - Platforming collision
+ *       - Made batch compilation portable
+ *       - Fixed all major bugs
  *       - Fixed tile splitting
  *
  *    ======================================================================================================= */

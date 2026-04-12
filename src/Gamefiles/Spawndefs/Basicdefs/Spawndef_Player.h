@@ -18,16 +18,9 @@ namespace spawndef {
         registry.apply_component<comp::Transform>       (entity,  { position, position, 0.0f, {1.0f, 1.0f} });
         registry.apply_component<comp::Velocity>        (entity, {0.0f, 0.0f} );
 
-        /* PHYSICS BODY
-        Vec2 size;
-        float skin;
-        bool solid;
-        bool gravitous;
-        float gravity;
-        bool render_hitbox;
-        */
 
-        registry.apply_component<comp::PhysicsBody>     (entity, {{28.0f, 50.0f}, 0.1f, true, true, 3400.0f, true, false, false, false, 0, 0, 0, false, 0, 0, 0, 1});
+
+        registry.apply_component<comp::PhysicsBody>     (entity, {{28.0f, 50.0f}, 1.0f, true, true, 3400.0f, true, false, false, false, 0, 0, 0, false, 0, 0, 0, 1});
 
         // registry.apply_component<comp::CircleRenderer>  (entity, {50.0f , { 255, 0 , 0 , 255 } });
         registry.apply_component<comp::InputState>      (entity, {0, false});

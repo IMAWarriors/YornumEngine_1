@@ -101,7 +101,6 @@ class PlayerControllerSystem : public System {
                 // Normal Jump
                 if ((0 < input.jump_key && input.jump_key < 20) && (body.falling < 9)) {
                     player_velocity.magnitude.y = -JUMP_FORCE;
-                    body.falling = 99;
                     body.vjump_window = 10;
                     input.jump_key = 20;
                 }

@@ -2,7 +2,6 @@
 
 #include "InputSystem.h"
 
-
 void InputSystem::update (Registry & registry, float deltatime)  {
 
     for (Entity entity : registry.view<comp::InputState>()) {
@@ -13,6 +12,9 @@ void InputSystem::update (Registry & registry, float deltatime)  {
 
         if (input.get_jump_key()) {
             inputState.jump_key++;
+            if (inputState.jump_key > 20) {
+                inputState.jump_key = 20;
+            }
         } else {
             inputState.jump_key = 0;
         }
@@ -20,8 +22,3 @@ void InputSystem::update (Registry & registry, float deltatime)  {
     }
 
 }
-
-
-
-
-

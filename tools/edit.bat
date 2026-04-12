@@ -40,6 +40,7 @@ src\Gamefiles\Game\GameEngine.cpp ^
 -Iexternal\rlimgui ^
 -o editor.exe ^
 -mwindows ^
+-static -static-libgcc -static-libstdc++ ^
 -I%RAYLIB_PATH%\include ^
 -L%RAYLIB_PATH%\lib ^
 -lraylib ^
