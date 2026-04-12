@@ -119,6 +119,19 @@ void Renderer::rdraw_rect(float _x, float _y, float _w, float _h, Color _color) 
     DrawRectangle((int)(new_coords.x), (int)(new_coords.y), (int)(new_size.x), (int)(new_size.y), _color);
 
 
+
+}
+
+
+void Renderer::rdraw_wfrect(float _x, float _y, float _w, float _h, Color _color, float _stroke) {
+    
+    Vec2 new_coords = world_camera_transform({_x, _y});
+    Vec2 new_max_coords = world_camera_transform({_x + _w, _y + _h});
+    Vec2 new_size = {new_max_coords.x - new_coords.x, new_max_coords.y - new_coords.y};
+
+    Rectangle rect = {new_coords.x, new_coords.y, new_size.x, new_size.y};
+    DrawRectangleLinesEx(rect, _stroke, _color);
+
 }
 
 

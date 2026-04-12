@@ -46,6 +46,8 @@ class Renderer {
 
         void rdraw_rect(float _x, float _y, float _w, float _h, Color _color);
 
+        void rdraw_wfrect(float _x, float _y, float _w, float _h, Color _color, float _stroke);
+
         void rdraw_text(const std::string & _text, int _x, int _y, int _size, Color _color);
 
         void rdraw_sprite(Texture2D _image, Rectangle _crop, Rectangle _paste);

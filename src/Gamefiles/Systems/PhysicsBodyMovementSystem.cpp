@@ -5,6 +5,30 @@
 #include <algorithm>
 #include <cmath>
 
+static bool is_tiletype_collision (CollisionType colltype, bool include_semisol = false) {
+
+    if (colltype == CollisionType::COLL_FULL_SOLID) {
+        return true;
+    }
+
+    if (include_semisol == true && colltype == CollisionType::COLL_FULL_SEMISOLID) {
+
+
+
+
+
+
+        return true;
+    }
+
+    return false;
+
+}
+
+
+
+
+
 
 // ============================================================
 //  try_move_x
@@ -38,7 +62,7 @@ static float try_move_x (Scene & scene, Vec2 pos, comp::PhysicsBody & body, floa
 
     if (x_dir == 1) {
 
-        // ── Moving RIGHT ──────────────────────────────────────────────────────
+        // Moving RIGHT 
 
         const float leading_edge = pos.x + half_w;         // right edge now
         const float target_edge  = leading_edge + move;    // right edge after full move
@@ -50,7 +74,7 @@ static float try_move_x (Scene & scene, Vec2 pos, comp::PhysicsBody & body, floa
         for (int tx = tile_x_min; tx <= tile_x_max; tx++)
         for (int ty = tile_y_min; ty <= tile_y_max; ty++) {
 
-            if (layer.get_tile_coll(scene, tx, ty) != CollisionType::COLL_FULL_SOLID) { continue; }
+            if (!is_tiletype_collision(layer.get_tile_coll(scene, tx, ty), false)) { continue; }
 
             float tile_left = tx * tile_size;
 
@@ -80,7 +104,7 @@ static float try_move_x (Scene & scene, Vec2 pos, comp::PhysicsBody & body, floa
 
     } else {
 
-        // ── Moving LEFT ───────────────────────────────────────────────────────
+        //  Moving LEFT 
 
         const float leading_edge = pos.x - half_w;         // left edge now
         const float target_edge  = leading_edge - move;    // left edge after full move
@@ -92,7 +116,7 @@ static float try_move_x (Scene & scene, Vec2 pos, comp::PhysicsBody & body, floa
         for (int tx = tile_x_min; tx <= tile_x_max; tx++)
         for (int ty = tile_y_min; ty <= tile_y_max; ty++) {
 
-            if (layer.get_tile_coll(scene, tx, ty) != CollisionType::COLL_FULL_SOLID) { continue; }
+            if (!is_tiletype_collision(layer.get_tile_coll(scene, tx, ty), false)) { continue; }
 
             float tile_right = (tx + 1) * tile_size;
 
@@ -156,12 +180,18 @@ static float try_move_y (Scene & scene, Vec2 pos, comp::PhysicsBody & body, floa
         for (const TileGrid & layer : scene.tile_layers) {
             for (int tx = tile_x_min; tx <= tile_x_max && !grounded; tx++)
             for (int ty = tile_y_min; ty <= tile_y_max && !grounded; ty++) {
-                if (layer.get_tile_coll(scene, tx, ty) == CollisionType::COLL_FULL_SOLID) {
+
+
+
+
+                if (!is_tiletype_collision(layer.get_tile_coll(scene, tx, ty), true)) {
                     float tile_top = ty * tile_size;
                     if (tile_top >= bottom - body.skin && tile_top <= probe_edge) {
                         grounded = true;
                     }
                 }
+
+
             }
         }
 
@@ -202,7 +232,7 @@ static float try_move_y (Scene & scene, Vec2 pos, comp::PhysicsBody & body, floa
 
     if (y_dir == 1) {
 
-        // ── Moving DOWN (positive Y is visually downward) ─────────────────────
+        //  Moving DOWN (positive Y is visually downward) 
 
         const float leading_edge = pos.y + half_h;         // bottom edge now
         const float target_edge  = leading_edge + move;    // bottom edge after full move
@@ -214,7 +244,11 @@ static float try_move_y (Scene & scene, Vec2 pos, comp::PhysicsBody & body, floa
         for (int tx = tile_x_min; tx <= tile_x_max; tx++)
         for (int ty = tile_y_min; ty <= tile_y_max; ty++) {
 
-            if (layer.get_tile_coll(scene, tx, ty) != CollisionType::COLL_FULL_SOLID) { continue; }
+            
+            if (layer.get_tile_coll(scene, tx, ty) == CollisionType::COLL_FULL_SEMISOLID && IsKeyDown(KEY_M))       // Primitive skip throuugh
+                continue;
+
+            if (!is_tiletype_collision(layer.get_tile_coll(scene, tx, ty), true)) { continue; }
 
             float tile_top = ty * tile_size;
 
@@ -247,7 +281,7 @@ static float try_move_y (Scene & scene, Vec2 pos, comp::PhysicsBody & body, floa
 
     } else {
 
-        // ── Moving UP (negative Y is visually upward) ─────────────────────────
+        // Moving UP (negative Y is visually upward) 
 
         const float leading_edge = pos.y - half_h;          // top edge now
         const float target_edge  = leading_edge - move;     // top edge after full move
@@ -259,7 +293,7 @@ static float try_move_y (Scene & scene, Vec2 pos, comp::PhysicsBody & body, floa
         for (int tx = tile_x_min; tx <= tile_x_max; tx++)
         for (int ty = tile_y_min; ty <= tile_y_max; ty++) {
 
-            if (layer.get_tile_coll(scene, tx, ty) != CollisionType::COLL_FULL_SOLID) { continue; }
+            if (!is_tiletype_collision(layer.get_tile_coll(scene, tx, ty), false)) { continue; }
 
             float tile_bottom = (ty + 1) * tile_size;
 

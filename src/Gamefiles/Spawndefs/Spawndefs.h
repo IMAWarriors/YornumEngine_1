@@ -6,6 +6,7 @@
 #include "Basicdefs/Spawndef_Player.h"
 #include "Basicdefs/Spawndef_Camera.h"
 #include "Basicdefs/Spawndef_EngineManager.h"
+#include "Basicdefs/Spawndef_CameraManager.h"
 
 
 #endif

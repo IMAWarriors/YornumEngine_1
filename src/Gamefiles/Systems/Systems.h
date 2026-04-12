@@ -12,6 +12,7 @@
 #include "../Systems/CameraSystem.h"
 #include "../Systems/EngineManagerSystem.h"
 #include "../Systems/EditorUISystem.h"
+#include "../Systems/CameraClampManagerSystem.h"
 
 #endif
 

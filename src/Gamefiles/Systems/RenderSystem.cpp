@@ -322,6 +322,160 @@ void RenderSystem::update (Registry & registry, float deltatime) {
     }
 
 
+    
+    if (G_DEBUGGER.show == true) {
+
+        static int active_corner = -1;      // 0–3 for player zone, 4–7 for clamp zone
+        static CameraClamp* active_clamp = nullptr;
+
+
+        for (CameraClamp & clamp : scene.active_clamps) {
+
+            Vec2 cam = renderer.get_camera_position();
+            float zoom = renderer.get_camera_zoom();
+
+            float half_w = (config::GAME_WORLD_WIDTH * 0.5f) / zoom;
+            float half_h = (config::GAME_WORLD_HEIGHT * 0.5f) / zoom;
+
+            float cam_left   = cam.x - half_w;
+            float cam_right  = cam.x + half_w;
+            float cam_top    = cam.y - half_h;
+            float cam_bottom = cam.y + half_h;
+
+            if (clamp.player_zone_top_left.x > cam_right) {
+                continue;
+            }
+
+            if (clamp.player_zone_bottom_right.x < cam_left) {
+                continue;
+            }
+
+            if (clamp.player_zone_top_left.y > cam_bottom) {
+                continue;
+            }
+
+            if (clamp.player_zone_bottom_right.y < cam_top) {
+                continue;
+            }
+
+            float pz_width     = clamp.player_zone_bottom_right.x - clamp.player_zone_top_left.x;
+            float pz_height    = clamp.player_zone_bottom_right.y - clamp.player_zone_top_left.y;
+
+            float cc_width     = clamp.clamp_bottom_right.x - clamp.clamp_top_left.x;
+            float cc_height    = clamp.clamp_bottom_right.y - clamp.clamp_top_left.y;
+
+            Color pz_color = ORANGE;
+            Color cc_color = YELLOW;
+
+            renderer.rdraw_wfrect(clamp.player_zone_top_left.x, clamp.player_zone_top_left.y, pz_width, pz_height, pz_color, 3.0f);
+            renderer.rdraw_wfrect(clamp.clamp_top_left.x, clamp.clamp_top_left.y, cc_width, cc_height, cc_color, 3.0f);
+
+
+            
+
+            Vec2 mouse_position = {-9999.0f,9999.0f};
+
+            for (Entity entity : registry.view<tag::EngineManager>()) {
+
+                const auto & mouse = registry.get_component<comp::MouseTracker>(entity);
+                mouse_position = mouse.screen_mouse_position;     
+            }
+
+            auto dist = [&](Vec2 p1, Vec2 p2) -> float {
+                return std::sqrt(((p2.x - p1.x) * (p2.x - p1.x)) + ((p2.y - p1.y) * (p2.y - p1.y)));
+            };
+
+            // Here --> ... Is there any way to make these nodes draggablle without introducing state and doing
+            // a bunch of that?
+
+            Vec2 corners[8] = {
+                    clamp.player_zone_top_left,
+                    {clamp.player_zone_bottom_right.x, clamp.player_zone_top_left.y},
+                    clamp.player_zone_bottom_right,
+                    {clamp.player_zone_top_left.x, clamp.player_zone_bottom_right.y},
+
+                    clamp.clamp_top_left,
+                    {clamp.clamp_bottom_right.x, clamp.clamp_top_left.y},
+                    clamp.clamp_bottom_right,
+                    {clamp.clamp_top_left.x, clamp.clamp_bottom_right.y}
+                };
+
+                Vec2 mouse_world = {
+                    cam.x + ((mouse_position.x - config::GAME_WORLD_WIDTH * 0.5f) / zoom),
+                    cam.y + ((mouse_position.y - config::GAME_WORLD_HEIGHT * 0.5f) / zoom)
+                };
+
+                float min_dist = 15.0f / zoom; // scale with zoom
+                int hovered = -1;
+
+                for (int i = 0; i < 8; i++) {
+                    if (dist(mouse_world, corners[i]) < min_dist) {
+                        hovered = i;
+                        break;
+                    }
+                }
+
+                if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && hovered != -1) {
+                    active_corner = hovered;
+                    active_clamp = &clamp;
+                }
+
+                if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
+                    active_corner = -1;
+                    active_clamp = nullptr;
+                }
+
+                if (active_clamp == &clamp && active_corner != -1) {
+
+                    Vec2* tl;
+                    Vec2* br;
+
+                    if (active_corner < 4) {
+                        tl = &clamp.player_zone_top_left;
+                        br = &clamp.player_zone_bottom_right;
+                    } else {
+                        tl = &clamp.clamp_top_left;
+                        br = &clamp.clamp_bottom_right;
+                    }
+
+                    int c = active_corner % 4;
+
+                    if (c == 0) { // top-left
+                        tl->x = mouse_world.x;
+                        tl->y = mouse_world.y;
+                    }
+                    else if (c == 1) { // top-right
+                        br->x = mouse_world.x;
+                        tl->y = mouse_world.y;
+                    }
+                    else if (c == 2) { // bottom-right
+                        br->x = mouse_world.x;
+                        br->y = mouse_world.y;
+                    }
+                    else if (c == 3) { // bottom-left
+                        tl->x = mouse_world.x;
+                        br->y = mouse_world.y;
+                    }
+                }
+
+
+                for (int i = 0; i < 8; i++) {
+                    renderer.rdraw_wfrect(
+                        corners[i].x - 4,
+                        corners[i].y - 4,
+                        8, 8,
+                        (i == hovered ? RED : BLUE),
+                        2.0f
+                    );
+                }
+
+
+
+        }
+    }
+
+
+
 
 
 

@@ -150,6 +150,21 @@ void DebugOverlaySystem::update (Registry & registry, float deltatime)  {
 
     }
 
+    for (Entity entity : registry.view<comp::CameraClampManager>()) {
+        const auto & manager = registry.get_component<comp::CameraClampManager>(entity);
+        
+        G_DEBUGGER.push({"Current Clamps", {20, 200}, 18, WHITE});
+        G_DEBUGGER.push({"X <min, max> :  " + std::to_string((int)manager.camera_x_min) + " , " + std::to_string((int)manager.camera_x_max), {20,220}, 18, WHITE});
+        G_DEBUGGER.push({"Y <min, max> :  " + std::to_string((int)manager.camera_y_min) + " , " + std::to_string((int)manager.camera_y_max), {20,240}, 18, WHITE});
+
+        if (manager.isThereActiveClamping) {
+            G_DEBUGGER.push({"CLAMPING ACTIVE", {20,260}, 18, GREEN});
+        } else {
+            G_DEBUGGER.push({"no active clamping", {20,260}, 18, RED});
+        }
+
+    }
+
     
     
 

@@ -26,6 +26,7 @@ void GameEngine::Initialize(Renderer & _renderer, InputManager & _input, FrameSt
     systems.add_system   <InputSystem>               (Phases::INPUT, *input);
     systems.add_system   <PlayerControllerSystem>    (Phases::SIMULATION);
     systems.add_system   <PhysicsBodyMovementSystem> (Phases::SIMULATION, scene, *renderer);
+    systems.add_system   <CameraClampManagerSystem>  (Phases::SIMULATION, scene);
     systems.add_system   <CameraSystem>              (Phases::SIMULATION, *renderer);
     systems.add_system   <EngineManagerSystem>       (Phases::SIMULATION, *frame);
 
@@ -46,6 +47,7 @@ void GameEngine::Initialize(Renderer & _renderer, InputManager & _input, FrameSt
 
     // Entities Initialization
     Entity player = spawndef::SpawnPlayer(registry);
+    Entity cameraManager = spawndef::SpawnCameraManager(registry);
     Entity camera = spawndef::SpawnCamera(registry, player, 5.0f);
     Entity engine = spawndef::SpawnEngineManager(registry);
 

@@ -8,7 +8,7 @@
 #include "../Assets/AssetManager.h"
 
 
-
+#include "CameraClamp.h"
 #include "TileAtlas.h"
 #include "TileGrid.h"
 
@@ -61,6 +61,10 @@ class Scene {
         std::string loaded_scene_name;
         std::vector<TileAtlas> loaded_atlases;
         std::vector<TileGrid> tile_layers; 
+
+        // to be serialized
+
+        std::vector<CameraClamp> active_clamps;
 
         // ====================================================================================
         

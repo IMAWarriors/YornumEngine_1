@@ -29,6 +29,7 @@ src\Gamefiles\Systems\CameraSystem.cpp ^
 src\Gamefiles\Systems\RenderSystem.cpp ^
 src\Gamefiles\Systems\InputSystem.cpp ^
 src\Gamefiles\Systems\DebugOverlaySystem.cpp ^
+src\Gamefiles\Systems\CameraClampManagerSystem.cpp ^
 src\Gamefiles\Systems\EngineManagerSystem.cpp ^
 src\Gamefiles\Systems\EditorUISystem.cpp ^
 src\Gamefiles\Systems\PhysicsBodyMovementSystem.cpp ^
