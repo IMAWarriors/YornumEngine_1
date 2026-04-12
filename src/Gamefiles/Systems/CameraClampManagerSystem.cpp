@@ -33,7 +33,9 @@ void CameraClampManagerSystem::update (Registry & registry, float deltatime) {
         manager.camera_x_max = 0;
         manager.camera_y_max = 0;
 
-        for (CameraClamp clamp : scene.active_clamps) {
+        manager.camera_smoothing_override = 8.0f;
+
+        for (const CameraClamp & clamp : scene.active_clamps) {
 
             // We just look for the first possible clamp that fits the criteria bro don't efver make overlapping camera clamps
             // cuz idk waht will happen
@@ -45,8 +47,10 @@ void CameraClampManagerSystem::update (Registry & registry, float deltatime) {
                     manager.camera_y_min = clamp.clamp_top_left.y;
                     manager.camera_x_max = clamp.clamp_bottom_right.x;
                     manager.camera_y_max = clamp.clamp_bottom_right.y;
+                    manager.camera_smoothing_override = clamp.smoothing_override;
 
                     manager.isThereActiveClamping = true;
+                    break;
                 
             }
 

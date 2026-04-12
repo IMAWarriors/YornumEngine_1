@@ -48,6 +48,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
     static bool showLayerManager = true;
 
     static int selectedLayer = 0;
+    static int selectedClamp = -1;
 
     static int selectedIndex = -1; // FOR line: if(ImGui::BeginTabItem("Tileset")) {...  // serves to give show selected tile atlas for tile atlas editor
 
@@ -126,6 +127,14 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 // Layer List
                 // =========================
 
+                if (scene.tile_layers.empty()) {
+                    selectedLayer = -1;
+                } else if (selectedLayer >= (int)scene.tile_layers.size()) {
+                    selectedLayer = (int)scene.tile_layers.size() - 1;
+                } else if (selectedLayer < -1) {
+                    selectedLayer = -1;
+                }
+
             }
 
             ImGui::End();
@@ -193,11 +202,12 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 if (ImGui::Button("+ Add Layer", ImVec2(-1, 0))) {
                     scene.tiles_push_new_layer();
                     selectedLayer = (int)scene.tile_layers.size() - 1;
+                    scene.EDITOR_ONLY_SELECTED_LAYER = selectedLayer;
                 }
 
                 // Delete Layer
                 if (ImGui::Button("- Delete Layer", ImVec2(-1, 0))) {
-                    if (!scene.tile_layers.empty() && selectedLayer >= 0) {
+                    if (!scene.tile_layers.empty() && selectedLayer >= 0 && selectedLayer < (int)scene.tile_layers.size()) {
                         scene.tile_layers.erase(scene.tile_layers.begin() + selectedLayer);
 
                         if (selectedLayer >= (int)scene.tile_layers.size()) {
@@ -208,7 +218,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                 if (ImGui::Button("^ Move Layer", ImVec2(-1, 0))) {
 
-                    if (!scene.tile_layers.empty() && selectedLayer > 0) {
+                    if (!scene.tile_layers.empty() && selectedLayer > 0 && selectedLayer < (int)scene.tile_layers.size()) {
 
                         // Swap up
                         TileGrid temp = scene.tile_layers[selectedLayer];
@@ -221,7 +231,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                 if (ImGui::Button("v Move Layer", ImVec2(-1, 0))) {
 
-                    if (!scene.tile_layers.empty() && selectedLayer >= 0 && scene.tile_layers.size() - 2 > selectedLayer) {
+                    if (!scene.tile_layers.empty() && selectedLayer >= 0 && selectedLayer < (int)scene.tile_layers.size() - 1) {
 
                         // Swap down
                         TileGrid temp = scene.tile_layers[selectedLayer];
@@ -2372,6 +2382,14 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                 if (ImGui::BeginTabItem("Clamps")) {
 
+                    if (scene.active_clamps.empty()) {
+                        selectedClamp = -1;
+                    } else if (selectedClamp >= (int)scene.active_clamps.size()) {
+                        selectedClamp = (int)scene.active_clamps.size() - 1;
+                    } else if (selectedClamp < 0) {
+                        selectedClamp = 0;
+                    }
+
 
                     // Add Layer
                     if (ImGui::Button("+ New Clamp", ImVec2(-1, 0))) {
@@ -2386,10 +2404,74 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                         
                         scene.active_clamps.push_back({camera_position.x-200, camera_position.y-100, camera_position.x+200, camera_position.y+100, camera_position.x-100, camera_position.y-50, camera_position.x+100, camera_position.y+50, 8.0f, false});
-                        
+                        selectedClamp = (int)scene.active_clamps.size() - 1;
+
                     }
 
                     if (ImGui::Button("- Delete Clamp", ImVec2(-1, 0))) {
+
+                        if (selectedClamp >= 0 && selectedClamp < (int)scene.active_clamps.size()) {
+                            scene.active_clamps.erase(scene.active_clamps.begin() + selectedClamp);
+
+                            if (scene.active_clamps.empty()) {
+                                selectedClamp = -1;
+                            } else if (selectedClamp >= (int)scene.active_clamps.size()) {
+                                selectedClamp = (int)scene.active_clamps.size() - 1;
+                            }
+                        }
+                    }
+
+                    ImGui::Separator();
+
+                    if (ImGui::BeginListBox("Camera Clamps", ImVec2(-1, 120.0f * fullscreenScale.y))) {
+                        for (int i = 0; i < (int)scene.active_clamps.size(); i++) {
+                            std::string clamp_label = "Clamp " + std::to_string(i + 1);
+                            if (ImGui::Selectable(clamp_label.c_str(), selectedClamp == i)) {
+                                selectedClamp = i;
+                            }
+                        }
+                        ImGui::EndListBox();
+                    }
+
+                    if (selectedClamp >= 0 && selectedClamp < (int)scene.active_clamps.size()) {
+                        CameraClamp & clamp = scene.active_clamps[selectedClamp];
+
+                        ImGui::Text("Selected: Clamp %d", selectedClamp + 1);
+                        ImGui::TextDisabled("Edit values live while running.");
+                        ImGui::Separator();
+
+                        ImGui::Text("Clamp Zone (camera)");
+                        ImGui::PushItemWidth(-1);
+                        ImGui::InputFloat2("Clamp Top Left", &clamp.clamp_top_left.x);
+                        ImGui::InputFloat2("Clamp Bottom Right", &clamp.clamp_bottom_right.x);
+                        ImGui::PopItemWidth();
+
+                        if (clamp.clamp_top_left.x > clamp.clamp_bottom_right.x) {
+                            std::swap(clamp.clamp_top_left.x, clamp.clamp_bottom_right.x);
+                        }
+                        if (clamp.clamp_top_left.y > clamp.clamp_bottom_right.y) {
+                            std::swap(clamp.clamp_top_left.y, clamp.clamp_bottom_right.y);
+                        }
+
+                        ImGui::Spacing();
+                        ImGui::Text("Player Trigger Zone");
+                        ImGui::PushItemWidth(-1);
+                        ImGui::InputFloat2("Player Top Left", &clamp.player_zone_top_left.x);
+                        ImGui::InputFloat2("Player Bottom Right", &clamp.player_zone_bottom_right.x);
+                        ImGui::PopItemWidth();
+
+                        if (clamp.player_zone_top_left.x > clamp.player_zone_bottom_right.x) {
+                            std::swap(clamp.player_zone_top_left.x, clamp.player_zone_bottom_right.x);
+                        }
+                        if (clamp.player_zone_top_left.y > clamp.player_zone_bottom_right.y) {
+                            std::swap(clamp.player_zone_top_left.y, clamp.player_zone_bottom_right.y);
+                        }
+
+                        ImGui::Spacing();
+                        ImGui::DragFloat("Smoothing Override", &clamp.smoothing_override, 0.0001f, 0.0001f, 0.0300f, "%.4f");
+                        ImGui::Checkbox("Snap To Clamp", &clamp.snap_to_clamp);
+                    } else {
+                        ImGui::TextDisabled("No clamps in scene.");
                         
                     }
 

@@ -89,6 +89,11 @@ void CameraSystem::update (Registry & registry, float deltatime) {
 
                 float base_smoothing = camera.followSmoothing;
                 float gain = 0.015f;
+
+                if (camera_clamp_active) {
+                    gain = override_smoothing;
+                }
+
                 float peak = 4.0f;
 
                 Vec2 smoothing = {
@@ -97,14 +102,7 @@ void CameraSystem::update (Registry & registry, float deltatime) {
                 };
 
 
-                if (camera_clamp_active) {
-                    if (camera_clamp_min.x < transform.position.x && transform.position.x < camera_clamp_max.x &&
-                        camera_clamp_min.y < transform.position.y && transform.position.y < camera_clamp_max.y) {
-
-                            smoothing = {override_smoothing, override_smoothing};
-
-                    }
-                }
+                
 
 
 
