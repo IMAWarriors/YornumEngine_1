@@ -26,8 +26,9 @@ bool Background::validate_image_for_screen_tile(const std::string& image_path) c
         return false;
     }
 
-    const bool valid = image.width == gwconst::SCREEN_WIDTH_GAMEPIXELS
-        && image.height == gwconst::SCREEN_HEIGHT_GAMEPIXELS;
+    // Accept any readable image dimensions for editor usability.
+    // Rendering code scales parallax nodes into screen-tile slots.
+    const bool valid = image.width > 0 && image.height > 0;
 
     UnloadImage(image);
     return valid;

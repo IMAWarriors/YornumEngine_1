@@ -366,7 +366,7 @@ void PhysicsBodyMovementSystem::update (Registry & registry, float deltatime) {
                 if (velocity.y < 0.0f) {
                     velocity.y += body.gravity * deltatime;
                 } else {
-                    velocity.y += body.gravity * 1.5f * deltatime;
+                    velocity.y += body.gravity * 2.0f * deltatime;
                 }
             }
 

@@ -66,6 +66,10 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
     static int selectedBackgroundLayer = -1;
     static int selectedBackgroundNode = -1;
     static bool backgroundPainterMode = false;
+    static int backgroundSeatX = 0;
+    static int backgroundSeatY = 0;
+    static std::string backgroundStatusMessage;
+    static bool backgroundStatusIsError = false;
 
     static bool newTilesetSplitMatch = true;
 
@@ -83,6 +87,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
 
 
+    std::filesystem::create_directories(BACKGROUNDIMAGEDIR);
 
     ImGui::GetStyle().WindowMinSize = ImVec2(2.0,2.0);
     ImGui::GetStyle().WindowPadding = ImVec2(0,0);
@@ -769,17 +774,42 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
     // ..........................
     // .............
 
-    ImGui::SetNextWindowPos({0 * fullscreenScale.x, (720 - 200) * fullscreenScale.y}); // below your top bar
-    ImGui::SetNextWindowSize({1280 * fullscreenScale.x, 200 * fullscreenScale.y});
+    ImGui::SetNextWindowPos(
+        {0 * fullscreenScale.x, (720 - 215) * fullscreenScale.y},
+        ImGuiCond_Once
+    );
+
+    ImGui::SetNextWindowSize(
+        {1280 * fullscreenScale.x, 215 * fullscreenScale.y},
+        ImGuiCond_Once
+    );
+
+    static bool matchfs = fullscreen;
+
+    if (matchfs != fullscreen) {
+        matchfs = fullscreen;
+        ImGui::SetNextWindowPos(
+            {0 * fullscreenScale.x, (720 - 215) * fullscreenScale.y}
+        );
+
+        ImGui::SetNextWindowSize(
+            {1280 * fullscreenScale.x, 215 * fullscreenScale.y}
+        );
+    }
 
 
-
-
-
+    ImGui::SetNextWindowSizeConstraints(
+        ImVec2(1280 * fullscreenScale.x, 215 * fullscreenScale.y),   // min (fixed width, min height)
+        ImVec2(1280 * fullscreenScale.x, 700 * fullscreenScale.y)    // max (fixed width, max height)
+    );
 
     if (WORKSPACE_WINDOW_DRAW) {    
 
-        if (ImGui::Begin("Workspace", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoTitleBar )) {
+        if (ImGui::Begin("Workspace", nullptr,
+            ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoCollapse |
+            ImGuiWindowFlags_NoScrollbar |
+            ImGuiWindowFlags_NoTitleBar)) {
 
             ImGui::PushStyleColor(ImGuiCol_Tab, ImVec4                  (0.1f, 0.1f, 0.1f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_TabHovered, ImVec4           (0.33f, 0.33f, 0.33f, 1.0f));
@@ -844,9 +874,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f); // thickness
 
                     if (fullscreen) {
-                        ImGui::BeginChild("ItemListPanel", ImVec2(220 * fullscreenScale.x, 145 * fullscreenScale.y), true);
+                        ImGui::BeginChild("ItemListPanel", ImVec2(220 * fullscreenScale.x, 152 * fullscreenScale.y), true);
                     } else {
-                        ImGui::BeginChild("ItemListPanel", ImVec2(220 * fullscreenScale.x, 110 * fullscreenScale.y), true);
+                        ImGui::BeginChild("ItemListPanel", ImVec2(220 * fullscreenScale.x, 115 * fullscreenScale.y), true);
                     }
 
                     // ***** Tileset splitting information *****
@@ -2424,6 +2454,11 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     scene.EDITOR_ONLY_ACTIVE_BACKGROUND_EDITOR = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
 
                     std::vector<std::string> background_paths = assets.GetFilepathsInDirectory(BACKGROUNDIMAGEDIR, ".png");
+                    std::vector<std::string> jpg_paths = assets.GetFilepathsInDirectory(BACKGROUNDIMAGEDIR, ".jpg");
+                    std::vector<std::string> jpeg_paths = assets.GetFilepathsInDirectory(BACKGROUNDIMAGEDIR, ".jpeg");
+                    background_paths.insert(background_paths.end(), jpg_paths.begin(), jpg_paths.end());
+                    background_paths.insert(background_paths.end(), jpeg_paths.begin(), jpeg_paths.end());
+                    std::sort(background_paths.begin(), background_paths.end());
                     static int selectedBackgroundSourceIndex = -1;
 
                     if ((int)scene.background.layers.size() <= 0) {
@@ -2432,7 +2467,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         selectedBackgroundLayer = (int)scene.background.layers.size() - 1;
                     }
 
-                    const float actionsWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
+                    const float actionsWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.25f;
                     if (ImGui::Button("+ Layer", ImVec2(actionsWidth, 0))) {
                         scene.background.new_layer(0.0f, 0.0f, 1.0f + (float)scene.background.layers.size(), WHITE);
                         selectedBackgroundLayer = (int)scene.background.layers.size() - 1;
@@ -2450,9 +2485,26 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             selectedBackgroundNode = -1;
                         }
                     }
+                    ImGui::SameLine();
+                    if (ImGui::Button("^ Layer", ImVec2(actionsWidth, 0))) {
+                        // Fill in
+
+
+
+                        
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("v Layer", ImVec2(actionsWidth, 0))) {
+                        // Fill in
+
+
+                    }
+                    
 
                     ImGui::Separator();
                     ImGui::TextUnformatted("Static backdrop image");
+                    ImGui::TextDisabled("Image folder: %s", BACKGROUNDIMAGEDIR.c_str());
+                    ImGui::TextDisabled("Parallax nodes are rendered into %dx%d slots (non-matching images will be stretched).", gwconst::SCREEN_WIDTH_GAMEPIXELS, gwconst::SCREEN_HEIGHT_GAMEPIXELS);
                     if (ImGui::BeginListBox("##BackdropImageList", ImVec2(-1, 90.0f * fullscreenScale.y))) {
                         for (int i = 0; i < (int)background_paths.size(); i++) {
                             const bool selected = selectedBackgroundSourceIndex == i;
@@ -2463,11 +2515,18 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         ImGui::EndListBox();
                     }
                     if (ImGui::Button("Set Backdrop") && selectedBackgroundSourceIndex >= 0 && selectedBackgroundSourceIndex < (int)background_paths.size()) {
-                        scene.background.set_backdrop_image(assets, background_paths[(size_t)selectedBackgroundSourceIndex]);
+                        const bool set_ok = scene.background.set_backdrop_image(assets, background_paths[(size_t)selectedBackgroundSourceIndex]);
+                        backgroundStatusIsError = !set_ok;
+                        backgroundStatusMessage = set_ok ? "Backdrop set." : "Failed to set backdrop image.";
                     }
                     ImGui::SameLine();
                     if (ImGui::Button("Clear Backdrop")) {
                         scene.background.clear_backdrop_image(assets);
+                        backgroundStatusIsError = false;
+                        backgroundStatusMessage = "Backdrop cleared.";
+                    }
+                    if (background_paths.empty()) {
+                        ImGui::TextDisabled("No images found. Drop .png/.jpg files in assets/sprites/backgrounds/.");
                     }
 
                     ImGui::Separator();
@@ -2495,7 +2554,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             selectedLayerRef.tint.b / 255.0f,
                             selectedLayerRef.tint.a / 255.0f
                         };
-                        if (ImGui::ColorEdit4("Layer Tint", tintColor, ImGuiColorEditFlags_NoInputs)) {
+                        if (ImGui::ColorEdit4("Layer Tint", tintColor)) {
                             selectedLayerRef.tint = {
                                 (unsigned char)(std::clamp(tintColor[0], 0.0f, 1.0f) * 255.0f),
                                 (unsigned char)(std::clamp(tintColor[1], 0.0f, 1.0f) * 255.0f),
@@ -2504,9 +2563,27 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             };
                         }
 
+                        if (ImGui::Button("Reset Tint")) {
+                            selectedLayerRef.tint = WHITE;
+                        }
+
+
                         ImGui::Checkbox("Parallax Painter Mode", &backgroundPainterMode);
                         if (backgroundPainterMode) {
                             ImGui::TextDisabled("Left click in viewport places selected image at hovered screen-tile seat.");
+                        }
+
+                        ImGui::DragInt("Node Seat X", &backgroundSeatX, 1.0f, Background::ALLOWED_NODE_SPACE_X_MIN, Background::ALLOWED_NODE_SPACE_X_MAX);
+                        ImGui::DragInt("Node Seat Y", &backgroundSeatY, 1.0f, Background::ALLOWED_NODE_SPACE_Y_MIN, Background::ALLOWED_NODE_SPACE_Y_MAX);
+                        if (ImGui::Button("Add/Replace Node At Seat")) {
+                            if (selectedBackgroundSourceIndex >= 0 && selectedBackgroundSourceIndex < (int)background_paths.size()) {
+                                const bool add_ok = scene.background.new_parallax(selectedBackgroundLayer, assets, background_paths[(size_t)selectedBackgroundSourceIndex], backgroundSeatX, backgroundSeatY, false, false);
+                                backgroundStatusIsError = !add_ok;
+                                backgroundStatusMessage = add_ok ? "Node added/updated." : "Failed to add node (seat or image invalid).";
+                            } else {
+                                backgroundStatusIsError = true;
+                                backgroundStatusMessage = "Select a source image first.";
+                            }
                         }
 
                         if (ImGui::BeginListBox("##BackgroundNodeList", ImVec2(-1, 90.0f * fullscreenScale.y))) {
@@ -2535,6 +2612,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             if (ImGui::Button("Delete Selected Node")) {
                                 scene.background.remove_parallax(selectedBackgroundLayer, selectedBackgroundNode, assets);
                                 selectedBackgroundNode = -1;
+                                backgroundStatusIsError = false;
+                                backgroundStatusMessage = "Node deleted.";
                             }
                         }
 
@@ -2553,7 +2632,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             int seat_y = (int)std::floor((world_top + (mouse.y / zoom)) / gwconst::SCREEN_HEIGHT_GAMEPIXELS);
 
                             if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && !scene.uiCapturesMouse) {
-                                scene.background.new_parallax(selectedBackgroundLayer, assets, background_paths[(size_t)selectedBackgroundSourceIndex], seat_x, seat_y, false, false);
+                                const bool add_ok = scene.background.new_parallax(selectedBackgroundLayer, assets, background_paths[(size_t)selectedBackgroundSourceIndex], seat_x, seat_y, false, false);
+                                backgroundStatusIsError = !add_ok;
+                                backgroundStatusMessage = add_ok ? "Node painted." : "Failed to paint node.";
                             }
 
                             if (IsMouseButtonPressed(MOUSE_RIGHT_BUTTON) && !scene.uiCapturesMouse) {
@@ -2561,11 +2642,18 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 for (int i = 0; i < (int)painterLayer.nodes.size(); i++) {
                                     if (painterLayer.nodes[(size_t)i].seat_x == seat_x && painterLayer.nodes[(size_t)i].seat_y == seat_y) {
                                         scene.background.remove_parallax(selectedBackgroundLayer, i, assets);
+                                         backgroundStatusIsError = false;
+                                        backgroundStatusMessage = "Node erased.";
                                         break;
                                     }
                                 }
                             }
                         }
+                    }
+
+                    if (!backgroundStatusMessage.empty()) {
+                        const ImVec4 statusColor = backgroundStatusIsError ? ImVec4(0.95f, 0.35f, 0.35f, 1.0f) : ImVec4(0.35f, 0.95f, 0.45f, 1.0f);
+                        ImGui::TextColored(statusColor, "%s", backgroundStatusMessage.c_str());
                     }
 
                     ImGui::EndTabItem();
