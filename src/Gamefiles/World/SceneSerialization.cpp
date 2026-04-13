@@ -7,6 +7,7 @@
 
 namespace {
     constexpr int SCENE_FILE_VERSION_WITH_CAMERA_CLAMPS = 1;
+    constexpr int SCENE_FILE_VERSION_WITH_BACKGROUND = 2;
 
     std::string ResolveTilesetPathFromSceneRecord(const std::string& rawPath) {
         namespace fs = std::filesystem;
@@ -48,7 +49,7 @@ bool serial::SaveSceneToFile(const Scene & scene, const std::string& filepath) {
     if (!file.is_open()) return false;
 
     // ================= HEADER =================
-    SceneFileHeader header = {{'S','C','E','N','E','\0'}, SCENE_FILE_VERSION_WITH_CAMERA_CLAMPS};
+    SceneFileHeader header = {{'S','C','E','N','E','\0'}, SCENE_FILE_VERSION_WITH_BACKGROUND};
     file.write((char*)&header, sizeof(header));
 
     // ================= LAYER INFO =================
@@ -154,6 +155,44 @@ bool serial::SaveSceneToFile(const Scene & scene, const std::string& filepath) {
         file.write((char*)&snap_to_clamp, sizeof(uint8_t));
     }
 
+    // ================= BACKGROUND =================
+    int backdrop_path_len = (int)scene.background.backdrop_image_path.size();
+    file.write((char*)&backdrop_path_len, sizeof(int));
+    if (backdrop_path_len > 0) {
+        file.write(scene.background.backdrop_image_path.data(), backdrop_path_len);
+    }
+
+    int background_layer_count = (int)scene.background.layers.size();
+    file.write((char*)&background_layer_count, sizeof(int));
+
+    for (const ParallaxLayer& layer : scene.background.layers) {
+        file.write((char*)&layer.x_dist_offset, sizeof(float));
+        file.write((char*)&layer.y_dist_offset, sizeof(float));
+        file.write((char*)&layer.z_dist_offset, sizeof(float));
+        file.write((char*)&layer.tint.r, sizeof(unsigned char));
+        file.write((char*)&layer.tint.g, sizeof(unsigned char));
+        file.write((char*)&layer.tint.b, sizeof(unsigned char));
+        file.write((char*)&layer.tint.a, sizeof(unsigned char));
+
+        int node_count = (int)layer.nodes.size();
+        file.write((char*)&node_count, sizeof(int));
+
+        for (const ParallaxNode& node : layer.nodes) {
+            int node_path_len = (int)node.image_path.size();
+            file.write((char*)&node_path_len, sizeof(int));
+            if (node_path_len > 0) {
+                file.write(node.image_path.data(), node_path_len);
+            }
+
+            uint8_t xrep = node.x_repeating ? 1 : 0;
+            uint8_t yrep = node.y_repeating ? 1 : 0;
+            file.write((char*)&xrep, sizeof(uint8_t));
+            file.write((char*)&yrep, sizeof(uint8_t));
+            file.write((char*)&node.seat_x, sizeof(int));
+            file.write((char*)&node.seat_y, sizeof(int));
+        }
+    }
+
     if (!file.good()) {
         return false;
     }
@@ -174,7 +213,7 @@ bool serial::LoadSceneFromFile(Scene & scene, AssetManager & assets, const std::
 
     if (strncmp(header.magic, "SCENE", 5) != 0) return false;
 
-    if (header.version < 0 || header.version > SCENE_FILE_VERSION_WITH_CAMERA_CLAMPS) return false;
+    if (header.version < 0 || header.version > SCENE_FILE_VERSION_WITH_BACKGROUND) return false;
     if (!file.good()) return false;
 
     // ================= LAYER INFO =================
@@ -365,6 +404,81 @@ bool serial::LoadSceneFromFile(Scene & scene, AssetManager & assets, const std::
 
             clamp.snap_to_clamp = (snap_to_clamp != 0);
         }
+    }
+
+    scene.background.clear();
+    if (header.version >= SCENE_FILE_VERSION_WITH_BACKGROUND) {
+        int backdrop_path_len = 0;
+        file.read((char*)&backdrop_path_len, sizeof(int));
+        if (!file.good() || backdrop_path_len < 0) {
+            return false;
+        }
+
+        if (backdrop_path_len > 0) {
+            scene.background.backdrop_image_path.resize((size_t)backdrop_path_len);
+            file.read(scene.background.backdrop_image_path.data(), backdrop_path_len);
+            if (!file.good()) {
+                return false;
+            }
+        }
+
+        int background_layer_count = 0;
+        file.read((char*)&background_layer_count, sizeof(int));
+        if (!file.good() || background_layer_count < 0) {
+            return false;
+        }
+
+        scene.background.layers.resize((size_t)background_layer_count);
+        for (ParallaxLayer& layer : scene.background.layers) {
+            file.read((char*)&layer.x_dist_offset, sizeof(float));
+            file.read((char*)&layer.y_dist_offset, sizeof(float));
+            file.read((char*)&layer.z_dist_offset, sizeof(float));
+            file.read((char*)&layer.tint.r, sizeof(unsigned char));
+            file.read((char*)&layer.tint.g, sizeof(unsigned char));
+            file.read((char*)&layer.tint.b, sizeof(unsigned char));
+            file.read((char*)&layer.tint.a, sizeof(unsigned char));
+            if (!file.good()) {
+                return false;
+            }
+
+            int node_count = 0;
+            file.read((char*)&node_count, sizeof(int));
+            if (!file.good() || node_count < 0) {
+                return false;
+            }
+
+            layer.nodes.resize((size_t)node_count);
+            for (ParallaxNode& node : layer.nodes) {
+                int node_path_len = 0;
+                file.read((char*)&node_path_len, sizeof(int));
+                if (!file.good() || node_path_len < 0) {
+                    return false;
+                }
+
+                if (node_path_len > 0) {
+                    node.image_path.resize((size_t)node_path_len);
+                    file.read(node.image_path.data(), node_path_len);
+                }
+
+                uint8_t xrep = 0;
+                uint8_t yrep = 0;
+                file.read((char*)&xrep, sizeof(uint8_t));
+                file.read((char*)&yrep, sizeof(uint8_t));
+                file.read((char*)&node.seat_x, sizeof(int));
+                file.read((char*)&node.seat_y, sizeof(int));
+                if (!file.good()) {
+                    return false;
+                }
+
+                node.x_repeating = (xrep != 0);
+                node.y_repeating = (yrep != 0);
+                node.image = nullptr;
+            }
+        }
+    }
+
+    if (!scene.background.resolve_assets(assets)) {
+        return false;
     }
 
     return true;

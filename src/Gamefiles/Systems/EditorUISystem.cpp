@@ -45,6 +45,10 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
     bool fullscreen = GetScreenWidth() > config::INIT_WINDOW_DISPLAY_WIDTH;
 
+    scene.EDITOR_ONLY_BACKGROUND_TAB_SELECTED = false;
+    scene.EDITOR_ONLY_ACTIVE_BACKGROUND_EDITOR = false;
+
+
     static bool showTileAtlasEditor = false;
     static bool showLayerManager = true;
 
@@ -58,6 +62,10 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
     static int phystab_selectedTileIndex = -1;
 
     static int selectedTileIndex = -1;
+
+    static int selectedBackgroundLayer = -1;
+    static int selectedBackgroundNode = -1;
+    static bool backgroundPainterMode = false;
 
     static bool newTilesetSplitMatch = true;
 
@@ -2408,6 +2416,158 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     //ImGui::ImageButton( (void*)(intptr_t)index, textureID, ImVec2(32, 32), uv0, uv1);
 
                     // EMPTY
+                    ImGui::EndTabItem();
+                }
+
+                if (ImGui::BeginTabItem("Background")) {
+                    scene.EDITOR_ONLY_BACKGROUND_TAB_SELECTED = true;
+                    scene.EDITOR_ONLY_ACTIVE_BACKGROUND_EDITOR = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
+
+                    std::vector<std::string> background_paths = assets.GetFilepathsInDirectory(BACKGROUNDIMAGEDIR, ".png");
+                    static int selectedBackgroundSourceIndex = -1;
+
+                    if ((int)scene.background.layers.size() <= 0) {
+                        selectedBackgroundLayer = -1;
+                    } else if (selectedBackgroundLayer >= (int)scene.background.layers.size()) {
+                        selectedBackgroundLayer = (int)scene.background.layers.size() - 1;
+                    }
+
+                    const float actionsWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
+                    if (ImGui::Button("+ Layer", ImVec2(actionsWidth, 0))) {
+                        scene.background.new_layer(0.0f, 0.0f, 1.0f + (float)scene.background.layers.size(), WHITE);
+                        selectedBackgroundLayer = (int)scene.background.layers.size() - 1;
+                        selectedBackgroundNode = -1;
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("- Layer", ImVec2(actionsWidth, 0))) {
+                        if (selectedBackgroundLayer >= 0) {
+                            scene.background.remove_layer(selectedBackgroundLayer, assets);
+                            if (scene.background.layers.empty()) {
+                                selectedBackgroundLayer = -1;
+                            } else if (selectedBackgroundLayer >= (int)scene.background.layers.size()) {
+                                selectedBackgroundLayer = (int)scene.background.layers.size() - 1;
+                            }
+                            selectedBackgroundNode = -1;
+                        }
+                    }
+
+                    ImGui::Separator();
+                    ImGui::TextUnformatted("Static backdrop image");
+                    if (ImGui::BeginListBox("##BackdropImageList", ImVec2(-1, 90.0f * fullscreenScale.y))) {
+                        for (int i = 0; i < (int)background_paths.size(); i++) {
+                            const bool selected = selectedBackgroundSourceIndex == i;
+                            if (ImGui::Selectable(background_paths[i].c_str(), selected)) {
+                                selectedBackgroundSourceIndex = i;
+                            }
+                        }
+                        ImGui::EndListBox();
+                    }
+                    if (ImGui::Button("Set Backdrop") && selectedBackgroundSourceIndex >= 0 && selectedBackgroundSourceIndex < (int)background_paths.size()) {
+                        scene.background.set_backdrop_image(assets, background_paths[(size_t)selectedBackgroundSourceIndex]);
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("Clear Backdrop")) {
+                        scene.background.clear_backdrop_image(assets);
+                    }
+
+                    ImGui::Separator();
+                    ImGui::TextUnformatted("Background Layers");
+                    if (ImGui::BeginListBox("##BackgroundLayerList", ImVec2(-1, 110.0f * fullscreenScale.y))) {
+                        for (int i = 0; i < (int)scene.background.layers.size(); i++) {
+                            std::string label = "Layer " + std::to_string(i) + " (z=" + std::to_string(scene.background.layers[(size_t)i].z_dist_offset) + ")";
+                            if (ImGui::Selectable(label.c_str(), selectedBackgroundLayer == i)) {
+                                selectedBackgroundLayer = i;
+                                selectedBackgroundNode = -1;
+                            }
+                        }
+                        ImGui::EndListBox();
+                    }
+
+                    if (selectedBackgroundLayer >= 0 && selectedBackgroundLayer < (int)scene.background.layers.size()) {
+                        ParallaxLayer & selectedLayerRef = scene.background.layers[(size_t)selectedBackgroundLayer];
+
+                        ImGui::DragFloat("Layer X Offset", &selectedLayerRef.x_dist_offset, 1.0f);
+                        ImGui::DragFloat("Layer Y Offset", &selectedLayerRef.y_dist_offset, 1.0f);
+                        ImGui::DragFloat("Layer Z Depth", &selectedLayerRef.z_dist_offset, 0.01f, 0.01f, 100.0f);
+                        float tintColor[4] = {
+                            selectedLayerRef.tint.r / 255.0f,
+                            selectedLayerRef.tint.g / 255.0f,
+                            selectedLayerRef.tint.b / 255.0f,
+                            selectedLayerRef.tint.a / 255.0f
+                        };
+                        if (ImGui::ColorEdit4("Layer Tint", tintColor, ImGuiColorEditFlags_NoInputs)) {
+                            selectedLayerRef.tint = {
+                                (unsigned char)(std::clamp(tintColor[0], 0.0f, 1.0f) * 255.0f),
+                                (unsigned char)(std::clamp(tintColor[1], 0.0f, 1.0f) * 255.0f),
+                                (unsigned char)(std::clamp(tintColor[2], 0.0f, 1.0f) * 255.0f),
+                                (unsigned char)(std::clamp(tintColor[3], 0.0f, 1.0f) * 255.0f)
+                            };
+                        }
+
+                        ImGui::Checkbox("Parallax Painter Mode", &backgroundPainterMode);
+                        if (backgroundPainterMode) {
+                            ImGui::TextDisabled("Left click in viewport places selected image at hovered screen-tile seat.");
+                        }
+
+                        if (ImGui::BeginListBox("##BackgroundNodeList", ImVec2(-1, 90.0f * fullscreenScale.y))) {
+                            for (int i = 0; i < (int)selectedLayerRef.nodes.size(); i++) {
+                                const ParallaxNode & node = selectedLayerRef.nodes[(size_t)i];
+                                std::string label = "(" + std::to_string(node.seat_x) + "," + std::to_string(node.seat_y) + ") xRep=" + (node.x_repeating ? "1" : "0") + " yRep=" + (node.y_repeating ? "1" : "0");
+                                if (ImGui::Selectable(label.c_str(), selectedBackgroundNode == i)) {
+                                    selectedBackgroundNode = i;
+                                }
+                            }
+                            ImGui::EndListBox();
+                        }
+
+                        if (selectedBackgroundNode >= 0 && selectedBackgroundNode < (int)selectedLayerRef.nodes.size()) {
+                            ParallaxNode & node = selectedLayerRef.nodes[(size_t)selectedBackgroundNode];
+                            bool xrep = node.x_repeating;
+                            bool yrep = node.y_repeating;
+
+                            if (ImGui::Checkbox("Repeat X", &xrep)) {
+                                scene.background.set_node_repeat_x(selectedBackgroundLayer, selectedBackgroundNode, xrep);
+                            }
+                            if (ImGui::Checkbox("Repeat Y", &yrep)) {
+                                scene.background.set_node_repeat_y(selectedBackgroundLayer, selectedBackgroundNode, yrep);
+                            }
+
+                            if (ImGui::Button("Delete Selected Node")) {
+                                scene.background.remove_parallax(selectedBackgroundLayer, selectedBackgroundNode, assets);
+                                selectedBackgroundNode = -1;
+                            }
+                        }
+
+                        if (backgroundPainterMode && selectedBackgroundSourceIndex >= 0 && selectedBackgroundSourceIndex < (int)background_paths.size()) {
+                            Vec2 cam = renderer.get_camera_position();
+                            float zoom = renderer.get_camera_zoom();
+                            Vec2 mouse = winstats::ScreenMousePosition();
+
+                            float depth = std::max(0.01f, selectedLayerRef.z_dist_offset);
+                            float factor = 1.0f / depth;
+                            float parallax_cam_x = (cam.x * factor) + selectedLayerRef.x_dist_offset;
+                            float parallax_cam_y = (cam.y * factor) + selectedLayerRef.y_dist_offset;
+                            float world_left = parallax_cam_x - ((config::GAME_WORLD_WIDTH * 0.5f) / zoom);
+                            float world_top = parallax_cam_y - ((config::GAME_WORLD_HEIGHT * 0.5f) / zoom);
+                            int seat_x = (int)std::floor((world_left + (mouse.x / zoom)) / gwconst::SCREEN_WIDTH_GAMEPIXELS);
+                            int seat_y = (int)std::floor((world_top + (mouse.y / zoom)) / gwconst::SCREEN_HEIGHT_GAMEPIXELS);
+
+                            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && !scene.uiCapturesMouse) {
+                                scene.background.new_parallax(selectedBackgroundLayer, assets, background_paths[(size_t)selectedBackgroundSourceIndex], seat_x, seat_y, false, false);
+                            }
+
+                            if (IsMouseButtonPressed(MOUSE_RIGHT_BUTTON) && !scene.uiCapturesMouse) {
+                                ParallaxLayer & painterLayer = scene.background.layers[(size_t)selectedBackgroundLayer];
+                                for (int i = 0; i < (int)painterLayer.nodes.size(); i++) {
+                                    if (painterLayer.nodes[(size_t)i].seat_x == seat_x && painterLayer.nodes[(size_t)i].seat_y == seat_y) {
+                                        scene.background.remove_parallax(selectedBackgroundLayer, i, assets);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     ImGui::EndTabItem();
                 }
 

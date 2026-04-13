@@ -96,6 +96,10 @@ std::vector<std::string> AssetManager::GetFilenamesInDirectory (const std::strin
     vector<string> Filenames;
     const std::string extensionFilter = NormalizeExtensionFilter(_extension);
 
+    if (!exists(_path)) {
+        return Filenames;
+    }
+
     for (const auto & entry : directory_iterator(_path)) {
 
         if (entry.is_regular_file() && entry.path().extension() == extensionFilter) {
@@ -116,6 +120,11 @@ std::vector<std::string> AssetManager::GetFilepathsInDirectory (const std::strin
 
     vector<string> Filepaths;
     const std::string extensionFilter = NormalizeExtensionFilter(_extension);
+
+    if (!exists(_path)) {
+        return Filepaths;
+    }
+
 
     for (const auto & entry : directory_iterator(_path)) {
 

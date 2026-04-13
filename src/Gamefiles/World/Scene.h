@@ -50,6 +50,8 @@ class Scene {
         int EDITOR_ONLY_SELECTED_PALLET_TILE = -1;
         int EDITOR_ONLY_SELECTED_LAYER = 0;
         bool EDITOR_ONLY_ACTIVE_TAEDITOR = false;
+        bool EDITOR_ONLY_ACTIVE_BACKGROUND_EDITOR = false;
+        bool EDITOR_ONLY_BACKGROUND_TAB_SELECTED = false;
         bool EDITOR_ONLY_ONION_LAYER_MODE = false;
 
         bool uiCapturesMouse = false;
@@ -70,10 +72,13 @@ class Scene {
         // ====================================================================================
         
 
+
         void new_scene () {
             loaded_scene_name   = "untitled_scene";
             loaded_atlases.clear();
             tile_layers.clear();
+            active_clamps.clear();
+            background.clear();
         }
 
         bool load_scene (const std::string & _path, AssetManager & _assets) {
@@ -89,6 +94,7 @@ class Scene {
             // their textures first turns those atlas pointers into invalid references.
             // _assets.UnloadAllTilesetTextureAssets();
 
+            background.release_assets(_assets);
             success = serial::LoadSceneFromFile(*this, _assets, _path);
 
             return success;
@@ -124,6 +130,7 @@ class Scene {
             // Keep currently loaded tileset textures alive unless scene load succeeds.
             // _assets.UnloadAllTilesetTextureAssets();
 
+            background.release_assets(_assets);
             success = serial::LoadSceneFromFile(*this, _assets, _path);
 
             return success;

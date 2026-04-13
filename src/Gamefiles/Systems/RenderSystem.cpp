@@ -8,9 +8,11 @@
 #include "../../Gamefiles/World/Scene.h"
 #include "../../Gamefiles/World/Tile.h"
 #include "../../Gamefiles/World/Overhead/Gwconst.h"
+#include "../../Gamefiles/World/Background.h"
 
 #include "../../Tooling/Debug/DebugManager.h"
 
+#include <algorithm>
 
 
 
@@ -41,6 +43,68 @@ void RenderSystem::update (Registry & registry, float deltatime) {
         break; // assume 1 camera
     }
 
+    const Vec2 camera_position_bg = renderer.get_camera_position();
+    const float camera_zoom_bg = renderer.get_camera_zoom();
+
+    if (scene.background.backdrop_image != nullptr) {
+        renderer.rdraw_sprite_col(
+            *(scene.background.backdrop_image),
+            {0.0f, 0.0f, (float)scene.background.backdrop_image->width, (float)scene.background.backdrop_image->height},
+            {0.0f, 0.0f, (float)config::GAME_WORLD_WIDTH, (float)config::GAME_WORLD_HEIGHT},
+            WHITE
+        );
+    }
+
+    const float base_screen_tile_w = (float)gwconst::SCREEN_WIDTH_GAMEPIXELS;
+    const float base_screen_tile_h = (float)gwconst::SCREEN_HEIGHT_GAMEPIXELS;
+    const float world_view_w = config::GAME_WORLD_WIDTH / camera_zoom_bg;
+    const float world_view_h = config::GAME_WORLD_HEIGHT / camera_zoom_bg;
+    const float half_world_w = world_view_w * 0.5f;
+    const float half_world_h = world_view_h * 0.5f;
+
+    for (const ParallaxLayer& layer : scene.background.layers) {
+        if (layer.nodes.empty()) {
+            continue;
+        }
+
+        const float depth = std::max(0.01f, layer.z_dist_offset);
+        const float parallax_factor = 1.0f / depth;
+        const float parallax_cam_x = (camera_position_bg.x * parallax_factor) + layer.x_dist_offset;
+        const float parallax_cam_y = (camera_position_bg.y * parallax_factor) + layer.y_dist_offset;
+
+        const float parallax_left = parallax_cam_x - half_world_w;
+        const float parallax_top = parallax_cam_y - half_world_h;
+
+        const int first_col = (int)std::floor(parallax_left / base_screen_tile_w);
+        const int first_row = (int)std::floor(parallax_top / base_screen_tile_h);
+
+        const int visible_cols = (int)std::ceil(world_view_w / base_screen_tile_w) + 2;
+        const int visible_rows = (int)std::ceil(world_view_h / base_screen_tile_h) + 2;
+
+        for (int row_offset = 0; row_offset < visible_rows; row_offset++) {
+            for (int col_offset = 0; col_offset < visible_cols; col_offset++) {
+                const int seat_x = first_col + col_offset;
+                const int seat_y = first_row + row_offset;
+
+                auto resolved = scene.background.resolve_node_for_tile(layer, seat_x, seat_y);
+                if (!resolved.has_value() || resolved->image == nullptr) {
+                    continue;
+                }
+
+                const float world_x = (seat_x * base_screen_tile_w);
+                const float world_y = (seat_y * base_screen_tile_h);
+                const float screen_x = (world_x - parallax_left) * camera_zoom_bg;
+                const float screen_y = (world_y - parallax_top) * camera_zoom_bg;
+
+                renderer.rdraw_sprite_col(
+                    *(resolved->image),
+                    {0.0f, 0.0f, (float)resolved->image->width, (float)resolved->image->height},
+                    {screen_x, screen_y, base_screen_tile_w * camera_zoom_bg, base_screen_tile_h * camera_zoom_bg},
+                    layer.tint
+                );
+            }
+        }
+    }
 
 
 
@@ -283,7 +347,7 @@ void RenderSystem::update (Registry & registry, float deltatime) {
                     // renderSceneEditorUI check is reduntant, but reminds that this is ediotr only code
                     
                     
-                    if (renderSceneEditorUI && mouseHover && !scene.EDITOR_ONLY_ACTIVE_TAEDITOR && !scene.uiCapturesMouse) {
+                    if (renderSceneEditorUI && mouseHover && !scene.EDITOR_ONLY_ACTIVE_TAEDITOR && !scene.EDITOR_ONLY_ACTIVE_BACKGROUND_EDITOR && !scene.EDITOR_ONLY_BACKGROUND_TAB_SELECTED && !scene.uiCapturesMouse) {
 
                         bool hoveringTileGrid = false;
 

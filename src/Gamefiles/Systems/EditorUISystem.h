@@ -45,7 +45,7 @@ class EditorUISystem : public System {
 
         const std::string SCENEDIR = "assets/scenes/";
         const std::string TILESETDIR = "assets/sprites/tilesets/";
-        
+        const std::string BACKGROUNDIMAGEDIR = "assets/sprites/backgrounds/";
 
     public:
 
