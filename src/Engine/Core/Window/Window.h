@@ -40,6 +40,8 @@ class Window {
         int painter_zoom_loc = -1;
         int painter_time_loc = -1;
         bool painter_ready = false;
+        bool painter_enabled_game = true;
+        bool painter_enabled_editor = false;
 
 
     // Functions
@@ -48,4 +50,3 @@ class Window {
 
 
 #endif
-

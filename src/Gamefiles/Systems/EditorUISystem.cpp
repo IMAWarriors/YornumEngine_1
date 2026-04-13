@@ -3,6 +3,7 @@
 #include "EditorUISystem.h"
 
 #include "../../Engine/Core/Rendering/Renderer.h"
+#include "../../Engine/Core/Window/Window.h"
 #include "../../Engine/Core/Overhead/Config.h"
 #include "../../Engine/Core/Overhead/WindowStats.h"
 #include "../../Gamefiles/World/Scene.h"
@@ -515,52 +516,17 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
         
 
         if (ImGui::BeginMenu("Window")) {
-
-            if (WORKSPACE_WINDOW_DRAW) {
-                if (ImGui::MenuItem("Workspace", "x")) {
-                    WORKSPACE_WINDOW_DRAW = false;
-                }
-            } else {
-                if (ImGui::MenuItem("Workspace", "")) {
-                    WORKSPACE_WINDOW_DRAW = true;
-                }
-            }
-
-            if (showLayerManager) {
-                if (ImGui::MenuItem("Layer Manager", "x")) {
-                    showLayerManager = false;
-                }
-            } else {
-                if (ImGui::MenuItem("Layer Manager", "")) {
-                    showLayerManager = true;
-                }
-            }
-
+            ImGui::MenuItem("Layer Manager", nullptr, &showLayerManager);
+            ImGui::MenuItem("Workspace", nullptr, &WORKSPACE_WINDOW_DRAW);
+            
             
 
             ImGui::EndMenu();
         }
 
         if (ImGui::BeginMenu("Shaders")) {
-
-            if (/* Shader condition.... */ true ) {
-                if (ImGui::MenuItem("Activate Main Shader", "Inactive")) {
-                    // Load logic...
-
-
-
-
-                }
-            } else {
-                if (ImGui::MenuItem("Activate Main Shader", "ACTIVATED")) {
-                    // Unload logic...
-
-
-
-                }
-            }
-            
-
+            ImGui::MenuItem("Enable Shader (Standard Build)", nullptr, &window.painter_enabled_game);
+            ImGui::MenuItem("Enable Shader (Editor Viewport)", nullptr, &window.painter_enabled_editor);
             ImGui::EndMenu();
         }
 
@@ -2462,8 +2428,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     }
 
 
-                    // Add Layer
-                    if (ImGui::Button("+ New Clamp", ImVec2(-1, 0))) {
+                    const float clampActionButtonWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
+
+                    if (ImGui::Button("+ New Clamp", ImVec2(clampActionButtonWidth, 0))) {
 
                         Vec2 camera_position = {0.0f, 0.0f};
 
@@ -2479,7 +2446,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                     }
 
-                    if (ImGui::Button("- Delete Clamp", ImVec2(-1, 0))) {
+                    ImGui::SameLine();
+                    if (ImGui::Button("- Delete Clamp", ImVec2(clampActionButtonWidth, 0))) {
 
                         if (selectedClamp >= 0 && selectedClamp < (int)scene.active_clamps.size()) {
                             scene.active_clamps.erase(scene.active_clamps.begin() + selectedClamp);
@@ -2494,7 +2462,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                     ImGui::Separator();
 
-                    if (ImGui::BeginListBox("Camera Clamps", ImVec2(-1, 120.0f * fullscreenScale.y))) {
+                    ImGui::TextUnformatted("Camera Clamps");
+                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6, 4));
+                    if (ImGui::BeginListBox("##CameraClampsList", ImVec2(-1, 128.0f * fullscreenScale.y))) {
                         for (int i = 0; i < (int)scene.active_clamps.size(); i++) {
                             std::string clamp_label = "Clamp " + std::to_string(i + 1);
                             if (ImGui::Selectable(clamp_label.c_str(), selectedClamp == i)) {
@@ -2503,6 +2473,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         }
                         ImGui::EndListBox();
                     }
+                    ImGui::PopStyleVar();
 
                     if (selectedClamp >= 0 && selectedClamp < (int)scene.active_clamps.size()) {
                         CameraClamp & clamp = scene.active_clamps[selectedClamp];

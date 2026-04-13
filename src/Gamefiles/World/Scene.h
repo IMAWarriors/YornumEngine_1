@@ -6,6 +6,7 @@
 #include "Overhead/Gwconst.h"
 #include "../../Engine/Core/Overhead/GameTypes.h"
 #include "../Assets/AssetManager.h"
+#include "Background.h"
 
 
 #include "CameraClamp.h"
@@ -62,10 +63,9 @@ class Scene {
         std::string loaded_scene_name;
         std::vector<TileAtlas> loaded_atlases;
         std::vector<TileGrid> tile_layers; 
-
-        // to be serialized
-
         std::vector<CameraClamp> active_clamps;
+        
+        Background background;
 
         // ====================================================================================
         

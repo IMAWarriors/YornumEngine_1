@@ -29,7 +29,7 @@ void Renderer::present (RenderTexture2D & canvas, GameEngine & game, float alpha
     float offsetX = (GetScreenWidth()  - width)  / 2.0f;
     float offsetY = (GetScreenHeight() - height) / 2.0f;
 
-    if (window.painter_ready) {
+    if (window.painter_ready && window.painter_enabled_game) {
         Vec2 camera_pos = get_camera_position();
         const float camera_pos_data[2] = {camera_pos.x, camera_pos.y};
         const float resolution_data[2] = {

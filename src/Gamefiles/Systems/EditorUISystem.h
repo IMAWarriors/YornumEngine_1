@@ -26,6 +26,8 @@ class AssetManager;
 
 struct EditorAssets;
 
+class Window;
+
 
 class EditorUISystem : public System {
 
@@ -35,6 +37,7 @@ class EditorUISystem : public System {
         Scene & scene;
         AssetManager & assets;
         EditorAssets & editorAssets;
+        Window & window;
 
 
         float imgsizeMax = 512.0f;
@@ -46,7 +49,7 @@ class EditorUISystem : public System {
 
     public:
 
-        EditorUISystem (Renderer & _renderer, Scene & _scene, AssetManager & _assets, EditorAssets & _editorAssets) : renderer(_renderer), scene(_scene), assets(_assets), editorAssets(_editorAssets) {
+        EditorUISystem (Renderer & _renderer, Scene & _scene, AssetManager & _assets, EditorAssets & _editorAssets, Window & _window) : renderer(_renderer), scene(_scene), assets(_assets), editorAssets(_editorAssets), window(_window) {
 
             ImGuiIO& io = ImGui::GetIO();
             io.IniFilename = "../../../cache/imgui/EMain_imgui.ini";

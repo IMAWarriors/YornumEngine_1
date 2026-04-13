@@ -8,6 +8,7 @@
 #include <vector>
 #include <memory>
 #include <stdexcept>
+#include <cstddef>
 
 #include "raylib.h"
 
@@ -17,33 +18,37 @@ class AssetManager {
 
     private:
 
-        // LOADED ASSETS
-        std::vector<std::string> loaded_tilesets_paths;
-        std::vector<std::unique_ptr<Texture2D>> loaded_tilesets;
+        struct LoadedTextureAsset {
+            std::string path;
+            std::unique_ptr<Texture2D> texture;
+            std::size_t references = 0;
+        };
 
-        bool DoesTilesetWithPathExist (const std::string & _path) {
-            for (const std::string & pathname : loaded_tilesets_paths) {
-                if (pathname == _path) {
-                    return true;
-                }
-            }
-            return false;
-        }
+        std::vector<LoadedTextureAsset> loaded_textures;
 
-        Texture2D & GetTilesetTextureAtPath (const std::string & _path) {
-            int index = 0;
-            for (const std::string & pathname : loaded_tilesets_paths) {
-                if (pathname == _path) {
-                    return *(loaded_tilesets[index]);
-                }
-                index++;
-            }
-            throw std::runtime_error("Tileset not found: " + _path);
-        }
+        std::string NormalizePath(const std::string & _path) const;
+
+        int FindTextureIndexByPath(const std::string & _path) const;
+
+        int FindTextureIndexByPointer(const Texture2D * _texture_ptr) const;
     
 
 
     public:
+
+        Texture2D & LoadTextureAsset (const std::string & _path);
+
+        bool UnloadTextureAsset (Texture2D * _texture_ptr);
+
+        bool UnloadTextureAssetByPath (const std::string & _path);
+
+        bool IsTextureAssetLoaded(const std::string & _path) const;
+
+        Texture2D * GetTextureAssetIfLoaded(const std::string & _path);
+
+        std::size_t GetTextureAssetReferenceCount(const std::string & _path) const;
+
+        void UnloadAllTextureAssets();
 
         Texture2D & LoadTilesetTexture (const std::string & _path);
 
@@ -69,4 +74,3 @@ class AssetManager {
 };
 
 #endif
-

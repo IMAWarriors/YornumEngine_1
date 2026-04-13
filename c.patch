@@ -1,0 +1,251 @@
+ (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
+diff --git a/src/Gamefiles/Assets/AssetManager.cpp b/src/Gamefiles/Assets/AssetManager.cpp
+index 9d11da9976a3514f903809f22e2ab6ccc6acce0d..ab0681f624b06e8653d8b3a7476a257836e59a7c 100644
+--- a/src/Gamefiles/Assets/AssetManager.cpp
++++ b/src/Gamefiles/Assets/AssetManager.cpp
+@@ -1,44 +1,79 @@
+ // AssetManager.cpp
+ 
+ #include "AssetManager.h"
+ 
+ 
+ 
+ using namespace std::filesystem;
+ using namespace std;
+ 
+ 
+ namespace {
+     std::string NormalizeExtensionFilter(std::string extension) {
+         if (!extension.empty() && extension.front() != '.') {
+             extension.insert(extension.begin(), '.');
+         }
+         return extension;
+     }
+ }
+ 
++std::string AssetManager::NormalizePath(const std::string & _path) const {
++    const std::filesystem::path rawPath(_path);
++    std::error_code ec;
++    const std::filesystem::path canonicalPath = std::filesystem::weakly_canonical(rawPath, ec);
++
++    if (!ec) {
++        return canonicalPath.lexically_normal().string();
++    }
++
++    return rawPath.lexically_normal().string();
++}
++
++int AssetManager::FindTextureIndexByPath(const std::string & _path) const {
++    for (size_t i = 0; i < loaded_textures.size(); i++) {
++        if (loaded_textures[i].path == _path) {
++            return (int)i;
++        }
++    }
++    return -1;
++}
++
++int AssetManager::FindTextureIndexByPointer(const Texture2D * _texture_ptr) const {
++    if (_texture_ptr == nullptr) {
++        return -1;
++    }
++
++    for (size_t i = 0; i < loaded_textures.size(); i++) {
++        if (loaded_textures[i].texture.get() == _texture_ptr) {
++            return (int)i;
++        }
++    }
++
++    return -1;
++}
++
+ 
+ // Utility
+ vector<string> AssetManager::GetTilesetFilenames (const string & _path) {
+ 
+     vector<string> TilesetFilenames;
+ 
+     for (const auto & entry : directory_iterator(_path)) {
+ 
+         if (entry.is_regular_file() && entry.path().extension() == ".png") {
+ 
+             string file = entry.path().filename().string();
+             TilesetFilenames.push_back(file);
+ 
+         }
+ 
+     }
+ 
+     return TilesetFilenames;
+ 
+ }
+ 
+ vector<string> AssetManager::GetTilesetPaths (const string & _path) {
+ 
+     vector<string> TilesetFilenames;
+ 
+@@ -92,74 +127,132 @@ std::vector<std::string> AssetManager::GetFilepathsInDirectory (const std::strin
+ 
+         }
+ 
+     }
+ 
+     return Filepaths;
+ 
+ 
+ }
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ void AssetManager::UnloadAllAssets() {
+-    for (auto & tileset : loaded_tilesets) {
+-        UnloadTexture(*tileset);
+-    }
+-    loaded_tilesets_paths.clear();
+-    loaded_tilesets.clear();
++    UnloadAllTextureAssets();
+ }
+ 
+ void AssetManager::UnloadAllTilesetTextureAssets() {
+-    for (auto & tileset : loaded_tilesets) {
+-        UnloadTexture(*tileset);
++    UnloadAllTextureAssets();
++}
++
++Texture2D & AssetManager::LoadTextureAsset (const string & _path) {
++
++    const string normalizedPath = NormalizePath(_path);
++    const int existingIndex = FindTextureIndexByPath(normalizedPath);
++
++    if (existingIndex >= 0) {
++        loaded_textures[(size_t)existingIndex].references++;
++        return *(loaded_textures[(size_t)existingIndex].texture);
++    }
++
++    LoadedTextureAsset asset;
++    asset.path = normalizedPath;
++    asset.texture = std::make_unique<Texture2D>(LoadTexture(normalizedPath.c_str()));
++    asset.references = 1;
++
++    if (asset.texture->id == 0) {
++        throw std::runtime_error("Failed to load texture asset: " + normalizedPath);
+     }
+-    loaded_tilesets_paths.clear();
+-    loaded_tilesets.clear();
++
++    SetTextureWrap(*asset.texture, TEXTURE_WRAP_CLAMP);
++    loaded_textures.push_back(std::move(asset));
++
++    return *(loaded_textures.back().texture);
++
+ }
+ 
+-Texture2D & AssetManager::LoadTilesetTexture (const string & _path) {
++bool AssetManager::UnloadTextureAsset(Texture2D * _texture_ptr) {
+ 
+-    if (DoesTilesetWithPathExist(_path)) {
+-        return GetTilesetTextureAtPath(_path);
++    const int index = FindTextureIndexByPointer(_texture_ptr);
++    if (index < 0) {
++        return false;
+     }
+ 
+-    int new_tileset_index = loaded_tilesets.size();
++    LoadedTextureAsset & asset = loaded_textures[(size_t)index];
+ 
+-    loaded_tilesets.push_back(std::make_unique<Texture2D>(LoadTexture(_path.c_str())));
+-    // SetTextureFilter(*loaded_tilesets.back(), TEXTURE_FILTER_POINT);
+-    SetTextureWrap(*loaded_tilesets.back(), TEXTURE_WRAP_CLAMP);
+-    loaded_tilesets_paths.push_back(_path);
++    if (asset.references > 1) {
++        asset.references--;
++        return true;
++    }
+ 
+-    return *(loaded_tilesets[new_tileset_index]);
++    UnloadTexture(*asset.texture);
++    loaded_textures.erase(loaded_textures.begin() + index);
++    return true;
+ 
+ }
+ 
++bool AssetManager::UnloadTextureAssetByPath(const string & _path) {
++    const string normalizedPath = NormalizePath(_path);
++    const int index = FindTextureIndexByPath(normalizedPath);
+ 
+-bool AssetManager::UnloadTilesetTexture(Texture2D * _texture_ptr) {
+-    if (_texture_ptr == nullptr) {
++    if (index < 0) {
+         return false;
+     }
+ 
+-    for (size_t i = 0; i < loaded_tilesets.size(); i++) {
+-        if (loaded_tilesets[i].get() == _texture_ptr) {
+-            UnloadTexture(*loaded_tilesets[i]);
+-            loaded_tilesets.erase(loaded_tilesets.begin() + i);
+-            loaded_tilesets_paths.erase(loaded_tilesets_paths.begin() + i);
+-            return true;
+-        }
++    return UnloadTextureAsset(loaded_textures[(size_t)index].texture.get());
++}
++
++bool AssetManager::IsTextureAssetLoaded(const string & _path) const {
++    const string normalizedPath = NormalizePath(_path);
++    return FindTextureIndexByPath(normalizedPath) >= 0;
++}
++
++Texture2D * AssetManager::GetTextureAssetIfLoaded(const string & _path) {
++    const string normalizedPath = NormalizePath(_path);
++    const int index = FindTextureIndexByPath(normalizedPath);
++
++    if (index < 0) {
++        return nullptr;
++    }
++
++    return loaded_textures[(size_t)index].texture.get();
++}
++
++size_t AssetManager::GetTextureAssetReferenceCount(const string & _path) const {
++    const string normalizedPath = NormalizePath(_path);
++    const int index = FindTextureIndexByPath(normalizedPath);
++
++    if (index < 0) {
++        return 0;
+     }
+ 
+-    return false;
+-}
+\ No newline at end of file
++    return loaded_textures[(size_t)index].references;
++}
++
++void AssetManager::UnloadAllTextureAssets() {
++    for (auto & loadedTexture : loaded_textures) {
++        UnloadTexture(*loadedTexture.texture);
++    }
++    loaded_textures.clear();
++}
++
++Texture2D & AssetManager::LoadTilesetTexture (const string & _path) {
++    return LoadTextureAsset(_path);
++
++}
++
++
++bool AssetManager::UnloadTilesetTexture(Texture2D * _texture_ptr) {
++    return UnloadTextureAsset(_texture_ptr);
++}
+ 
+EOF
+)

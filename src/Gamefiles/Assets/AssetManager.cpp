@@ -17,6 +17,40 @@ namespace {
     }
 }
 
+std::string AssetManager::NormalizePath(const std::string & _path) const {
+    const std::filesystem::path rawPath(_path);
+    std::error_code ec;
+    const std::filesystem::path canonicalPath = std::filesystem::weakly_canonical(rawPath, ec);
+
+    if (!ec) {
+        return canonicalPath.lexically_normal().string();
+    }
+
+    return rawPath.lexically_normal().string();
+}
+
+int AssetManager::FindTextureIndexByPath(const std::string & _path) const {
+    for (size_t i = 0; i < loaded_textures.size(); i++) {
+        if (loaded_textures[i].path == _path) {
+            return (int)i;
+        }
+    }
+    return -1;
+}
+
+int AssetManager::FindTextureIndexByPointer(const Texture2D * _texture_ptr) const {
+    if (_texture_ptr == nullptr) {
+        return -1;
+    }
+
+    for (size_t i = 0; i < loaded_textures.size(); i++) {
+        if (loaded_textures[i].texture.get() == _texture_ptr) {
+            return (int)i;
+        }
+    }
+
+    return -1;
+}
 
 // Utility
 vector<string> AssetManager::GetTilesetFilenames (const string & _path) {
@@ -114,52 +148,108 @@ std::vector<std::string> AssetManager::GetFilepathsInDirectory (const std::strin
 
 
 void AssetManager::UnloadAllAssets() {
-    for (auto & tileset : loaded_tilesets) {
-        UnloadTexture(*tileset);
-    }
-    loaded_tilesets_paths.clear();
-    loaded_tilesets.clear();
+    UnloadAllTextureAssets();
 }
 
 void AssetManager::UnloadAllTilesetTextureAssets() {
-    for (auto & tileset : loaded_tilesets) {
-        UnloadTexture(*tileset);
+    UnloadAllTextureAssets();
+}
+
+Texture2D & AssetManager::LoadTextureAsset (const string & _path) {
+
+    const string normalizedPath = NormalizePath(_path);
+    const int existingIndex = FindTextureIndexByPath(normalizedPath);
+
+    if (existingIndex >= 0) {
+        loaded_textures[(size_t)existingIndex].references++;
+        return *(loaded_textures[(size_t)existingIndex].texture);
     }
-    loaded_tilesets_paths.clear();
-    loaded_tilesets.clear();
+
+    LoadedTextureAsset asset;
+    asset.path = normalizedPath;
+    asset.texture = std::make_unique<Texture2D>(LoadTexture(normalizedPath.c_str()));
+    asset.references = 1;
+
+    if (asset.texture->id == 0) {
+        throw std::runtime_error("Failed to load texture asset: " + normalizedPath);
+    }
+    SetTextureWrap(*asset.texture, TEXTURE_WRAP_CLAMP);
+    loaded_textures.push_back(std::move(asset));
+
+    return *(loaded_textures.back().texture);
+}
+
+bool AssetManager::UnloadTextureAsset(Texture2D * _texture_ptr) {
+
+    const int index = FindTextureIndexByPointer(_texture_ptr);
+    if (index < 0) {
+        return false;
+    }
+
+    LoadedTextureAsset & asset = loaded_textures[(size_t)index];
+
+    if (asset.references > 1) {
+        asset.references--;
+        return true;
+    }
+
+    UnloadTexture(*asset.texture);
+    loaded_textures.erase(loaded_textures.begin() + index);
+    return true;
+
+}
+
+bool AssetManager::UnloadTextureAssetByPath(const string & _path) {
+    const string normalizedPath = NormalizePath(_path);
+    const int index = FindTextureIndexByPath(normalizedPath);
+
+    if (index < 0) {
+        return false;
+    }
+
+    return UnloadTextureAsset(loaded_textures[(size_t)index].texture.get());
+}
+
+bool AssetManager::IsTextureAssetLoaded(const string & _path) const {
+    const string normalizedPath = NormalizePath(_path);
+    return FindTextureIndexByPath(normalizedPath) >= 0;
+}
+
+Texture2D * AssetManager::GetTextureAssetIfLoaded(const string & _path) {
+    const string normalizedPath = NormalizePath(_path);
+    const int index = FindTextureIndexByPath(normalizedPath);
+
+    if (index < 0) {
+        return nullptr;
+    }
+
+    return loaded_textures[(size_t)index].texture.get();
+}
+
+size_t AssetManager::GetTextureAssetReferenceCount(const string & _path) const {
+    const string normalizedPath = NormalizePath(_path);
+    const int index = FindTextureIndexByPath(normalizedPath);
+
+    if (index < 0) {
+        return 0;
+    }
+
+    return loaded_textures[(size_t)index].references;
+}
+
+void AssetManager::UnloadAllTextureAssets() {
+    for (auto & loadedTexture : loaded_textures) {
+        UnloadTexture(*loadedTexture.texture);
+    }
+    loaded_textures.clear();
 }
 
 Texture2D & AssetManager::LoadTilesetTexture (const string & _path) {
-
-    if (DoesTilesetWithPathExist(_path)) {
-        return GetTilesetTextureAtPath(_path);
-    }
-
-    int new_tileset_index = loaded_tilesets.size();
-
-    loaded_tilesets.push_back(std::make_unique<Texture2D>(LoadTexture(_path.c_str())));
-    // SetTextureFilter(*loaded_tilesets.back(), TEXTURE_FILTER_POINT);
-    SetTextureWrap(*loaded_tilesets.back(), TEXTURE_WRAP_CLAMP);
-    loaded_tilesets_paths.push_back(_path);
-
-    return *(loaded_tilesets[new_tileset_index]);
+    return LoadTextureAsset(_path);
 
 }
 
 
 bool AssetManager::UnloadTilesetTexture(Texture2D * _texture_ptr) {
-    if (_texture_ptr == nullptr) {
-        return false;
-    }
-
-    for (size_t i = 0; i < loaded_tilesets.size(); i++) {
-        if (loaded_tilesets[i].get() == _texture_ptr) {
-            UnloadTexture(*loaded_tilesets[i]);
-            loaded_tilesets.erase(loaded_tilesets.begin() + i);
-            loaded_tilesets_paths.erase(loaded_tilesets_paths.begin() + i);
-            return true;
-        }
-    }
-
-    return false;
+    return UnloadTextureAsset(_texture_ptr);
 }
