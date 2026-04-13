@@ -35,6 +35,7 @@ src\Gamefiles\Systems\EditorUISystem.cpp ^
 src\Gamefiles\Systems\PhysicsBodyMovementSystem.cpp ^
 src\Gamefiles\World\SceneSerialization.cpp ^
 src\Gamefiles\World\TileGrid.cpp ^
+src\Gamefiles\World\Background.cpp ^
 src\Gamefiles\Game\Func_EGEAddEditorSystems.cpp ^
 src\Gamefiles\Game\GameEngine.cpp ^
 -Iexternal\imgui ^

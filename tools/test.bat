@@ -28,6 +28,7 @@ src\Gamefiles\Systems\EngineManagerSystem.cpp ^
 src\Gamefiles\Systems\PhysicsBodyMovementSystem.cpp ^
 src\Gamefiles\World\SceneSerialization.cpp ^
 src\Gamefiles\World\TileGrid.cpp ^
+src\Gamefiles\World\Background.cpp ^
 src\Gamefiles\Game\Func_GEAddEditorSystems.cpp ^
 src\Gamefiles\Game\GameEngine.cpp ^
 -o game.exe ^
