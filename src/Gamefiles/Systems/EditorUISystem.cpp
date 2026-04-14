@@ -85,12 +85,16 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
     static int physics_page_columns = 8;
     static int physics_page_index = 0;
 
+    static bool dcaeJustOpened = false;
+
+    // Not wired to real joint system yet
+    
 
 
     std::filesystem::create_directories(BACKGROUNDIMAGEDIR);
 
     ImGui::GetStyle().WindowMinSize = ImVec2(2.0,2.0);
-    ImGui::GetStyle().WindowPadding = ImVec2(0,0);
+    ImGui::GetStyle().WindowPadding = ImVec2(6,6);
 
     auto UIPos = [&] (float small_x, float small_y, float fullscreen_x, float fullscreen_y) {
 
@@ -156,6 +160,85 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
             ImGui::GetStyle().WindowPadding = orig;
 
     };
+        
+
+    static int jointselected = -1;
+
+    auto DrawCreateAvatarEditor = [&] () {
+
+        
+
+        ImVec2 orig = ImGui::GetStyle().WindowPadding;
+        ImGui::GetStyle().WindowPadding = ImVec2(6,6);
+
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.08f,0.09f,0.12f,1));
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.11f,0.12f,0.16f,1));
+        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.2f,0.5f,0.7f,0.6f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.3f,0.7f,0.9f,0.8f));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f,0.4f,0.6f,0.8f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f,0.6f,0.9f,1.0f));
+
+        ImVec2 windowSize = ImVec2(800 * fullscreenScale.x, 500 * fullscreenScale.y);
+        ImVec2 windowPos = ImVec2(80 * fullscreenScale.x, 50 * fullscreenScale.y);
+
+        if (dcaeJustOpened) {
+            ImGui::SetNextWindowPos(windowPos);
+            ImGui::SetNextWindowSize(windowSize);
+            dcaeJustOpened = false;
+        }
+
+        if (ImGui::Begin("Create Avatar...", nullptr)) {
+
+            ImGui::BeginChild("LeftPanel", ImVec2(220, 0), true);
+
+            if (ImGui::Button("Add Joint", ImVec2(-1, 28))) {
+                
+            }
+
+            if (ImGui::Button("Delete Joint", ImVec2(-1, 28))) {
+                
+            }
+
+            ImGui::Separator();
+
+            for (int i = 0; i < 10; i++) {
+                bool sel = (i == jointselected);
+                if (ImGui::Selectable(std::string("Joint #" + std::to_string(i)).c_str(), sel)) {
+                    jointselected = i;
+                }
+            }
+
+            ImGui::EndChild();
+
+            ImGui::SameLine();
+
+            ImGui::BeginChild("CenterView", ImVec2(0, 0), true);
+
+            ImVec2 canvasPos = ImGui::GetCursorScreenPos();
+            ImVec2 canvasSize = ImGui::GetContentRegionAvail();
+            ImDrawList* draw = ImGui::GetWindowDrawList();
+
+            draw->AddRectFilled(canvasPos, ImVec2(canvasPos.x+canvasSize.x, canvasPos.y+canvasSize.y), IM_COL32(20,20,30,255));
+
+            ImGui::EndChild();
+
+
+
+        };
+
+        ImGui::End();
+        ImGui::PopStyleColor(3);
+        ImGui::GetStyle().WindowPadding = orig;
+
+    };
+
+
+
+
+
+
+
+
 
     auto DrawLayerManager = [&] () {
 
@@ -497,6 +580,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
     static int openSceneSelectedIndex = -1;
 
+    static bool showCreateAvatarEditor = false;
+
     bool triggerOpenScenePopup = false;
     bool triggerSaveScenePopup = false;
 
@@ -532,6 +617,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
             ImGui::MenuItem("Layer Manager", nullptr, &showLayerManager);
             ImGui::MenuItem("Workspace", nullptr, &WORKSPACE_WINDOW_DRAW);
             
+            if (ImGui::MenuItem("Avatars...", nullptr, &showCreateAvatarEditor)) {
+                dcaeJustOpened = true;
+            }
             
 
             ImGui::EndMenu();
@@ -763,6 +851,10 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
     }
 
+    if (showCreateAvatarEditor) {
+        DrawCreateAvatarEditor();
+    }
+
 
 
 
@@ -799,8 +891,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
 
     ImGui::SetNextWindowSizeConstraints(
-        ImVec2(1280 * fullscreenScale.x, 215 * fullscreenScale.y),   // min (fixed width, min height)
-        ImVec2(1280 * fullscreenScale.x, 700 * fullscreenScale.y)    // max (fixed width, max height)
+        ImVec2(700 * fullscreenScale.x, 215 * fullscreenScale.y),
+        ImVec2((float)GetScreenWidth(), 700 * fullscreenScale.y)
     );
 
     if (WORKSPACE_WINDOW_DRAW) {    
@@ -811,16 +903,15 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
             ImGuiWindowFlags_NoScrollbar |
             ImGuiWindowFlags_NoTitleBar)) {
 
-            ImGui::PushStyleColor(ImGuiCol_Tab, ImVec4                  (0.1f, 0.1f, 0.1f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_TabHovered, ImVec4           (0.33f, 0.33f, 0.33f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_TabActive, ImVec4            (0.20f, 0.20f, 0.20f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_TabUnfocused, ImVec4         (0.08f, 0.08f, 0.08f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_TabUnfocusedActive, ImVec4   (0.15f, 0.15f, 0.15f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_Border, ImVec4               (0,0,0,0));       // removes window borders
+            ImGui::PushStyleColor(ImGuiCol_Tab, ImVec4(0.12f, 0.12f, 0.14f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_TabHovered, ImVec4(0.22f, 0.22f, 0.26f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_TabActive, ImVec4(0.18f, 0.18f, 0.22f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_TabUnfocused, ImVec4(0.09f, 0.09f, 0.11f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_TabUnfocusedActive, ImVec4(0.14f, 0.14f, 0.17f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.22f, 0.22f, 0.26f, 1.0f));
 
-            // optional: kill border thickness entirely
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 5.0f);
-            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 20.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
 
             float btnW = 22.0f * fullscreenScale.x;
             float btnH = 18.0f * fullscreenScale.y;
@@ -873,11 +964,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0,0,0,1)); // black
                     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f); // thickness
 
-                    if (fullscreen) {
-                        ImGui::BeginChild("ItemListPanel", ImVec2(220 * fullscreenScale.x, 152 * fullscreenScale.y), true);
-                    } else {
-                        ImGui::BeginChild("ItemListPanel", ImVec2(220 * fullscreenScale.x, 115 * fullscreenScale.y), true);
-                    }
+                    const float tilesetListHeight = std::max(100.0f, ImGui::GetContentRegionAvail().y - 12.0f);
+                    ImGui::BeginChild("ItemListPanel", ImVec2(220 * fullscreenScale.x, tilesetListHeight), true);
 
                     // ***** Tileset splitting information *****
 
@@ -2082,11 +2170,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0,0,0,1)); // black
                     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f); // thickness
 
-                    if (fullscreen) {
-                        ImGui::BeginChild("ItemListPanel", ImVec2(220 * fullscreenScale.x, 145 * fullscreenScale.y), true);
-                    } else {
-                        ImGui::BeginChild("ItemListPanel", ImVec2(220 * fullscreenScale.x, 110 * fullscreenScale.y), true);
-                    }
+                    const float paletteListHeight = std::max(90.0f, ImGui::GetContentRegionAvail().y - 12.0f);
+                    ImGui::BeginChild("ItemListPanel", ImVec2(220 * fullscreenScale.x, paletteListHeight), true);
 
 
                     for (int i = 0; i < scene.loaded_atlases.size(); i++) {
@@ -2157,82 +2242,17 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     // Below the text...?
 
 
+                    
 
-                    bool selectedAtlasValid = (selectedAtlas >= 0 && selectedAtlas < (int)scene.loaded_atlases.size());
-
-                    if (selectedTileIndex != -1 && selectedAtlasValid && selectedTileIndex < (int)scene.loaded_atlases[selectedAtlas].tile_data.size()) {
-
-                        ImGui::PushItemWidth(80 * fullscreenScale.x);
-
-                        UIPos(1050, 595, 1050, 565);
-
-
-                        if (anim_frames != scene.loaded_atlases[selectedAtlas].tile_data[selectedTileIndex].anim_frame_count) {
-                            ImGui::PushStyleColor(ImGuiCol_SliderGrab, IM_COL32(0, 255, 0, 255));       // yellow grab
-                            ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(0, 255, 0, 255));
-                        } else {
-                            ImGui::PushStyleColor(ImGuiCol_SliderGrab, IM_COL32(255, 255, 0, 255));       // yellow grab
-                            ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(255, 255, 0, 255));
-                        }
-
-                        ImGui::SliderInt("Anim Frms", &anim_frames, 1, 16);
-                        ImGui::PopStyleColor(2);
-
-                        if (anim_frames != 1) {
-
-
-
-
-
-                            UIPos(1050, 635, 1050, 605);
-
-
-                            if (frame_time != scene.loaded_atlases[selectedAtlas].tile_data[selectedTileIndex].anim_frame_speed) {
-                                ImGui::PushStyleColor(ImGuiCol_SliderGrab, IM_COL32(0, 255, 0, 255));       // yellow grab
-                                ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(0, 255, 0, 255));
-                            } else {
-                                ImGui::PushStyleColor(ImGuiCol_SliderGrab, IM_COL32(255, 255, 0, 255));       // yellow grab
-                                ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(255, 255, 0, 255));
-                            }
-
-                            ImGui::SliderFloat("Frm Time", &frame_time, 0.00f, 1.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
-
-                            ImGui::PopStyleColor(2);
-                        }
-
-
-
-                        ImGui::PopItemWidth();
-
-                        if (frame_time == scene.loaded_atlases[selectedAtlas].tile_data[selectedTileIndex].anim_frame_speed && anim_frames == scene.loaded_atlases[selectedAtlas].tile_data[selectedTileIndex].anim_frame_count) {
-                            animParamsMatch = true;
-
-                        } else {
-                            animParamsMatch = false;
-                            bool canApplyAnimation = scene.loaded_atlases[selectedAtlas].are_anim_params_valid(selectedTileIndex, anim_frames, frame_time);
-
-                            UIPos(1050, 675, 1050, 655);
-                            if (canApplyAnimation && ImGui::Button("Apply Changes", ImVec2(200*fullscreenScale.x,(35.0f*fullscreenScale.y)))) {
-                                if (scene.apply_tile_animation(selectedAtlas, selectedTileIndex, anim_frames, frame_time)) {
-                                    anim_frames = scene.loaded_atlases[selectedAtlas].tile_data[selectedTileIndex].anim_frame_count;
-                                    frame_time = scene.loaded_atlases[selectedAtlas].tile_data[selectedTileIndex].anim_frame_speed;
-                                    animParamsMatch = true;
-                                }
-                            } else if (!canApplyAnimation) {
-                                ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "Invalid animation parameters.");
-                            }
-                        }
 
 
 
 
 
 
-                    }
+                    bool selectedAtlasValid = (selectedAtlas >= 0 && selectedAtlas < (int)scene.loaded_atlases.size());
 
-
-
-
+                    
 
                     // ----------------------------------->
                     // Draw Tile window
@@ -2243,11 +2263,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0,0,0,1)); // black
                     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f); // thickness
 
-                    if (fullscreen) {
-                        ImGui::BeginChild("TileGrid", ImVec2(800 * fullscreenScale.x, 135 * fullscreenScale.y), true, ImGuiWindowFlags_NoScrollbar);
-                    } else {
-                        ImGui::BeginChild("TileGrid", ImVec2(800 * fullscreenScale.x, 110 * fullscreenScale.y), true, ImGuiWindowFlags_NoScrollbar);
-                    }
+                    const ImVec2 paletteAvail = ImGui::GetContentRegionAvail();
+                    ImGui::BeginChild("TileGrid", ImVec2(800.0f * fullscreenScale.x, std::max(90.0f, paletteAvail.y)), true, ImGuiWindowFlags_NoScrollbar);
 
                     if (selectedAtlasValid) {
 
@@ -2442,6 +2459,80 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     ImGui::EndChild();
 
 
+                    if (selectedTileIndex != -1 && selectedAtlasValid && selectedTileIndex < (int)scene.loaded_atlases[selectedAtlas].tile_data.size()) {
+
+                        ImGui::PushItemWidth(80 * fullscreenScale.x);
+
+                        UIPos(1050, 595, 1050, 565);
+
+
+                        if (anim_frames != scene.loaded_atlases[selectedAtlas].tile_data[selectedTileIndex].anim_frame_count) {
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrab, IM_COL32(0, 255, 0, 255));       // yellow grab
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(0, 255, 0, 255));
+                        } else {
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrab, IM_COL32(255, 255, 0, 255));       // yellow grab
+                            ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(255, 255, 0, 255));
+                        }
+
+                        ImGui::SliderInt("Anim Frms", &anim_frames, 1, 16);
+                        ImGui::PopStyleColor(2);
+
+                        if (anim_frames != 1) {
+
+
+
+
+
+                            UIPos(1050, 635, 1050, 605);
+
+
+                            if (frame_time != scene.loaded_atlases[selectedAtlas].tile_data[selectedTileIndex].anim_frame_speed) {
+                                ImGui::PushStyleColor(ImGuiCol_SliderGrab, IM_COL32(0, 255, 0, 255));       // yellow grab
+                                ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(0, 255, 0, 255));
+                            } else {
+                                ImGui::PushStyleColor(ImGuiCol_SliderGrab, IM_COL32(255, 255, 0, 255));       // yellow grab
+                                ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, IM_COL32(255, 255, 0, 255));
+                            }
+
+                            ImGui::SliderFloat("Frm Time", &frame_time, 0.00f, 1.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+
+                            ImGui::PopStyleColor(2);
+                        }
+
+
+
+                        ImGui::PopItemWidth();
+
+                        if (frame_time == scene.loaded_atlases[selectedAtlas].tile_data[selectedTileIndex].anim_frame_speed && anim_frames == scene.loaded_atlases[selectedAtlas].tile_data[selectedTileIndex].anim_frame_count) {
+                            animParamsMatch = true;
+
+                        } else {
+                            animParamsMatch = false;
+                            bool canApplyAnimation = scene.loaded_atlases[selectedAtlas].are_anim_params_valid(selectedTileIndex, anim_frames, frame_time);
+
+                            UIPos(1050, 675, 1050, 655);
+                            if (canApplyAnimation && ImGui::Button("Apply Changes", ImVec2(200*fullscreenScale.x,(35.0f*fullscreenScale.y)))) {
+                                if (scene.apply_tile_animation(selectedAtlas, selectedTileIndex, anim_frames, frame_time)) {
+                                    anim_frames = scene.loaded_atlases[selectedAtlas].tile_data[selectedTileIndex].anim_frame_count;
+                                    frame_time = scene.loaded_atlases[selectedAtlas].tile_data[selectedTileIndex].anim_frame_speed;
+                                    animParamsMatch = true;
+                                }
+                            } else if (!canApplyAnimation) {
+                                ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "Invalid animation parameters.");
+                            }
+                        }
+
+
+
+
+
+
+                    }
+
+
+
+                    
+
 
                     //ImGui::ImageButton( (void*)(intptr_t)index, textureID, ImVec2(32, 32), uv0, uv1);
 
@@ -2450,6 +2541,11 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 }
 
                 if (ImGui::BeginTabItem("Background")) {
+                    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.10f, 0.11f, 0.13f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.15f, 0.18f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.25f, 0.30f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.30f, 0.34f, 0.42f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.18f, 0.21f, 0.27f, 1.0f));
                     scene.EDITOR_ONLY_BACKGROUND_TAB_SELECTED = true;
                     scene.EDITOR_ONLY_ACTIVE_BACKGROUND_EDITOR = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
 
@@ -2487,17 +2583,25 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     }
                     ImGui::SameLine();
                     if (ImGui::Button("^ Layer", ImVec2(actionsWidth, 0))) {
-                        // Fill in
-
-
-
-                        
+                        if (selectedBackgroundLayer > 0) {
+                            if (scene.background.move_layer(selectedBackgroundLayer, selectedBackgroundLayer - 1)) {
+                                selectedBackgroundLayer--;
+                                selectedBackgroundNode = -1;
+                                backgroundStatusIsError = false;
+                                backgroundStatusMessage = "Moved layer up.";
+                            }
+                        }
                     }
                     ImGui::SameLine();
                     if (ImGui::Button("v Layer", ImVec2(actionsWidth, 0))) {
-                        // Fill in
-
-
+                        if (selectedBackgroundLayer >= 0 && selectedBackgroundLayer + 1 < (int)scene.background.layers.size()) {
+                            if (scene.background.move_layer(selectedBackgroundLayer, selectedBackgroundLayer + 1)) {
+                                selectedBackgroundLayer++;
+                                selectedBackgroundNode = -1;
+                                backgroundStatusIsError = false;
+                                backgroundStatusMessage = "Moved layer down.";
+                            }
+                        }
                     }
                     
 
@@ -2656,6 +2760,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         ImGui::TextColored(statusColor, "%s", backgroundStatusMessage.c_str());
                     }
 
+                    ImGui::PopStyleColor(5);
                     ImGui::EndTabItem();
                 }
 
@@ -2666,6 +2771,11 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
 
                 if (ImGui::BeginTabItem("Clamps")) {
+                    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.11f, 0.10f, 0.12f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.16f, 0.14f, 0.18f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.32f, 0.24f, 0.22f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.40f, 0.30f, 0.27f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.27f, 0.20f, 0.18f, 1.0f));
 
                     if (scene.active_clamps.empty()) {
                         selectedClamp = -1;
@@ -2765,6 +2875,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         
                     }
 
+                    ImGui::PopStyleColor(5);
 
                     ImGui::EndTabItem();   
                 }

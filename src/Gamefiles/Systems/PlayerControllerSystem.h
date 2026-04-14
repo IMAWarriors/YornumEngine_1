@@ -103,12 +103,16 @@ class PlayerControllerSystem : public System {
                     player_velocity.magnitude.y = -JUMP_FORCE;
                     body.vjump_window = 10;
                     input.jump_key = 20;
+                    body.falling += 21;
                 }
 
                 // Variable Jump Height (continue jumping if vjump window is open)
                 if ((input.jump_key > 0) && (body.vjump_window > 0)) {
                     player_velocity.magnitude.y = std::min(-JUMP_FORCE, player_velocity.magnitude.y);
                 }
+
+                
+                
 
                 // Clamp / Iterate jump values
                 if (input.jump_key <= 0) {

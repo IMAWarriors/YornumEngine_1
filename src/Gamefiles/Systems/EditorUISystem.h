@@ -47,6 +47,15 @@ class EditorUISystem : public System {
         const std::string TILESETDIR = "assets/sprites/tilesets/";
         const std::string BACKGROUNDIMAGEDIR = "assets/sprites/backgrounds/";
 
+
+        struct Joint {
+            std::string name;
+            ImVec2 origin;
+            ImVec2 dir;
+            int layer;
+        };
+
+
     public:
 
         EditorUISystem (Renderer & _renderer, Scene & _scene, AssetManager & _assets, EditorAssets & _editorAssets, Window & _window) : renderer(_renderer), scene(_scene), assets(_assets), editorAssets(_editorAssets), window(_window) {
@@ -58,6 +67,8 @@ class EditorUISystem : public System {
         
     
         void update (Registry & registry, float deltatime) override;
+
+
 
     
 
