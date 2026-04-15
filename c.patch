@@ -1,557 +1,163 @@
  (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
-diff --git a/src/Gamefiles/Systems/EditorUISystem.cpp b/src/Gamefiles/Systems/EditorUISystem.cpp
-index e8e639f754f0710500aa4f982ce4f42d3096eb0b..7bf356836d0c7c875483d5fa546204bbd6c84fea 100644
---- a/src/Gamefiles/Systems/EditorUISystem.cpp
-+++ b/src/Gamefiles/Systems/EditorUISystem.cpp
-@@ -68,51 +68,51 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
-     static bool backgroundPainterMode = false;
-     static int backgroundSeatX = 0;
-     static int backgroundSeatY = 0;
-     static std::string backgroundStatusMessage;
-     static bool backgroundStatusIsError = false;
+diff --git a/assets/shaders/painter.fs b/assets/shaders/painter.fs
+index d38f3b803e658f5613f8de32b8247c4f2cd0904a..016f5351bc996321e929e22709a0832ba88a6caa 100644
+--- a/assets/shaders/painter.fs
++++ b/assets/shaders/painter.fs
+@@ -1,104 +1,103 @@
+ #version 330
+ 
+ in vec2 fragTexCoord;
+ in vec4 fragColor;
+ 
+ out vec4 finalColor;
+ 
+ uniform sampler2D texture0;
+ uniform float time;
+ uniform vec2 u_camera_pos;
+ uniform vec2 u_resolution;
+ uniform vec4 u_viewport;
+ uniform float u_zoom;
  
-     static bool newTilesetSplitMatch = true;
- 
-     static int anim_frames = 1;
-     static float frame_time = 0.0f;
-     static int palette_tiles_per_page = 256;
-     static int palette_page_columns = 12;
-     static int palette_page_index = 0;
-     static int atlas_tiles_per_page = 512;
-     static int atlas_page_columns = 16;
-     static int atlas_page_index = 0;
-     static int physics_tiles_per_page = 128;
-     static int physics_page_columns = 8;
-     static int physics_page_index = 0;
- 
- 
- 
-     std::filesystem::create_directories(BACKGROUNDIMAGEDIR);
- 
-     ImGui::GetStyle().WindowMinSize = ImVec2(2.0,2.0);
--    ImGui::GetStyle().WindowPadding = ImVec2(0,0);
-+    ImGui::GetStyle().WindowPadding = ImVec2(6,6);
- 
-     auto UIPos = [&] (float small_x, float small_y, float fullscreen_x, float fullscreen_y) {
- 
-         if (fullscreen) {
-             ImGui::SetCursorScreenPos({fullscreen_x * fullscreenScale.x, (fullscreen_y) * fullscreenScale.y});
-         } else {
-             ImGui::SetCursorScreenPos({small_x * fullscreenScale.x, (small_y) * fullscreenScale.y});
-         }
- 
-     };
- 
-     // =========================================================================================
-     //      Tile Atlas Editor: Resizable Movable Window
-     // -----------------------------------------------------
-     // ** FEATURES **
-     //  - Adjusting tile collisions
-     //  - Resplitting tile atlas
-     // =========================================================================================
- 
- 
-     auto DrawSceneSettings = [&] () {
- 
-         ImVec2 orig = ImGui::GetStyle().WindowPadding;
-         ImGui::GetStyle().WindowPadding = ImVec2(4,4);
- 
-@@ -777,72 +777,71 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
-     ImGui::SetNextWindowPos(
-         {0 * fullscreenScale.x, (720 - 215) * fullscreenScale.y},
-         ImGuiCond_Once
-     );
- 
-     ImGui::SetNextWindowSize(
-         {1280 * fullscreenScale.x, 215 * fullscreenScale.y},
-         ImGuiCond_Once
-     );
- 
-     static bool matchfs = fullscreen;
- 
-     if (matchfs != fullscreen) {
-         matchfs = fullscreen;
-         ImGui::SetNextWindowPos(
-             {0 * fullscreenScale.x, (720 - 215) * fullscreenScale.y}
-         );
- 
-         ImGui::SetNextWindowSize(
-             {1280 * fullscreenScale.x, 215 * fullscreenScale.y}
-         );
-     }
- 
- 
-     ImGui::SetNextWindowSizeConstraints(
--        ImVec2(1280 * fullscreenScale.x, 215 * fullscreenScale.y),   // min (fixed width, min height)
--        ImVec2(1280 * fullscreenScale.x, 700 * fullscreenScale.y)    // max (fixed width, max height)
-+        ImVec2(700 * fullscreenScale.x, 215 * fullscreenScale.y),
-+        ImVec2((float)GetScreenWidth(), 700 * fullscreenScale.y)
-     );
- 
-     if (WORKSPACE_WINDOW_DRAW) {    
- 
-         if (ImGui::Begin("Workspace", nullptr,
-             ImGuiWindowFlags_NoMove |
-             ImGuiWindowFlags_NoCollapse |
-             ImGuiWindowFlags_NoScrollbar |
-             ImGuiWindowFlags_NoTitleBar)) {
- 
--            ImGui::PushStyleColor(ImGuiCol_Tab, ImVec4                  (0.1f, 0.1f, 0.1f, 1.0f));
--            ImGui::PushStyleColor(ImGuiCol_TabHovered, ImVec4           (0.33f, 0.33f, 0.33f, 1.0f));
--            ImGui::PushStyleColor(ImGuiCol_TabActive, ImVec4            (0.20f, 0.20f, 0.20f, 1.0f));
--            ImGui::PushStyleColor(ImGuiCol_TabUnfocused, ImVec4         (0.08f, 0.08f, 0.08f, 1.0f));
--            ImGui::PushStyleColor(ImGuiCol_TabUnfocusedActive, ImVec4   (0.15f, 0.15f, 0.15f, 1.0f));
--            ImGui::PushStyleColor(ImGuiCol_Border, ImVec4               (0,0,0,0));       // removes window borders
-+            ImGui::PushStyleColor(ImGuiCol_Tab, ImVec4(0.12f, 0.12f, 0.14f, 1.0f));
-+            ImGui::PushStyleColor(ImGuiCol_TabHovered, ImVec4(0.22f, 0.22f, 0.26f, 1.0f));
-+            ImGui::PushStyleColor(ImGuiCol_TabActive, ImVec4(0.18f, 0.18f, 0.22f, 1.0f));
-+            ImGui::PushStyleColor(ImGuiCol_TabUnfocused, ImVec4(0.09f, 0.09f, 0.11f, 1.0f));
-+            ImGui::PushStyleColor(ImGuiCol_TabUnfocusedActive, ImVec4(0.14f, 0.14f, 0.17f, 1.0f));
-+            ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.22f, 0.22f, 0.26f, 1.0f));
- 
--            // optional: kill border thickness entirely
--            ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 5.0f);
--            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 20.0f);
-+            ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
-+            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
- 
-             float btnW = 22.0f * fullscreenScale.x;
-             float btnH = 18.0f * fullscreenScale.y;
-             ImVec2 winPos = ImGui::GetWindowPos();
-             ImVec2 winSize = ImGui::GetWindowSize();
-             ImVec2 btnMin = ImVec2(winPos.x + winSize.x - btnW - 4.0f, winPos.y + 2.0f);
-             ImVec2 btnMax = ImVec2(btnMin.x + btnW, btnMin.y + btnH);
- 
-             ImDrawList* dl = ImGui::GetWindowDrawList();
-             bool hovered = ImGui::IsMouseHoveringRect(btnMin, btnMax);
-             bool clicked = hovered && ImGui::IsMouseClicked(0);
- 
-             dl->AddRectFilled(btnMin, btnMax, hovered ? IM_COL32(80,80,80,200) : IM_COL32(50,50,50,150));
-             dl->AddText(ImVec2(btnMin.x + btnW * 0.3f, btnMin.y + 2.0f), IM_COL32(255,255,255,255), "-");
- 
-             if (clicked) {
-                 WORKSPACE_WINDOW_DRAW = false;
-             }
- 
-             if (ImGui::BeginTabBar("WorkspaceTabs")) {
- 
-                 
- 
-                 if (ImGui::BeginTabItem("Tileset")) {
- 
-@@ -851,55 +850,52 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
-                     UIPos(10, 558, 10, 542);
-                     ImGui::Text("Loaded Tilesets:");
- 
-                     UIPos(10, 563, 10, 547);
- 
-                     ImGui::Text("_______________");
- 
-                     //static std::vector<std::string> items = scenes.
-                     //static std::vector<std::string> itempaths = assets.GetTilesetPaths("Gamefiles/Assets/Sprites/Tilesets/");
- 
- 
- 
-                     static bool tilesetToPreview = false;
-                     static Texture2D * path = nullptr;
- 
-                     // Left side: scrollable list
- 
-                     // (Small Screen) (Fullscreen)
-                     UIPos(10, 595, 10, 565);
-                     ImGui::GetStyle().WindowPadding = ImVec2(6,6);
-                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f,0.0f,0.0f,1.0f));
-                     ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(1,1,1,1));
-                     ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0,0,0,1)); // black
-                     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f); // thickness
- 
--                    if (fullscreen) {
--                        ImGui::BeginChild("ItemListPanel", ImVec2(220 * fullscreenScale.x, 152 * fullscreenScale.y), true);
--                    } else {
--                        ImGui::BeginChild("ItemListPanel", ImVec2(220 * fullscreenScale.x, 115 * fullscreenScale.y), true);
--                    }
-+                    const float tilesetListHeight = std::max(100.0f, ImGui::GetContentRegionAvail().y - 12.0f);
-+                    ImGui::BeginChild("ItemListPanel", ImVec2(220 * fullscreenScale.x, tilesetListHeight), true);
- 
-                     // ***** Tileset splitting information *****
- 
-                     static int tilesize = 5;
-                     static int split_columns = 5;   // horizontal tile count (tiles_per_row)
-                     static int split_rows = 5;      // vertical tile count (tiles_per_col)
- 
-                     if (selectedIndex >= (int)scene.loaded_atlases.size()) {
-                         selectedIndex = -1;
-                         phystab_selectedTileIndex = -1;
-                         path = nullptr;
-                         tilesetToPreview = false;
-                     }
- 
- 
-                     // *** Draw list of all Tile Atlases ***
- 
-                     for (int i = 0; i < scene.loaded_atlases.size(); i++) {
- 
-                         if (ImGui::Selectable(scene.loaded_atlases[i].name.c_str(), selectedIndex == i)) {
-                             if (selectedIndex == i) {
-                                 selectedIndex = -1;
-                             } else {
-                                 selectedIndex = i;
- 
-@@ -2060,55 +2056,52 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
- 
-                     // Tileset & Tileatlas Manager
- 
-                     UIPos(10, 558, 10, 542);
-                     ImGui::Text("Loaded Tilesets:");
- 
-                     UIPos(10, 563, 10, 547);
- 
-                     ImGui::Text("________________");
- 
-                     //static std::vector<std::string> items = scenes.
-                     //static std::vector<std::string> itempaths = assets.GetTilesetPaths("Gamefiles/Assets/Sprites/Tilesets/");
- 
-                     static int selectedAtlas = -1;
- 
-                     // Left side: scrollable list
- 
-                     // (Small Screen) (Fullscreen)
-                     UIPos(10, 595, 10, 565);
-                     ImGui::GetStyle().WindowPadding = ImVec2(6,6);
-                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f,0.0f,0.0f,1.0f));
-                     ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(1,1,1,1));
-                     ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0,0,0,1)); // black
-                     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f); // thickness
- 
--                    if (fullscreen) {
--                        ImGui::BeginChild("ItemListPanel", ImVec2(220 * fullscreenScale.x, 145 * fullscreenScale.y), true);
--                    } else {
--                        ImGui::BeginChild("ItemListPanel", ImVec2(220 * fullscreenScale.x, 110 * fullscreenScale.y), true);
--                    }
-+                    const float paletteListHeight = std::max(90.0f, ImGui::GetContentRegionAvail().y - 12.0f);
-+                    ImGui::BeginChild("ItemListPanel", ImVec2(220 * fullscreenScale.x, paletteListHeight), true);
- 
- 
-                     for (int i = 0; i < scene.loaded_atlases.size(); i++) {
-                         if (ImGui::Selectable(scene.loaded_atlases[i].name.c_str(), selectedAtlas == i)) {
-                             if (selectedAtlas == i) {
-                                 selectedAtlas = -1;
-                                 selectedTileIndex = -1;
-                             } else {
-                                 selectedAtlas = i;
-                                 selectedTileIndex = -1;
-                             }
-                         }
-                     }
- 
-                     scene.EDITOR_ONLY_SELECTED_ATLAS = selectedAtlas;
- 
- 
- 
- 
-                     ImGui::EndChild();
-                     ImGui::PopStyleColor(3);
-                     ImGui::PopStyleVar();
- 
-                     // -----------------------------------------------------
- 
-@@ -2221,55 +2214,52 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
-                             } else if (!canApplyAnimation) {
-                                 ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "Invalid animation parameters.");
-                             }
-                         }
- 
- 
- 
- 
- 
- 
-                     }
- 
- 
- 
- 
- 
-                     // ----------------------------------->
-                     // Draw Tile window
-                     //
- 
-                     UIPos(240, 605, 240, 570);
-                     ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.2f,0.2f,0.2f,0.7f));
-                     ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0,0,0,1)); // black
-                     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f); // thickness
- 
--                    if (fullscreen) {
--                        ImGui::BeginChild("TileGrid", ImVec2(800 * fullscreenScale.x, 135 * fullscreenScale.y), true, ImGuiWindowFlags_NoScrollbar);
--                    } else {
--                        ImGui::BeginChild("TileGrid", ImVec2(800 * fullscreenScale.x, 110 * fullscreenScale.y), true, ImGuiWindowFlags_NoScrollbar);
--                    }
-+                    const ImVec2 paletteAvail = ImGui::GetContentRegionAvail();
-+                    ImGui::BeginChild("TileGrid", ImVec2(std::max(520.0f * fullscreenScale.x, paletteAvail.x), std::max(90.0f, paletteAvail.y)), true, ImGuiWindowFlags_NoScrollbar);
- 
-                     if (selectedAtlasValid) {
- 
-                         Texture2D & tileset_texture = *scene.loaded_atlases[selectedAtlas].image_sheet_source;
-                         int total_cols = (int)(scene.loaded_atlases[selectedAtlas].tiles_per_row);
-                         int total_rows = (int)(scene.loaded_atlases[selectedAtlas].tiles_per_col);
- 
-                         int tile_drawsize = tdisplaysize * fullscreenScale.x;
- 
-                         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
-                         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
- 
-                         struct RectDraw {
-                             ImVec2 min;
-                             ImVec2 max;
-                             int r;
-                             int g;
-                             int b;
-                             int a;
-                             float thickness;
-                             bool filled;
-                         };
- 
- 
-                         std::vector<RectDraw> drawQueue;
-@@ -2428,98 +2418,111 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
-                             childSize.x - 30.0  *   fullscreenScale.x - 25.0,
-                             childSize.y - 35.0f *   fullscreenScale.y - 5.0
-                         ));
-                         if (ImGui::Button("-", ImVec2(45*fullscreenScale.x,(35.0f*fullscreenScale.y)))) {
-                             selectedTileIndex = -1;
-                         }
-                     }
- 
-                     scene.EDITOR_ONLY_SELECTED_PALLET_TILE = selectedTileIndex;
- 
-                     ImGui::PopStyleColor(2);
-                     ImGui::PopStyleVar();
- 
- 
-                     ImGui::EndChild();
- 
- 
- 
-                     //ImGui::ImageButton( (void*)(intptr_t)index, textureID, ImVec2(32, 32), uv0, uv1);
- 
-                     // EMPTY
-                     ImGui::EndTabItem();
-                 }
- 
-                 if (ImGui::BeginTabItem("Background")) {
-+                    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.10f, 0.11f, 0.13f, 1.0f));
-+                    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.15f, 0.18f, 1.0f));
-+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.25f, 0.30f, 1.0f));
-+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.30f, 0.34f, 0.42f, 1.0f));
-+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.18f, 0.21f, 0.27f, 1.0f));
-                     scene.EDITOR_ONLY_BACKGROUND_TAB_SELECTED = true;
-                     scene.EDITOR_ONLY_ACTIVE_BACKGROUND_EDITOR = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
- 
-                     std::vector<std::string> background_paths = assets.GetFilepathsInDirectory(BACKGROUNDIMAGEDIR, ".png");
-                     std::vector<std::string> jpg_paths = assets.GetFilepathsInDirectory(BACKGROUNDIMAGEDIR, ".jpg");
-                     std::vector<std::string> jpeg_paths = assets.GetFilepathsInDirectory(BACKGROUNDIMAGEDIR, ".jpeg");
-                     background_paths.insert(background_paths.end(), jpg_paths.begin(), jpg_paths.end());
-                     background_paths.insert(background_paths.end(), jpeg_paths.begin(), jpeg_paths.end());
-                     std::sort(background_paths.begin(), background_paths.end());
-                     static int selectedBackgroundSourceIndex = -1;
- 
-                     if ((int)scene.background.layers.size() <= 0) {
-                         selectedBackgroundLayer = -1;
-                     } else if (selectedBackgroundLayer >= (int)scene.background.layers.size()) {
-                         selectedBackgroundLayer = (int)scene.background.layers.size() - 1;
-                     }
- 
-                     const float actionsWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.25f;
-                     if (ImGui::Button("+ Layer", ImVec2(actionsWidth, 0))) {
-                         scene.background.new_layer(0.0f, 0.0f, 1.0f + (float)scene.background.layers.size(), WHITE);
-                         selectedBackgroundLayer = (int)scene.background.layers.size() - 1;
-                         selectedBackgroundNode = -1;
-                     }
-                     ImGui::SameLine();
-                     if (ImGui::Button("- Layer", ImVec2(actionsWidth, 0))) {
-                         if (selectedBackgroundLayer >= 0) {
-                             scene.background.remove_layer(selectedBackgroundLayer, assets);
-                             if (scene.background.layers.empty()) {
-                                 selectedBackgroundLayer = -1;
-                             } else if (selectedBackgroundLayer >= (int)scene.background.layers.size()) {
-                                 selectedBackgroundLayer = (int)scene.background.layers.size() - 1;
-                             }
-                             selectedBackgroundNode = -1;
-                         }
-                     }
-                     ImGui::SameLine();
-                     if (ImGui::Button("^ Layer", ImVec2(actionsWidth, 0))) {
--                        // Fill in
 -
+-// ---------------- HASH ----------------
+ float hash12(vec2 p)
+ {
+     p = fract(p * vec2(123.34, 456.21));
+     p += dot(p, p + 34.23);
+     return fract(p.x * p.y);
+ }
+ 
+-// ---------------- SMOOTH NOISE (NO LOOP) ----------------
+ float noise(vec2 p)
+ {
+     vec2 i = floor(p);
+     vec2 f = fract(p);
+ 
+     float a = hash12(i);
+-    float b = hash12(i + vec2(1,0));
+-    float c = hash12(i + vec2(0,1));
+-    float d = hash12(i + vec2(1,1));
++    float b = hash12(i + vec2(1.0, 0.0));
++    float c = hash12(i + vec2(0.0, 1.0));
++    float d = hash12(i + vec2(1.0, 1.0));
+ 
+     vec2 u = f * f * (3.0 - 2.0 * f);
++    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
++}
+ 
+-    return mix(mix(a,b,u.x), mix(c,d,u.x), u.y);
++float fbm3(vec2 p)
++{
++    float n = 0.0;
++    n += noise(p) * 0.57;
++    n += noise(p * 2.03 + vec2(11.4, -8.2)) * 0.29;
++    n += noise(p * 3.97 + vec2(-3.7, 4.9)) * 0.14;
++    return n;
+ }
+ 
+-// ---------------- MAIN ----------------
+ void main()
+ {
+     vec4 base = texture(texture0, fragTexCoord) * fragColor;
+ 
+-    // --- WORLD SPACE (UNCHANGED) ---
++    // Ignore near-empty pixels so effect primarily coats rendered world content.
++    float coverage = smoothstep(0.02, 0.30, base.a);
++
+     vec2 screenUv = (gl_FragCoord.xy - u_viewport.xy) / max(u_viewport.zw, vec2(1.0));
+     screenUv.y = 1.0 - screenUv.y;
+ 
+     vec2 worldPx = (screenUv - 0.5) * (u_resolution / max(u_zoom, 0.001)) + u_camera_pos;
+ 
+-    // --- BASE COORD ---
+-    vec2 p = worldPx * 0.05;
 -
+-    // --- CHEAP FLOW DISTORTION (NOT TRUE WARP) ---
+-    float n1 = noise(p + vec2(0.0, time * 0.05));
+-    float n2 = noise(p * 1.3 + vec2(5.2, -3.1));
++    // Hybrid mapping: mostly world-anchored, slightly screen-anchored to break repeating texel feel.
++    vec2 pWorld = worldPx * 0.047;
++    vec2 pScreen = screenUv * vec2(28.0, 18.0);
++    vec2 p = mix(pWorld, pScreen, 0.22);
+ 
+-    p += vec2(n1 - 0.5, n2 - 0.5) * 0.8;
++    // Subtle animated drift so the effect feels organic but does not shimmer hard.
++    vec2 drift = vec2(fbm3(p * 0.65 + vec2(0.0, time * 0.035)),
++                      fbm3(p * 0.65 + vec2(9.7, -time * 0.030))) - 0.5;
++    p += drift * 0.65;
+ 
+-    // --- MULTI-DIRECTIONAL BRUSHES (BLENDED, NOT CELLS) ---
+-    vec2 d1 = normalize(vec2(0.8, 0.6));
+-    vec2 d2 = normalize(vec2(-0.6, 0.9));
+-    vec2 d3 = normalize(vec2(-0.9, -0.4));
++    // Layered directional brush response (cheap: no loops).
++    vec2 d1 = normalize(vec2(0.92, 0.38));
++    vec2 d2 = normalize(vec2(-0.54, 0.84));
++    vec2 d3 = normalize(vec2(-0.87, -0.49));
+ 
+-    float s1 = sin(dot(p, d1) * 6.0);
+-    float s2 = sin(dot(p, d2) * 5.0);
+-    float s3 = sin(dot(p, d3) * 4.5);
++    float s1 = smoothstep(-0.45, 0.52, sin(dot(p, d1) * 5.8 + fbm3(p * 0.90) * 2.0));
++    float s2 = smoothstep(-0.40, 0.48, sin(dot(p, d2) * 4.9 - fbm3(p * 1.07) * 1.7));
++    float s3 = smoothstep(-0.36, 0.44, sin(dot(p, d3) * 4.4 + fbm3(p * 1.23) * 1.4));
+ 
+-    // smooth brush shapes
+-    s1 = smoothstep(-0.3, 0.5, s1);
+-    s2 = smoothstep(-0.4, 0.4, s2);
+-    s3 = smoothstep(-0.35, 0.45, s3);
++    float blendA = fbm3(p * 0.72 + vec2(4.0, -3.0));
++    float blendB = fbm3(p * 1.34 + vec2(-6.0, 2.0));
++    float strokes = mix(mix(s1, s2, blendA), s3, blendB * 0.58);
+ 
+-    // blend using noise (THIS removes patchwork)
+-    float blend = noise(p * 0.7);
++    // Ink wash field + edge breakup.
++    float wash = smoothstep(0.20, 0.92, fbm3(p * 0.55 + vec2(2.0, 8.0)));
++    float breakup = smoothstep(0.12, 0.92, fbm3(p * 1.65 + vec2(-4.3, 3.7)));
+ 
+-    float strokes = mix(mix(s1, s2, blend), s3, blend * 0.5);
 -
--                        
-+                        if (selectedBackgroundLayer > 0) {
-+                            if (scene.background.move_layer(selectedBackgroundLayer, selectedBackgroundLayer - 1)) {
-+                                selectedBackgroundLayer--;
-+                                selectedBackgroundNode = -1;
-+                                backgroundStatusIsError = false;
-+                                backgroundStatusMessage = "Moved layer up.";
-+                            }
-+                        }
-                     }
-                     ImGui::SameLine();
-                     if (ImGui::Button("v Layer", ImVec2(actionsWidth, 0))) {
--                        // Fill in
+-    // --- INK DENSITY (WASH) ---
+-    float wash = noise(p * 0.6 + vec2(2.0, 8.0));
+-    wash = smoothstep(0.2, 0.9, wash);
 -
+-    // --- BREAKUP (VERY IMPORTANT) ---
+-    float breakup = noise(p * 1.8);
+-    strokes *= 0.6 + breakup * 0.6;
 -
-+                        if (selectedBackgroundLayer >= 0 && selectedBackgroundLayer + 1 < (int)scene.background.layers.size()) {
-+                            if (scene.background.move_layer(selectedBackgroundLayer, selectedBackgroundLayer + 1)) {
-+                                selectedBackgroundLayer++;
-+                                selectedBackgroundNode = -1;
-+                                backgroundStatusIsError = false;
-+                                backgroundStatusMessage = "Moved layer down.";
-+                            }
-+                        }
-                     }
-                     
+-    // --- FINAL MASK ---
+-    float paintMask = mix(wash, strokes, 0.65);
+-    paintMask = smoothstep(0.2, 0.95, paintMask);
++    float paintMask = mix(wash, strokes * (0.70 + 0.45 * breakup), 0.66);
++    paintMask = smoothstep(0.23, 0.95, paintMask);
  
-                     ImGui::Separator();
-                     ImGui::TextUnformatted("Static backdrop image");
-                     ImGui::TextDisabled("Image folder: %s", BACKGROUNDIMAGEDIR.c_str());
-                     ImGui::TextDisabled("Parallax nodes are rendered into %dx%d slots (non-matching images will be stretched).", gwconst::SCREEN_WIDTH_GAMEPIXELS, gwconst::SCREEN_HEIGHT_GAMEPIXELS);
-                     if (ImGui::BeginListBox("##BackdropImageList", ImVec2(-1, 90.0f * fullscreenScale.y))) {
-                         for (int i = 0; i < (int)background_paths.size(); i++) {
-                             const bool selected = selectedBackgroundSourceIndex == i;
-                             if (ImGui::Selectable(background_paths[i].c_str(), selected)) {
-                                 selectedBackgroundSourceIndex = i;
-                             }
-                         }
-                         ImGui::EndListBox();
-                     }
-                     if (ImGui::Button("Set Backdrop") && selectedBackgroundSourceIndex >= 0 && selectedBackgroundSourceIndex < (int)background_paths.size()) {
-                         const bool set_ok = scene.background.set_backdrop_image(assets, background_paths[(size_t)selectedBackgroundSourceIndex]);
-                         backgroundStatusIsError = !set_ok;
-                         backgroundStatusMessage = set_ok ? "Backdrop set." : "Failed to set backdrop image.";
-                     }
-                     ImGui::SameLine();
-                     if (ImGui::Button("Clear Backdrop")) {
-                         scene.background.clear_backdrop_image(assets);
-                         backgroundStatusIsError = false;
-@@ -2634,60 +2637,66 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
-                             if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && !scene.uiCapturesMouse) {
-                                 const bool add_ok = scene.background.new_parallax(selectedBackgroundLayer, assets, background_paths[(size_t)selectedBackgroundSourceIndex], seat_x, seat_y, false, false);
-                                 backgroundStatusIsError = !add_ok;
-                                 backgroundStatusMessage = add_ok ? "Node painted." : "Failed to paint node.";
-                             }
++    // Tone control: gentle wash + restrained value range so gameplay readability stays high.
+     vec3 col = base.rgb;
++    float washAmt = paintMask * coverage;
  
-                             if (IsMouseButtonPressed(MOUSE_RIGHT_BUTTON) && !scene.uiCapturesMouse) {
-                                 ParallaxLayer & painterLayer = scene.background.layers[(size_t)selectedBackgroundLayer];
-                                 for (int i = 0; i < (int)painterLayer.nodes.size(); i++) {
-                                     if (painterLayer.nodes[(size_t)i].seat_x == seat_x && painterLayer.nodes[(size_t)i].seat_y == seat_y) {
-                                         scene.background.remove_parallax(selectedBackgroundLayer, i, assets);
-                                          backgroundStatusIsError = false;
-                                         backgroundStatusMessage = "Node erased.";
-                                         break;
-                                     }
-                                 }
-                             }
-                         }
-                     }
+-    // --- INK DARKEN ---
+-    col *= 1.0 - paintMask * 0.28;
++    col *= 1.0 - washAmt * 0.18;                                  // ink darkening
++    col = mix(col, col * vec3(1.045, 1.020, 0.955), washAmt * 0.16); // paper warmth
  
-                     if (!backgroundStatusMessage.empty()) {
-                         const ImVec4 statusColor = backgroundStatusIsError ? ImVec4(0.95f, 0.35f, 0.35f, 1.0f) : ImVec4(0.35f, 0.95f, 0.45f, 1.0f);
-                         ImGui::TextColored(statusColor, "%s", backgroundStatusMessage.c_str());
-                     }
+-    // --- PAPER WARMTH ---
+-    col = mix(col, col * vec3(1.04, 1.01, 0.94), paintMask * 0.22);
++    // Slight desaturation for "ancient ink" look, but keep color legibility.
++    float luma = dot(col, vec3(0.299, 0.587, 0.114));
++    col = mix(col, vec3(luma), 0.07 * washAmt);
  
-+                    ImGui::PopStyleColor(5);
-                     ImGui::EndTabItem();
-                 }
+-    // --- SUBTLE GRAIN ---
+-    float grain = hash12(gl_FragCoord.xy + time * 8.0);
+-    col += (grain - 0.5) * 0.015;
++    // Fine grain to avoid plasticky smoothness.
++    float grain = hash12(gl_FragCoord.xy + vec2(time * 7.0, time * 5.0));
++    col += (grain - 0.5) * (0.010 * coverage);
  
-                 if (ImGui::BeginTabItem("Spawndefs")) {
-                     // EMPTY
-                     ImGui::EndTabItem();
-                 }
- 
- 
-                 if (ImGui::BeginTabItem("Clamps")) {
-+                    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.11f, 0.10f, 0.12f, 1.0f));
-+                    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.16f, 0.14f, 0.18f, 1.0f));
-+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.32f, 0.24f, 0.22f, 1.0f));
-+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.40f, 0.30f, 0.27f, 1.0f));
-+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.27f, 0.20f, 0.18f, 1.0f));
- 
-                     if (scene.active_clamps.empty()) {
-                         selectedClamp = -1;
-                     } else if (selectedClamp >= (int)scene.active_clamps.size()) {
-                         selectedClamp = (int)scene.active_clamps.size() - 1;
-                     } else if (selectedClamp < 0) {
-                         selectedClamp = 0;
-                     }
- 
- 
-                     const float clampActionButtonWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
- 
-                     if (ImGui::Button("+ New Clamp", ImVec2(clampActionButtonWidth, 0))) {
- 
-                         Vec2 camera_position = {0.0f, 0.0f};
- 
-                         for (Entity camera : registry.view<comp::Camera>()) {
- 
-                             camera_position = registry.get_component<comp::Transform>(camera).position;
-                             break;
-                         }
- 
-                         
-                         scene.active_clamps.push_back({camera_position.x-200, camera_position.y-100, camera_position.x+200, camera_position.y+100, camera_position.x-100, camera_position.y-50, camera_position.x+100, camera_position.y+50, 8.0f, false});
-                         selectedClamp = (int)scene.active_clamps.size() - 1;
-@@ -2743,50 +2752,51 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
-                             std::swap(clamp.clamp_top_left.y, clamp.clamp_bottom_right.y);
-                         }
- 
-                         ImGui::Spacing();
-                         ImGui::Text("Player Trigger Zone");
-                         ImGui::PushItemWidth(-1);
-                         ImGui::InputFloat2("Player Top Left", &clamp.player_zone_top_left.x);
-                         ImGui::InputFloat2("Player Bottom Right", &clamp.player_zone_bottom_right.x);
-                         ImGui::PopItemWidth();
- 
-                         if (clamp.player_zone_top_left.x > clamp.player_zone_bottom_right.x) {
-                             std::swap(clamp.player_zone_top_left.x, clamp.player_zone_bottom_right.x);
-                         }
-                         if (clamp.player_zone_top_left.y > clamp.player_zone_bottom_right.y) {
-                             std::swap(clamp.player_zone_top_left.y, clamp.player_zone_bottom_right.y);
-                         }
- 
-                         ImGui::Spacing();
-                         ImGui::DragFloat("Smoothing Override", &clamp.smoothing_override, 0.0001f, 0.0001f, 0.0300f, "%.4f");
-                         ImGui::Checkbox("Snap To Clamp", &clamp.snap_to_clamp);
-                     } else {
-                         ImGui::TextDisabled("No clamps in scene.");
-                         
-                     }
- 
-+                    ImGui::PopStyleColor(5);
- 
-                     ImGui::EndTabItem();   
-                 }
- 
- 
-                 ImGui::EndTabBar();
- 
-                 ImGui::PopStyleVar(2);
-                 ImGui::PopStyleColor(6);
-             }
- 
- 
-             
-         }
- 
- 
-         scene.uiCapturesMouse = ImGui::GetIO().WantCaptureMouse;
- 
-         ImGui::End();
- 
-     } else {
- 
-         ImVec2 btnSize = ImVec2(120 * fullscreenScale.x, 28 * fullscreenScale.y);
-         ImVec2 btnPos  = ImVec2( GetScreenWidth()  - btnSize.x - 10.0f, GetScreenHeight() - btnSize.y - 10.0f);
-         ImGui::SetNextWindowPos(btnPos, ImGuiCond_Always);
+     finalColor = vec4(clamp(col, 0.0, 1.0), base.a);
+-}
+\ No newline at end of file
++}
  
 EOF
 )

@@ -85,7 +85,7 @@ void CameraSystem::update (Registry & registry, float deltatime) {
                 camera.previous_zoom = camera.zoom;
 
                 Vec2 offset = {(target_position.x - transform.position.x), (target_position.y - transform.position.y)};
-                Vec2 dist = {fabs(offset.x), fabs(offset.y)};
+                Vec2 dist = {(float)fabs((double)offset.x), (float)fabs((double)offset.y)};
 
                 float base_smoothing = camera.followSmoothing;
                 float gain = 0.015f;
@@ -107,8 +107,8 @@ void CameraSystem::update (Registry & registry, float deltatime) {
 
 
                 Vec2 factor = {
-                    1.0f - exp(-smoothing.x * deltatime),
-                    1.0f - exp(-smoothing.y * deltatime)
+                    1.0f - (float)exp((double)(-smoothing.x * deltatime)),
+                    1.0f - (float)exp((double)(-smoothing.y * deltatime))
                 };
 
 

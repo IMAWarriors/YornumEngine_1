@@ -73,6 +73,7 @@ Window::Window (const char * title, bool edit) {
 
     // ******************* LOAD SHADERS HERE *****************************
 
+    /*
     painter = LoadShader(0, "assets/shaders/painter.fs");
 
     painter_camera_pos_loc = GetShaderLocation(painter, "u_camera_pos");
@@ -90,6 +91,7 @@ Window::Window (const char * title, bool edit) {
             TraceLog(LOG_WARNING, "Painter shader loaded with missing optional uniforms; effect will run with partial data.");
         }
     }
+    */
 
     
 

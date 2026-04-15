@@ -32,6 +32,8 @@ class RenderSystem : public System {
         Window & window;
         bool renderSceneEditorUI = false;
 
+        int clock = 0;
+
     public:
 
         RenderSystem (Renderer & _renderer, Scene & _scene, Window & _window) : renderer(_renderer), scene(_scene), window(_window) {}

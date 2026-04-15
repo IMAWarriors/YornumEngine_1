@@ -3,7 +3,7 @@
 #ifndef AVATAR_H
 #define AVATAR_H
 
-#include "../Overhead/GameTypes.h"
+#include "../../../Engine/Core/Overhead/GameTypes.h"
 
 #include <string>
 #include <vector>

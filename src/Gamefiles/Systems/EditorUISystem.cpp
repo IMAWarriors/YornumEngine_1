@@ -23,6 +23,7 @@
 #include <cstdio>
 
 #include <filesystem>
+#include <functional>
 
 
 
@@ -122,6 +123,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
 
 
+
         // Anchor to top-right corner
             ImVec2 windowSize = ImVec2(160 * fullscreenScale.x, 80 * fullscreenScale.y);
             ImVec2 windowPos = ImVec2(
@@ -162,10 +164,36 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
     };
         
 
-    static int jointselected = -1;
+    auto DistancePointToSegment = [](ImVec2 p, ImVec2 a, ImVec2 b) {
+        ImVec2 ab = { b.x - a.x, b.y - a.y };
+        ImVec2 ap = { p.x - a.x, p.y - a.y };
+
+        float ab_len2 = ab.x * ab.x + ab.y * ab.y;
+        if (ab_len2 == 0.0f) return sqrtf(ap.x * ap.x + ap.y * ap.y);
+
+        float t = (ap.x * ab.x + ap.y * ab.y) / ab_len2;
+        t = std::max(0.0f, std::min(1.0f, t));
+
+        ImVec2 closest = {
+            a.x + ab.x * t,
+            a.y + ab.y * t
+        };
+
+        float dx = p.x - closest.x;
+        float dy = p.y - closest.y;
+
+        return sqrtf(dx * dx + dy * dy);
+    };
+
+    
 
     auto DrawCreateAvatarEditor = [&] () {
 
+        static bool lock_window_drag = false;
+        static int jointselected = -1;
+
+ 
+        
         
 
         ImVec2 orig = ImGui::GetStyle().WindowPadding;
@@ -187,47 +215,386 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
             dcaeJustOpened = false;
         }
 
-        if (ImGui::Begin("Create Avatar...", nullptr)) {
+        ImGuiWindowFlags flags = 0;
+
+        if (lock_window_drag) {
+            flags |= ImGuiWindowFlags_NoMove;
+        }
+
+        if (ImGui::Begin("Create Avatar...", nullptr, flags)) {
+
+            
 
             ImGui::BeginChild("LeftPanel", ImVec2(220, 0), true);
 
             if (ImGui::Button("Add Joint", ImVec2(-1, 28))) {
-                
+
+                int num1 = randInt(-10, 10);
+                int num2 = randInt(-10, 10);
+                int num3 = randInt(-10, 10);
+                int num4 = randInt(-10, 10);
+
+                loaded_editor_avatar.origin_joints.push_back({"Untitled Joint", {(float)num1, (float)num2}, {(float)num3, (float)num4}});
+
             }
 
             if (ImGui::Button("Delete Joint", ImVec2(-1, 28))) {
-                
+                if (jointselected >= 0 && jointselected < loaded_editor_avatar.origin_joints.size()) {
+                    loaded_editor_avatar.origin_joints.erase(loaded_editor_avatar.origin_joints.begin() + jointselected);
+                }
+                jointselected = -1;
             }
 
             ImGui::Separator();
 
-            for (int i = 0; i < 10; i++) {
+            ImGui::Checkbox("Lock Window (no drag)", &lock_window_drag);
+
+            ImGui::Separator();
+
+            
+
+
+            for (int i = 0; i < loaded_editor_avatar.origin_joints.size(); i++) {
+
+                ImGui::PushID(i);
                 bool sel = (i == jointselected);
-                if (ImGui::Selectable(std::string("Joint #" + std::to_string(i)).c_str(), sel)) {
-                    jointselected = i;
+                if (ImGui::Selectable(loaded_editor_avatar.origin_joints.at(i).name.c_str(), sel)) {
+                    jointselected = (sel) ? -1 : i;
                 }
+                ImGui::PopID();
             }
 
             ImGui::EndChild();
 
             ImGui::SameLine();
 
-            ImGui::BeginChild("CenterView", ImVec2(0, 0), true);
+            float factor = 1.0f;
+
+            if (jointselected!=-1) {
+                factor = 0.75f;
+            }
+
+            ImGui::BeginChild("CenterView", ImVec2(ImGui::GetContentRegionAvail().x * factor, ImGui::GetContentRegionAvail().y), true);
+
 
             ImVec2 canvasPos = ImGui::GetCursorScreenPos();
-            ImVec2 canvasSize = ImGui::GetContentRegionAvail();
+            ImVec2 canvasSize = {ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y};
             ImDrawList* draw = ImGui::GetWindowDrawList();
 
+
+            
+            // CANVAS
+
+            static Vec2 local_canvas_scroll = {0.0f, 0.0f};
+            static float local_canvas_zoom = 0.0f;
+
+            static bool draggingLastFrame = false;
+            static ImVec2 drag_start;
+            static ImVec2 mouse_start;
+            
+            auto WorldToScreen = [&](ImVec2 pos) {
+                return ImVec2(
+                    canvasPos.x + pos.x * local_canvas_zoom - local_canvas_scroll.x,
+                    canvasPos.y + pos.y * local_canvas_zoom - local_canvas_scroll.y
+                );
+            };
+
+
+
+
+            
+
             draw->AddRectFilled(canvasPos, ImVec2(canvasPos.x+canvasSize.x, canvasPos.y+canvasSize.y), IM_COL32(20,20,30,255));
+
+            // JJOINTS
+
+            ImVec2 mpos = ImGui::GetIO().MousePos;
+
+            for (int i = 0; i < loaded_editor_avatar.origin_joints.size(); i++) {
+
+                auto& j = loaded_editor_avatar.origin_joints[i];
+
+                ImVec2 a = WorldToScreen(ImVec2(j.origin.x, j.origin.y));
+                ImVec2 b = WorldToScreen(ImVec2(j.origin.x + j.direction.x,
+                                            j.origin.y + j.direction.y));
+
+                float dist = DistancePointToSegment(mpos, a, b);
+
+                bool hovered = dist < 8.0f;
+                bool selected = (i == jointselected);
+
+                ImU32 color;
+
+                if (selected) {
+                    color = IM_COL32(0, 200, 255, 255);   // bright cyan selected
+                }
+                else if (hovered) {
+                    color = IM_COL32(80, 170, 255, 255);  // blue hover
+                }
+                else {
+                    color = IM_COL32(255, 255, 255, 120); // default
+                }
+
+                float thickness = selected ? 6.0f : (hovered ? 5.0f : 3.0f);
+
+                draw->AddLine(a, b, color, thickness);
+
+                // CLICK SELECT
+                if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                    jointselected = i;
+                }
+
+               
+                
+
+            }
+
+            bool doingJointMoveThisFrame = false;
+
+            static bool point1 = false;
+            static bool point2 = false;
+
+            static ImVec2 orig_point;
+            static ImVec2 orig_mouse;
+
+            if (jointselected != -1) {
+
+                ImVec2 mouse = ImGui::GetIO().MousePos;
+
+                // circle position (world or screen space)
+                ImVec2 c1 = WorldToScreen(ImVec2(loaded_editor_avatar.origin_joints[jointselected].origin.x, loaded_editor_avatar.origin_joints[jointselected].origin.y));
+                ImVec2 c2 = WorldToScreen(ImVec2(loaded_editor_avatar.origin_joints[jointselected].origin.x + loaded_editor_avatar.origin_joints[jointselected].direction.x, loaded_editor_avatar.origin_joints[jointselected].origin.y + loaded_editor_avatar.origin_joints[jointselected].direction.y));
+                float radius = 10.0f;
+
+                // distance check for hover
+                float dx1 = mouse.x - c1.x;
+                float dy1 = mouse.y - c1.y;
+                bool hov1 = (dx1*dx1 + dy1*dy1) <= (radius * radius);
+
+                
+
+                // distance check for hover
+                float dx2 = mouse.x - c2.x;
+                float dy2 = mouse.y - c2.y;
+                bool hov2 = (dx2*dx2 + dy2*dy2) <= (radius * radius);
+
+                // choose color
+                ImU32 col1 = hov1
+                    ? IM_COL32(255, 140, 0, 150)   // orange
+                    : IM_COL32(0, 160, 255, 100);   // bright blue
+
+                if (!(point1 || point2)) {
+                    if (hov1) {
+                        doingJointMoveThisFrame = true;
+                        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                            point1 = true;
+                            point2 = false;
+
+                            
+                            orig_point = ImVec2(loaded_editor_avatar.origin_joints[jointselected].origin.x, loaded_editor_avatar.origin_joints[jointselected].origin.y);
+                            orig_mouse = ImGui::GetIO().MousePos;
+                        }
+                    } else if (hov2) {
+                        doingJointMoveThisFrame = true;
+                        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                            point1 = false;
+                            point2 = true;
+
+                            orig_point = ImVec2(loaded_editor_avatar.origin_joints[jointselected].direction.x, loaded_editor_avatar.origin_joints[jointselected].direction.y);
+                            orig_mouse = ImGui::GetIO().MousePos;
+
+                            
+                        }
+                    } else {
+                        
+                    }
+                }
+
+                if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+                {
+                    point1 = false;
+                    point2 = false;
+                }
+
+                if (point1) {
+                    ImVec2 delta = {ImGui::GetIO().MousePos.x - orig_mouse.x, ImGui::GetIO().MousePos.y - orig_mouse.y};
+
+                    loaded_editor_avatar.origin_joints[jointselected].origin =
+                    {
+                        orig_point.x + delta.x / local_canvas_zoom,
+                        orig_point.y + delta.y / local_canvas_zoom
+                    };
+                }
+
+                if (point2) {
+                    ImVec2 delta = {ImGui::GetIO().MousePos.x - orig_mouse.x, ImGui::GetIO().MousePos.y - orig_mouse.y};
+
+                    loaded_editor_avatar.origin_joints[jointselected].direction =
+                    {
+                        orig_point.x + delta.x / local_canvas_zoom,
+                        orig_point.y + delta.y / local_canvas_zoom
+                    };
+                }
+                    
+                // choose color
+                ImU32 col2 = hov2
+                    ? IM_COL32(255, 255, 0, 150)   // orange
+                    : IM_COL32(150, 180, 255, 100);   // bright blue
+
+                // draw filled circle
+                draw->AddCircleFilled(c1, radius, col1);
+                draw->AddCircleFilled(c2, radius, col2);
+
+
+
+            }
+
+
+            if (ImGui::IsWindowHovered()) {
+                if (!draggingLastFrame) {
+
+                }
+            }
+            
+
+            if (ImGui::IsWindowHovered() && !point1 && !point2) {
+                local_canvas_zoom += ImGui::GetIO().MouseWheel * 20.0f;
+                if (ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+                    if (!draggingLastFrame) {
+                        draggingLastFrame = true;
+                        drag_start = {local_canvas_scroll.x, local_canvas_scroll.y};
+                        mouse_start = ImGui::GetIO().MousePos;
+                    } else {
+                        local_canvas_scroll = {drag_start.x - (ImGui::GetIO().MousePos.x - mouse_start.x),
+                                               drag_start.y - (ImGui::GetIO().MousePos.y - mouse_start.y)};
+                    }
+                }
+
+                if (local_canvas_zoom < 0.5f) {
+                    local_canvas_zoom = 0.5f;
+                }
+            }
+
+
+            if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+                draggingLastFrame = false;
+            }
+
+
+
+            
+
+            draw->AddText(
+                ImVec2(canvasPos.x + 5.0f, (canvasPos.y + canvasSize.y) - ImGui::GetFontSize() - 5.0f),
+                IM_COL32(255, 255, 255, 255),
+                std::string("(" + std::to_string(local_canvas_scroll.x) + ", " + std::to_string(local_canvas_scroll.y) + ")   " + std::to_string(local_canvas_zoom)).c_str() );
+
+
+                
+
+            // Origin
+
+            draw->AddLine(
+                ImVec2(canvasPos.x, canvasPos.y + (0.0f - local_canvas_scroll.y)),
+                ImVec2(canvasPos.x + canvasSize.x, canvasPos.y + (0.0f - local_canvas_scroll.y)),
+                IM_COL32(255, 255, 255, 255),
+                2.0f // thickness
+            );
+
+            draw->AddLine(
+                ImVec2(canvasPos.x + (0.0f - local_canvas_scroll.x), canvasPos.y),
+                ImVec2(canvasPos.x + (0.0f - local_canvas_scroll.x), canvasPos.y + canvasSize.y),
+                IM_COL32(255, 255, 255, 255),
+                2.0f // thickness
+            );
+
+
+
+
+
+
+
+
+
+            
+
+
+
+            
+
+            
 
             ImGui::EndChild();
 
 
+            static int lastJointSelected = jointselected;
+            static char name[128] = "Untitled joint";
+
+            
+
+            if (jointselected!=-1) {
+
+                ImGui::SameLine();
+
+                ImGui::BeginChild(
+                    "JointEditor",
+                    ImVec2(ImGui::GetContentRegionAvail().x, 0),
+                    true
+                );
+
+                auto& joint = loaded_editor_avatar.origin_joints[jointselected];
+
+                // ONLY update buffer when selection changes
+                if (lastJointSelected != jointselected) {
+                    lastJointSelected = jointselected;
+
+                    strncpy(name, joint.name.c_str(), sizeof(name));
+                    name[sizeof(name) - 1] = '\0'; // safety null terminator
+                }
+
+                
+
+                ImGui::TextUnformatted(joint.name.c_str());
+
+                ImGui::Separator();
+
+                if (ImGui::BeginTable("JointInspector", 2, ImGuiTableFlags_SizingStretchProp))
+                {
+                    ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+                    ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+
+                    std::function<void(const char*, std::function<void()>)> Row =
+                    [&](const char* label, std::function<void()> func)
+                    {
+                        ImGui::TableNextRow();
+                        ImGui::TableSetColumnIndex(0);
+                        ImGui::TextUnformatted(label);
+
+                        ImGui::TableSetColumnIndex(1);
+                        func();
+                    };
+
+                    Row("Name", [&]() {
+                        ImGui::InputText("##name", name, IM_ARRAYSIZE(name));
+                        joint.name = name;
+                    });
+
+                    Row("oX", [&]() { ImGui::InputFloat("##ox", &joint.origin.x); });
+                    Row("oY", [&]() { ImGui::InputFloat("##oy", &joint.origin.y); });
+
+                    Row("dX", [&]() { ImGui::InputFloat("##dx", &joint.direction.x); });
+                    Row("dY", [&]() { ImGui::InputFloat("##dy", &joint.direction.y); });
+
+                    ImGui::EndTable();
+                }
+
+                ImGui::EndChild();
 
         };
 
         ImGui::End();
-        ImGui::PopStyleColor(3);
+        ImGui::PopStyleColor(6);
+
         ImGui::GetStyle().WindowPadding = orig;
 
     };

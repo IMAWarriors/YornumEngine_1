@@ -14,9 +14,16 @@
 
 #include "../../../external/rlimgui/rlImGui.h"
 #include "../../../external/imgui/imgui.h"
+#include "../Elements/Avatar/Avatar.h"
 
 #include <vector>
 #include <string>
+
+
+#include <random>
+
+
+
 
 class Scene;
 
@@ -27,6 +34,11 @@ class AssetManager;
 struct EditorAssets;
 
 class Window;
+
+
+
+
+
 
 
 class EditorUISystem : public System {
@@ -47,14 +59,16 @@ class EditorUISystem : public System {
         const std::string TILESETDIR = "assets/sprites/tilesets/";
         const std::string BACKGROUNDIMAGEDIR = "assets/sprites/backgrounds/";
 
+        Avatar loaded_editor_avatar;
 
-        struct Joint {
-            std::string name;
-            ImVec2 origin;
-            ImVec2 dir;
-            int layer;
-        };
+        
 
+        int randInt(int num1, int num2) {
+            static std::mt19937 rng(std::random_device{}());
+            static std::uniform_int_distribution<int> dist(num1, num2);
+            return dist(rng);
+        }
+       
 
     public:
 
@@ -62,6 +76,9 @@ class EditorUISystem : public System {
 
             ImGuiIO& io = ImGui::GetIO();
             io.IniFilename = "../../../cache/imgui/EMain_imgui.ini";
+
+            loaded_editor_avatar.animations.clear();
+            
 
         }
         

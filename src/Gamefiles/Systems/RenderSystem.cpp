@@ -46,14 +46,21 @@ void RenderSystem::update (Registry & registry, float deltatime) {
     const Vec2 camera_position_bg = renderer.get_camera_position();
     const float camera_zoom_bg = renderer.get_camera_zoom();
 
+    
+
     if (scene.background.backdrop_image != nullptr) {
+
+        float adjscale = ((float)scene.background.backdrop_image->width / (float)config::GAME_WORLD_WIDTH);
+
         renderer.rdraw_sprite_col(
             *(scene.background.backdrop_image),
-            {0.0f, 0.0f, (float)scene.background.backdrop_image->width, (float)scene.background.backdrop_image->height},
+            {0.0f, 500.0f + std::sin((float)clock/300.0f) * 450.0f, (float)config::GAME_WORLD_WIDTH * adjscale, (float)config::GAME_WORLD_HEIGHT * adjscale},
             {0.0f, 0.0f, (float)config::GAME_WORLD_WIDTH, (float)config::GAME_WORLD_HEIGHT},
-            WHITE
+            RED
         );
     }
+
+    clock++;
 
     const float base_screen_tile_w = (float)gwconst::SCREEN_WIDTH_GAMEPIXELS;
     const float base_screen_tile_h = (float)gwconst::SCREEN_HEIGHT_GAMEPIXELS;
@@ -96,9 +103,11 @@ void RenderSystem::update (Registry & registry, float deltatime) {
                 const float screen_x = (world_x - parallax_left) * camera_zoom_bg;
                 const float screen_y = (world_y - parallax_top) * camera_zoom_bg;
 
+                float adjscale = ((float)resolved->image->width / (float)config::GAME_WORLD_WIDTH);
+
                 renderer.rdraw_sprite_col(
                     *(resolved->image),
-                    {0.0f, 0.0f, (float)resolved->image->width, (float)resolved->image->height},
+                    {0.0f, 0.0f, (float)config::GAME_WORLD_WIDTH * adjscale, (float)config::GAME_WORLD_HEIGHT * adjscale},
                     {screen_x, screen_y, base_screen_tile_w * camera_zoom_bg, base_screen_tile_h * camera_zoom_bg},
                     layer.tint
                 );
