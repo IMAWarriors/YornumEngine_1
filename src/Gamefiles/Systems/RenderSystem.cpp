@@ -56,7 +56,7 @@ void RenderSystem::update (Registry & registry, float deltatime) {
             *(scene.background.backdrop_image),
             {0.0f, 500.0f + std::sin((float)clock/300.0f) * 450.0f, (float)config::GAME_WORLD_WIDTH * adjscale, (float)config::GAME_WORLD_HEIGHT * adjscale},
             {0.0f, 0.0f, (float)config::GAME_WORLD_WIDTH, (float)config::GAME_WORLD_HEIGHT},
-            RED
+            {255, 180, 180, 255}
         );
     }
 

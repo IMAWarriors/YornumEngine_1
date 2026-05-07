@@ -36,6 +36,10 @@ struct EditorAssets;
 class Window;
 
 
+enum class AvatarCreatorMenu {
+    AVATAR_SELECTION = 0,
+    KEYFRAME_EDITOR
+};
 
 
 
@@ -44,6 +48,8 @@ class Window;
 class EditorUISystem : public System {
 
     private:
+
+        AvatarCreatorMenu avatarMenu = AvatarCreatorMenu::AVATAR_SELECTION;
 
         Renderer & renderer;
         Scene & scene;
@@ -59,7 +65,17 @@ class EditorUISystem : public System {
         const std::string TILESETDIR = "assets/sprites/tilesets/";
         const std::string BACKGROUNDIMAGEDIR = "assets/sprites/backgrounds/";
 
-        Avatar loaded_editor_avatar;
+        // saved info to be serialized
+        std::vector<Avatar> avatars;
+        std::vector<Animation> animations;
+
+        // Packaged info
+        Avatar * avatar_to_edit = nullptr;
+
+        // Permanent Texturing info
+        
+
+        
 
         
 
@@ -77,9 +93,7 @@ class EditorUISystem : public System {
             ImGuiIO& io = ImGui::GetIO();
             io.IniFilename = "../../../cache/imgui/EMain_imgui.ini";
 
-            loaded_editor_avatar.animations.clear();
-            
-
+         
         }
         
     
