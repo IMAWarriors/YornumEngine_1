@@ -545,6 +545,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         std::swap(animations[anim_selected].frames[temp_query_selected_anim_frame], animations[anim_selected].frames[temp_query_selected_anim_frame - 1]);
                         temp_query_selected_anim_frame--;
                         selected_anim_frame = temp_query_selected_anim_frame;
+                        animations[anim_selected].sync_frame_order_seq_id();
                     }
                 }
 
@@ -556,6 +557,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         std::swap(animations[anim_selected].frames[temp_query_selected_anim_frame], animations[anim_selected].frames[temp_query_selected_anim_frame + 1]);
                         temp_query_selected_anim_frame++;
                         selected_anim_frame = temp_query_selected_anim_frame;
+                        animations[anim_selected].sync_frame_order_seq_id();
                     }
                 }
 
@@ -1739,7 +1741,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                             static int totalFrames = 300;
 
-                            static int currentFrame = 40;
+                            static int currentFrame = 0;
 
                             // THIS is the important part
                             static float timelineScroll = 0.0f;
@@ -1761,22 +1763,22 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                             if (hovered) {
 
-                                // vertical scroll through time
-                                timelineScroll -= ImGui::GetIO().MouseWheel * 60.0f;
-
-                                if (timelineScroll < 0.0f)
-                                    timelineScroll = 0.0f;
-
-                                // CTRL + wheel = zoom
                                 if (ImGui::GetIO().KeyCtrl) {
 
                                     pixelsPerFrame += ImGui::GetIO().MouseWheel * 2.0f;
 
-                                    if (pixelsPerFrame < 6.0f)
-                                        pixelsPerFrame = 6.0f;
+                                    pixelsPerFrame = std::clamp(
+                                        pixelsPerFrame,
+                                        6.0f,
+                                        60.0f
+                                    );
 
-                                    if (pixelsPerFrame > 60.0f)
-                                        pixelsPerFrame = 60.0f;
+                                } else {
+
+                                    timelineScroll -= ImGui::GetIO().MouseWheel * 60.0f;
+
+                                    if (timelineScroll < -80.0f)
+                                        timelineScroll = -80.0f;
                                 }
                             }
 
@@ -1784,7 +1786,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             // RAIL
                             // ============================================================
 
-                            float railX = p0.x + 80.0f;
+                            float railX = p0.x + 70.0f;
 
                             dl->AddLine(
                                 ImVec2(railX, p0.y),
@@ -1840,18 +1842,33 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             struct TimelineFlag {
                                 int frame;
                                 ImU32 color;
+                                int keyframe_index;
                             };
 
                             std::vector<TimelineFlag> flags;
 
                             int i = 0;
+                            int scrub_fr = 0;
 
-                            for (const KeyAnimFrame & fr : animations[anim_selected].frames) {
+                            for (auto& fr : animations[anim_selected].frames) {
 
-                                flags.push_back({(i * 10), IM_COL32 ( ( (255 + (i * 30)) % 255) , ( (120) % 255), ( (180 + (i * 30)) % 255), 255 ) });
+                                flags.push_back({
+                                    scrub_fr,
+                                    IM_COL32(
+                                        ((255 + (i * 50)) % 255),
+                                        ((120 + (i * 50)) % 255),
+                                        ((180 + (i * 50)) % 255),
+                                        255
+                                    ),
+                                    i
+                                });
+
+                                scrub_fr += fr.time_to_next;
+
                                 i++;
-
                             }
+
+                            static int frame_flag_dragging = -1;
 
                             for (const auto& flag : flags) {
 
@@ -1866,20 +1883,121 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 if (y > p0.y + avail.y + 20.0f)
                                     continue;
 
+                                bool this_flag_hovered =
+                                    hovered &&
+                                    mouse.y > y - 10.0f &&
+                                    mouse.y < y + 10.0f &&
+                                    mouse.x > railX - 10.0f &&
+                                    mouse.x < railX + 140.0f;
+
+                                if (this_flag_hovered &&
+                                    ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+                                {
+                                    frame_flag_dragging = flag.keyframe_index;
+                                }
+
+                                ImU32 drawColor = flag.color;
+
+                                if (this_flag_hovered || frame_flag_dragging == flag.keyframe_index) {
+                                    drawColor = IM_COL32(255,255,255,255);
+                                }
+
                                 dl->AddLine(
                                     ImVec2(railX, y),
                                     ImVec2(railX + 14.0f, y),
-                                    flag.color,
+                                    drawColor,
                                     2.0f
                                 );
 
                                 dl->AddRectFilled(
                                     ImVec2(railX + 14.0f, y - 5.0f),
                                     ImVec2(railX + 34.0f, y + 5.0f),
-                                    flag.color,
+                                    drawColor,
                                     2.0f
                                 );
+
+                                dl->AddText(
+                                    ImVec2(railX + 45.0f, y - 7.0f),
+                                    IM_COL32(190,190,190,255),
+                                    std::to_string(flag.keyframe_index).c_str()
+                                );
                             }
+
+                            if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+
+                                frame_flag_dragging = -1;
+
+                            }
+
+                            static int drag_initial_mouse_frame = 0;
+                            static int drag_initial_flag_frame = 0;
+                            static bool drag_initialized = false;
+
+                            if (frame_flag_dragging != -1) {
+
+                                auto& frames = animations[anim_selected].frames;
+
+                                int idx = frame_flag_dragging;
+
+                                // cannot drag first frame
+                                if (idx > 0) {
+
+                                    // INITIALIZE DRAG STATE ON FIRST FRAME
+                                    
+
+                                    if (!drag_initialized) {
+
+                                        drag_initialized = true;
+
+                                        drag_initial_mouse_frame =
+                                            (int)round(
+                                                (mouse.y - p0.y + timelineScroll) / pixelsPerFrame
+                                            );
+
+                                        drag_initial_flag_frame = flags[idx].frame;
+                                    }
+
+                                    // CURRENT MOUSE FRAME
+                                    int current_mouse_frame =
+                                        (int)round(
+                                            (mouse.y - p0.y + timelineScroll)
+                                            / pixelsPerFrame
+                                        );
+
+                                    // PURE DELTA
+                                    int delta =
+                                        current_mouse_frame -
+                                        drag_initial_mouse_frame;
+
+                                    // NEW ABSOLUTE FLAG POSITION
+                                    int desired_absolute_frame =
+                                        drag_initial_flag_frame +
+                                        delta;
+
+                                    // PREVIOUS FLAG POSITION
+                                    int previous_absolute_frame = 0;
+
+                                    for (int i = 0; i < idx; i++) {
+                                        previous_absolute_frame += frames[i].time_to_next;
+                                    }
+
+                                    // NEW TIMING
+                                    int newDelta =
+                                        desired_absolute_frame -
+                                        previous_absolute_frame;
+
+                                    newDelta = std::max(1, newDelta);
+
+                                    frames[idx - 1].time_to_next = newDelta;
+                                }
+
+                            } else {
+
+                                drag_initialized = false;
+                            }
+
+
+
 
                             // ============================================================
                             // SCRUBBER

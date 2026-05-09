@@ -162,6 +162,10 @@ struct KeyAnimFrame {
 
     std::vector<AnimJointAdjustmentFrame> joints;
 
+    int sequence_id = 0;
+    int time_to_next = 8;
+    bool interpolate_trans_region = true;
+
     // Constructor to build key anim frame (ex. into animation list) by making same # joints per key frame for an avatar
     KeyAnimFrame (const Avatar& _avatar) {
 
@@ -181,6 +185,7 @@ struct KeyAnimFrame {
             joints.push_back(AnimJointAdjustmentFrame(frame.joints[i].origin, frame.joints[i].rotation, frame.joints[i].layer_offset));
 
         }
+
 
 
     }
@@ -209,15 +214,36 @@ struct Animation {
         frames.clear();
     }
 
+    void sync_frame_order_seq_id () {
+
+        int i = 0;
+        for (KeyAnimFrame & frame : frames) {
+            frame.sequence_id = i;
+            i++;
+        }
+
+    }
+
     void new_frame (const KeyAnimFrame & _frame) {
 
-        if (frames.size() > 0)
-            assert(joints_defined == _frame.joints.size());
-        else
-            joints_defined = _frame.joints.size();
+	    KeyAnimFrame copy = _frame;
+        
+        
 
-        frames.push_back(_frame);
+        if (frames.size() > 0)
+            assert(joints_defined == copy.joints.size());
+        else
+            joints_defined = copy.joints.size();
+
+        frames.push_back(copy);
+
+        if (frames.size() > 0)
+            frames[frames.size() - 1].sequence_id =  frames.size() - 1;
+
+        sync_frame_order_seq_id();
     }
+
+    
 
     void resize_joints_defined (const Avatar & _avatar) {
 
