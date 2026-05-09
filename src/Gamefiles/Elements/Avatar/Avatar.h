@@ -160,11 +160,19 @@ class Avatar {
 
 struct KeyAnimFrame {
 
+    enum class TransitionMode {
+        Linear = 0,
+        Instant = 1,
+        EaseInOut = 2
+    };
+
     std::vector<AnimJointAdjustmentFrame> joints;
 
     int sequence_id = 0;
     int time_to_next = 8;
     bool interpolate_trans_region = true;
+
+    TransitionMode transition_mode = TransitionMode::Linear;
 
     // Constructor to build key anim frame (ex. into animation list) by making same # joints per key frame for an avatar
     KeyAnimFrame (const Avatar& _avatar) {
@@ -186,7 +194,10 @@ struct KeyAnimFrame {
 
         }
 
-
+        sequence_id = frame.sequence_id;
+        time_to_next = frame.time_to_next;
+        interpolate_trans_region = frame.interpolate_trans_region;
+        transition_mode = frame.transition_mode;
 
     }
 

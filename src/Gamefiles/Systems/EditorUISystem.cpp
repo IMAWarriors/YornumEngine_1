@@ -646,11 +646,11 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
 
 
-
+                static bool timingModeActive = false;
 
                 // Joint Operations on WHOLE AVATAR
 
-                if (selected_anim_frame == -1) {
+                if (!timingModeActive && selected_anim_frame == -1) {
 
                     ImGui::Text("Default Frame Joints");
 
@@ -911,11 +911,65 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 ImVec2 mpos = ImGui::GetIO().MousePos;
 
 
+                
+                static bool timelinePlaying = false;
+                static float timelinePlayTime = 0.0f;
+                static int timelineCurrentFrame = 0;
+                static int timelineSelectedKey = -1;
+
+                auto getAnimationTotalFrames = [&](const Animation& anim) -> int {
+                    int total = 0;
+                    for (const auto& fr : anim.frames) total += std::max(1, fr.time_to_next);
+                    return std::max(1, total);
+                };
+
+                auto frameToKeyAndLerp = [&](const Animation& anim, int frame, int& outKey, int& outNext, float& outT) {
+                    if (anim.frames.empty()) { outKey = -1; outNext = -1; outT = 0.0f; return; }
+                    int total = getAnimationTotalFrames(anim);
+                    int wrapped = ((frame % total) + total) % total;
+                    int accum = 0;
+                    for (int i = 0; i < (int)anim.frames.size(); i++) {
+                        int dt = std::max(1, anim.frames[i].time_to_next);
+                        if (wrapped < accum + dt) {
+                            outKey = i;
+                            outNext = (i + 1) % (int)anim.frames.size();
+                            outT = (float)(wrapped - accum) / (float)dt;
+                            return;
+                        }
+                        accum += dt;
+                    }
+                    outKey = (int)anim.frames.size() - 1;
+                    outNext = 0;
+                    outT = 0.0f;
+                };
+
                 // DRAW JOINTS and IMAGE TEXTURES in LOOP
                 // **************************************
+
+                int render_anim_frame = selected_anim_frame;
+                int render_next_frame = -1;
+                float render_lerp_t = 0.0f;
+                bool render_interpolated = false;
+
+                if (timingModeActive && anim_selected != -1 && !animations[anim_selected].frames.empty()) {
+                    if (timelinePlaying) {
+                        timelinePlayTime += ImGui::GetIO().DeltaTime * 60.0f;
+                        timelineCurrentFrame = (int)timelinePlayTime;
+                    }
+                    frameToKeyAndLerp(animations[anim_selected], timelineCurrentFrame, render_anim_frame, render_next_frame, render_lerp_t);
+                    timelineSelectedKey = render_anim_frame;
+                    if (render_anim_frame >= 0) {
+                        const auto& kf = animations[anim_selected].frames[render_anim_frame];
+                        render_interpolated = kf.interpolate_trans_region && kf.transition_mode != KeyAnimFrame::TransitionMode::Instant;
+                        if (kf.transition_mode == KeyAnimFrame::TransitionMode::EaseInOut) {
+                            render_lerp_t = render_lerp_t * render_lerp_t * (3.0f - 2.0f * render_lerp_t);
+                        } else if (!render_interpolated) {
+                            render_lerp_t = 0.0f;
+                        }
+                    }
+                }
                 
-                // ANCHOR FRAME: DRAW
-                if (selected_anim_frame == -1) {
+                if (render_anim_frame == -1) {
 
                     for (int i = 0; i < (*avatar_selected).default_texturing.joints.size(); i++) {
 
@@ -1013,7 +1067,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 
                     }
 
-                } else {
+                } else if (!timingModeActive) {
 
                     
 
@@ -1025,7 +1079,13 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         int idx = get_idx_from_jlayer_id((*avatar_selected), i);
 
                         auto& anchor_j = (*avatar_selected).default_frame.joints[idx];
-                        auto& anim_j = animations[anim_selected].frames[selected_anim_frame].joints[idx];
+                        auto anim_j = animations[anim_selected].frames[render_anim_frame].joints[idx];
+                        if (render_interpolated && render_next_frame >= 0) {
+                            const auto& next_j = animations[anim_selected].frames[render_next_frame].joints[idx];
+                            anim_j.origin.x = anim_j.origin.x + (next_j.origin.x - anim_j.origin.x) * render_lerp_t;
+                            anim_j.origin.y = anim_j.origin.y + (next_j.origin.y - anim_j.origin.y) * render_lerp_t;
+                            anim_j.rotation = anim_j.rotation + (next_j.rotation - anim_j.rotation) * render_lerp_t;
+                        }
 
                         auto& j_text = (*avatar_selected).default_texturing.joints[idx];
 
@@ -1159,7 +1219,12 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
 
                 // Joint dragging logic
-                if (selected_anim_frame == -1) {
+                if (timingModeActive) {
+                    draw->AddText(
+                        ImVec2(canvasPos.x + 5.0f, (canvasPos.y + 35.0f) - ImGui::GetFontSize() - 5.0f),
+                        IM_COL32(255, 210, 40, 255),
+                        std::string("Timing Preview Key: " + std::to_string(std::max(0, render_anim_frame))).c_str() );
+                } else if (selected_anim_frame == -1) {
 
                     // Dragging script setup and draw dragging notation
                     if (jointselected != -1) {
@@ -1506,6 +1571,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             true
                         );
 
+                    timingModeActive = false;
                     if (ImGui::BeginTabBar("WorkspaceTabs")) {
 
                         if (ImGui::BeginTabItem("Frame")) {
@@ -1719,6 +1785,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         }
 
                         if (ImGui::BeginTabItem("Timing")) {
+                            timingModeActive = true;
 
                             // ============================================================
                             // TIMELINE PANEL SPACE
@@ -1741,7 +1808,6 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                             static int totalFrames = 300;
 
-                            static int currentFrame = 0;
 
                             // THIS is the important part
                             static float timelineScroll = 0.0f;
@@ -1752,6 +1818,28 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             // ============================================================
                             // SCROLL + ZOOM
                             // ============================================================
+                            int totalAnimFrames = getAnimationTotalFrames(animations[anim_selected]);
+                            totalFrames = std::max(totalFrames, totalAnimFrames + 30);
+                            timelineCurrentFrame = std::clamp(timelineCurrentFrame, 0, std::max(0, totalAnimFrames - 1));
+
+                            ImGui::SetCursorScreenPos(ImVec2(p0.x + 8.0f, p0.y + 8.0f));
+                            ImGui::BeginChild("timing_controls_bar", ImVec2(avail.x - 16.0f, 44.0f), true);
+                            if (ImGui::Button("|<")) { timelineCurrentFrame = 0; timelinePlayTime = 0.0f; }
+                            ImGui::SameLine();
+                            if (ImGui::Button("<")) { timelineCurrentFrame = std::max(0, timelineCurrentFrame - 1); timelinePlaying = false; timelinePlayTime = (float)timelineCurrentFrame; }
+                            ImGui::SameLine();
+                            if (ImGui::Button("▶")) { timelinePlaying = true; timelinePlayTime = (float)timelineCurrentFrame; }
+                            ImGui::SameLine();
+                            if (ImGui::Button("■")) { timelinePlaying = false; }
+                            ImGui::SameLine();
+                            if (ImGui::Button(">")) { timelineCurrentFrame = std::min(totalAnimFrames - 1, timelineCurrentFrame + 1); timelinePlaying = false; timelinePlayTime = (float)timelineCurrentFrame; }
+                            ImGui::SameLine();
+                            if (ImGui::Button(">|")) { timelineCurrentFrame = totalAnimFrames - 1; timelinePlayTime = (float)timelineCurrentFrame; }
+                            ImGui::SameLine();
+                            ImGui::Text("Frame %d/%d", timelineCurrentFrame, std::max(0, totalAnimFrames - 1));
+                            ImGui::EndChild();
+                            p0.y += 52.0f;
+                            avail.y -= 52.0f;
 
                             ImVec2 mouse = ImGui::GetIO().MousePos;
 
@@ -1894,6 +1982,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                     ImGui::IsMouseClicked(ImGuiMouseButton_Left))
                                 {
                                     frame_flag_dragging = flag.keyframe_index;
+                                    timelinePlaying = false;
                                 }
 
                                 ImU32 drawColor = flag.color;
@@ -1933,7 +2022,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             static int drag_initial_flag_frame = 0;
                             static bool drag_initialized = false;
 
-                            if (frame_flag_dragging != -1) {
+                            if (frame_flag_dragging != -1 && ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
 
                                 auto& frames = animations[anim_selected].frames;
 
@@ -1989,6 +2078,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                     newDelta = std::max(1, newDelta);
 
                                     frames[idx - 1].time_to_next = newDelta;
+                                    timelineSelectedKey = idx;
                                 }
 
                             } else {
@@ -2005,7 +2095,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                             float scrubY =
                                 p0.y +
-                                (currentFrame * pixelsPerFrame) -
+                                (timelineCurrentFrame * pixelsPerFrame) -
                                 timelineScroll;
 
                             bool hoverScrubber =
@@ -2016,7 +2106,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                             static bool draggingScrubber = false;
 
-                            if (hoverScrubber &&
+                            if (frame_flag_dragging == -1 && hoverScrubber &&
                                 ImGui::IsMouseClicked(ImGuiMouseButton_Left))
                             {
                                 draggingScrubber = true;
@@ -2031,11 +2121,11 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 float local =
                                     mouse.y - p0.y + timelineScroll;
 
-                                currentFrame =
+                                timelineCurrentFrame =
                                     (int)round(local / pixelsPerFrame);
 
-                                currentFrame =
-                                    std::clamp(currentFrame, 0, totalFrames);
+                                timelineCurrentFrame =
+                                    std::clamp(timelineCurrentFrame, 0, totalFrames);
                             }
 
                             // scrubber line
@@ -2058,13 +2148,31 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             dl->AddText(
                                 ImVec2(p0.x + 140.0f, scrubY - 10.0f),
                                 IM_COL32(255,80,80,255),
-                                std::string("FRAME " + std::to_string(currentFrame)).c_str()
+                                std::string("FRAME " + std::to_string(timelineCurrentFrame)).c_str()
                             );
 
                             ImGui::InvisibleButton(
                                 "timeline_capture",
                                 avail
                             );
+
+                            if (timelineSelectedKey >= 0 && timelineSelectedKey < (int)animations[anim_selected].frames.size()) {
+                                auto& selFrame = animations[anim_selected].frames[timelineSelectedKey];
+                                ImGui::SetCursorScreenPos(ImVec2(p0.x + 8.0f, p0.y + avail.y - 62.0f));
+                                ImGui::BeginChild("timing_selected_frame", ImVec2(avail.x - 16.0f, 54.0f), true);
+                                ImGui::Text("Selected Key %d", timelineSelectedKey);
+                                ImGui::SameLine();
+                                ImGui::SetNextItemWidth(90.0f);
+                                ImGui::DragInt("Frames to next", &selFrame.time_to_next, 0.25f, 1, 240);
+                                ImGui::SameLine();
+                                const char* transLabels[] = {"Linear", "Instant", "Ease"};
+                                int transitionIdx = (int)selFrame.transition_mode;
+                                if (ImGui::Combo("Transition", &transitionIdx, transLabels, IM_ARRAYSIZE(transLabels))) {
+                                    selFrame.transition_mode = (KeyAnimFrame::TransitionMode)transitionIdx;
+                                    selFrame.interpolate_trans_region = (transitionIdx != 1);
+                                }
+                                ImGui::EndChild();
+                            }
 
                             ImGui::EndTabItem();
                         }
