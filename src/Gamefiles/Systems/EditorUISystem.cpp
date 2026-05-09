@@ -1067,7 +1067,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 
                     }
 
-                } else if (!timingModeActive) {
+                } else {
 
                     
 
@@ -1220,6 +1220,32 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                 // Joint dragging logic
                 if (timingModeActive) {
+                    int totalAnimFramesForControls = (anim_selected != -1) ? getAnimationTotalFrames(animations[anim_selected]) : 1;
+                    totalAnimFramesForControls = std::max(1, totalAnimFramesForControls);
+                    timelineCurrentFrame = std::clamp(timelineCurrentFrame, 0, totalAnimFramesForControls - 1);
+
+                    ImVec2 controlBarMin(canvasPos.x + 10.0f, canvasPos.y + canvasSize.y - 48.0f);
+                    ImVec2 controlBarMax(canvasPos.x + canvasSize.x - 10.0f, canvasPos.y + canvasSize.y - 10.0f);
+                    draw->AddRectFilled(controlBarMin, controlBarMax, IM_COL32(18, 18, 24, 225), 6.0f);
+                    draw->AddRect(controlBarMin, controlBarMax, IM_COL32(90, 90, 110, 255), 6.0f, 0, 1.0f);
+
+                    ImGui::SetCursorScreenPos(ImVec2(controlBarMin.x + 8.0f, controlBarMin.y + 6.0f));
+                    ImGui::BeginGroup();
+                    if (ImGui::Button("|<")) { timelineCurrentFrame = 0; timelinePlayTime = 0.0f; timelinePlaying = false; }
+                    ImGui::SameLine();
+                    if (ImGui::Button("<")) { timelineCurrentFrame = std::max(0, timelineCurrentFrame - 1); timelinePlaying = false; timelinePlayTime = (float)timelineCurrentFrame; }
+                    ImGui::SameLine();
+                    if (ImGui::Button("▶")) { timelinePlaying = true; timelinePlayTime = (float)timelineCurrentFrame; }
+                    ImGui::SameLine();
+                    if (ImGui::Button("■")) { timelinePlaying = false; }
+                    ImGui::SameLine();
+                    if (ImGui::Button(">")) { timelineCurrentFrame = std::min(totalAnimFramesForControls - 1, timelineCurrentFrame + 1); timelinePlaying = false; timelinePlayTime = (float)timelineCurrentFrame; }
+                    ImGui::SameLine();
+                    if (ImGui::Button(">|")) { timelineCurrentFrame = totalAnimFramesForControls - 1; timelinePlayTime = (float)timelineCurrentFrame; timelinePlaying = false; }
+                    ImGui::SameLine();
+                    ImGui::Text("Frame %d/%d", timelineCurrentFrame, std::max(0, totalAnimFramesForControls - 1));
+                    ImGui::EndGroup();
+
                     draw->AddText(
                         ImVec2(canvasPos.x + 5.0f, (canvasPos.y + 35.0f) - ImGui::GetFontSize() - 5.0f),
                         IM_COL32(255, 210, 40, 255),
@@ -1821,25 +1847,6 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             int totalAnimFrames = getAnimationTotalFrames(animations[anim_selected]);
                             totalFrames = std::max(totalFrames, totalAnimFrames + 30);
                             timelineCurrentFrame = std::clamp(timelineCurrentFrame, 0, std::max(0, totalAnimFrames - 1));
-
-                            ImGui::SetCursorScreenPos(ImVec2(p0.x + 8.0f, p0.y + 8.0f));
-                            ImGui::BeginChild("timing_controls_bar", ImVec2(avail.x - 16.0f, 44.0f), true);
-                            if (ImGui::Button("|<")) { timelineCurrentFrame = 0; timelinePlayTime = 0.0f; }
-                            ImGui::SameLine();
-                            if (ImGui::Button("<")) { timelineCurrentFrame = std::max(0, timelineCurrentFrame - 1); timelinePlaying = false; timelinePlayTime = (float)timelineCurrentFrame; }
-                            ImGui::SameLine();
-                            if (ImGui::Button("▶")) { timelinePlaying = true; timelinePlayTime = (float)timelineCurrentFrame; }
-                            ImGui::SameLine();
-                            if (ImGui::Button("■")) { timelinePlaying = false; }
-                            ImGui::SameLine();
-                            if (ImGui::Button(">")) { timelineCurrentFrame = std::min(totalAnimFrames - 1, timelineCurrentFrame + 1); timelinePlaying = false; timelinePlayTime = (float)timelineCurrentFrame; }
-                            ImGui::SameLine();
-                            if (ImGui::Button(">|")) { timelineCurrentFrame = totalAnimFrames - 1; timelinePlayTime = (float)timelineCurrentFrame; }
-                            ImGui::SameLine();
-                            ImGui::Text("Frame %d/%d", timelineCurrentFrame, std::max(0, totalAnimFrames - 1));
-                            ImGui::EndChild();
-                            p0.y += 52.0f;
-                            avail.y -= 52.0f;
 
                             ImVec2 mouse = ImGui::GetIO().MousePos;
 
