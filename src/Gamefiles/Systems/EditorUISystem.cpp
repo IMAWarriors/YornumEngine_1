@@ -914,7 +914,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 
                 static bool timelinePlaying = false;
                 static float timelinePlayTime = 0.0f;
-                static int timelineCurrentFrame = 0;
+                static int timelineCurrentTick = 0;
                 static int timelineSelectedKey = -1;
 
                 auto getAnimationTotalFrames = [&](const Animation& anim) -> int {
@@ -954,9 +954,11 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 if (timingModeActive && anim_selected != -1 && !animations[anim_selected].frames.empty()) {
                     if (timelinePlaying) {
                         timelinePlayTime += ImGui::GetIO().DeltaTime * 60.0f;
-                        timelineCurrentFrame = (int)timelinePlayTime;
+                        int totalTicks = std::max(1, getAnimationTotalFrames(animations[anim_selected]));
+                        if (timelinePlayTime >= (float)totalTicks) timelinePlayTime = fmodf(timelinePlayTime, (float)totalTicks);
+                        timelineCurrentTick = (int)timelinePlayTime;
                     }
-                    frameToKeyAndLerp(animations[anim_selected], timelineCurrentFrame, render_anim_frame, render_next_frame, render_lerp_t);
+                    frameToKeyAndLerp(animations[anim_selected], timelineCurrentTick, render_anim_frame, render_next_frame, render_lerp_t);
                     timelineSelectedKey = render_anim_frame;
                     if (render_anim_frame >= 0) {
                         const auto& kf = animations[anim_selected].frames[render_anim_frame];
@@ -1222,7 +1224,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 if (timingModeActive) {
                     int totalAnimFramesForControls = (anim_selected != -1) ? getAnimationTotalFrames(animations[anim_selected]) : 1;
                     totalAnimFramesForControls = std::max(1, totalAnimFramesForControls);
-                    timelineCurrentFrame = std::clamp(timelineCurrentFrame, 0, totalAnimFramesForControls - 1);
+                    timelineCurrentTick = std::clamp(timelineCurrentTick, 0, totalAnimFramesForControls - 1);
 
                     ImVec2 controlBarMin(canvasPos.x + 10.0f, canvasPos.y + canvasSize.y - 48.0f);
                     ImVec2 controlBarMax(canvasPos.x + canvasSize.x - 10.0f, canvasPos.y + canvasSize.y - 10.0f);
@@ -1231,19 +1233,45 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                     ImGui::SetCursorScreenPos(ImVec2(controlBarMin.x + 8.0f, controlBarMin.y + 6.0f));
                     ImGui::BeginGroup();
-                    if (ImGui::Button("|<")) { timelineCurrentFrame = 0; timelinePlayTime = 0.0f; timelinePlaying = false; }
+                    if (ImGui::Button("|<")) { timelineCurrentTick = 0; timelinePlayTime = 0.0f; timelinePlaying = false; }
                     ImGui::SameLine();
-                    if (ImGui::Button("<")) { timelineCurrentFrame = std::max(0, timelineCurrentFrame - 1); timelinePlaying = false; timelinePlayTime = (float)timelineCurrentFrame; }
+                    if (ImGui::Button("<")) {
+                        int pk=0,pn=0; float pt=0.0f;
+                        frameToKeyAndLerp(animations[anim_selected], timelineCurrentTick, pk, pn, pt);
+                        if (pk > 0) { int t=0; for(int i=0;i<pk-1;i++) t += std::max(1, animations[anim_selected].frames[i].time_to_next); timelineCurrentTick=t; }
+                        else timelineCurrentTick = 0;
+                        timelinePlaying = false; timelinePlayTime = (float)timelineCurrentTick; }
                     ImGui::SameLine();
-                    if (ImGui::Button("▶")) { timelinePlaying = true; timelinePlayTime = (float)timelineCurrentFrame; }
+                    if (ImGui::Button("▶")) { timelinePlaying = true; timelinePlayTime = (float)timelineCurrentTick; }
                     ImGui::SameLine();
                     if (ImGui::Button("■")) { timelinePlaying = false; }
                     ImGui::SameLine();
-                    if (ImGui::Button(">")) { timelineCurrentFrame = std::min(totalAnimFramesForControls - 1, timelineCurrentFrame + 1); timelinePlaying = false; timelinePlayTime = (float)timelineCurrentFrame; }
+                    if (ImGui::Button(">")) {
+                        int ck=0,cn=0; float ct=0.0f;
+                        frameToKeyAndLerp(animations[anim_selected], timelineCurrentTick, ck, cn, ct);
+                        int t=0; for(int i=0;i<=ck && i < (int)animations[anim_selected].frames.size();i++) t += std::max(1, animations[anim_selected].frames[i].time_to_next);
+                        timelineCurrentTick = std::min(totalAnimFramesForControls - 1, t);
+                        timelinePlaying = false; timelinePlayTime = (float)timelineCurrentTick; }
                     ImGui::SameLine();
-                    if (ImGui::Button(">|")) { timelineCurrentFrame = totalAnimFramesForControls - 1; timelinePlayTime = (float)timelineCurrentFrame; timelinePlaying = false; }
+                    if (ImGui::Button(">|")) { timelineCurrentTick = totalAnimFramesForControls - 1; timelinePlayTime = (float)timelineCurrentTick; timelinePlaying = false; }
                     ImGui::SameLine();
-                    ImGui::Text("Frame %d/%d", timelineCurrentFrame, std::max(0, totalAnimFramesForControls - 1));
+                    ImGui::Text("Time %d ms", timelineCurrentTick * 16);
+                    if (timelineSelectedKey >= 0 && timelineSelectedKey < (int)animations[anim_selected].frames.size()) {
+                        auto& selFrame = animations[anim_selected].frames[timelineSelectedKey];
+                        ImGui::SameLine();
+                        ImGui::Text("| Key %d", timelineSelectedKey);
+                        ImGui::SameLine();
+                        ImGui::SetNextItemWidth(100.0f);
+                        ImGui::DragInt("Ms to next", &selFrame.time_to_next, 0.25f, 1, 240, "%d ticks");
+                        ImGui::SameLine();
+                        const char* transLabels[] = {"Linear", "Instant", "Ease"};
+                        int transitionIdx = (int)selFrame.transition_mode;
+                        ImGui::SetNextItemWidth(110.0f);
+                        if (ImGui::Combo("Transition", &transitionIdx, transLabels, IM_ARRAYSIZE(transLabels))) {
+                            selFrame.transition_mode = (KeyAnimFrame::TransitionMode)transitionIdx;
+                            selFrame.interpolate_trans_region = (transitionIdx != 1);
+                        }
+                    }
                     ImGui::EndGroup();
 
                     draw->AddText(
@@ -1846,7 +1874,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             // ============================================================
                             int totalAnimFrames = getAnimationTotalFrames(animations[anim_selected]);
                             totalFrames = std::max(totalFrames, totalAnimFrames + 30);
-                            timelineCurrentFrame = std::clamp(timelineCurrentFrame, 0, std::max(0, totalAnimFrames - 1));
+                            timelineCurrentTick = std::clamp(timelineCurrentTick, 0, std::max(0, totalAnimFrames - 1));
 
                             ImVec2 mouse = ImGui::GetIO().MousePos;
 
@@ -2082,7 +2110,13 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                         desired_absolute_frame -
                                         previous_absolute_frame;
 
-                                    newDelta = std::max(1, newDelta);
+                                    int minDelta = 1;
+                                    int maxDelta = 9999;
+                                    if (idx < (int)frames.size()-1) {
+                                        int nextAbs = previous_absolute_frame + std::max(1, frames[idx-1].time_to_next) + std::max(1, frames[idx].time_to_next);
+                                        maxDelta = std::max(1, nextAbs - previous_absolute_frame - 1);
+                                    }
+                                    newDelta = std::clamp(newDelta, minDelta, maxDelta);
 
                                     frames[idx - 1].time_to_next = newDelta;
                                     timelineSelectedKey = idx;
@@ -2102,7 +2136,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                             float scrubY =
                                 p0.y +
-                                (timelineCurrentFrame * pixelsPerFrame) -
+                                (timelineCurrentTick * pixelsPerFrame) -
                                 timelineScroll;
 
                             bool hoverScrubber =
@@ -2128,11 +2162,11 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 float local =
                                     mouse.y - p0.y + timelineScroll;
 
-                                timelineCurrentFrame =
+                                timelineCurrentTick =
                                     (int)round(local / pixelsPerFrame);
 
-                                timelineCurrentFrame =
-                                    std::clamp(timelineCurrentFrame, 0, totalFrames);
+                                timelineCurrentTick =
+                                    std::clamp(timelineCurrentTick, 0, std::max(0,totalAnimFrames-1));
                             }
 
                             // scrubber line
@@ -2155,7 +2189,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             dl->AddText(
                                 ImVec2(p0.x + 140.0f, scrubY - 10.0f),
                                 IM_COL32(255,80,80,255),
-                                std::string("FRAME " + std::to_string(timelineCurrentFrame)).c_str()
+                                std::string("TIME " + std::to_string(timelineCurrentTick * 16) + " ms").c_str()
                             );
 
                             ImGui::InvisibleButton(
@@ -2163,23 +2197,6 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 avail
                             );
 
-                            if (timelineSelectedKey >= 0 && timelineSelectedKey < (int)animations[anim_selected].frames.size()) {
-                                auto& selFrame = animations[anim_selected].frames[timelineSelectedKey];
-                                ImGui::SetCursorScreenPos(ImVec2(p0.x + 8.0f, p0.y + avail.y - 62.0f));
-                                ImGui::BeginChild("timing_selected_frame", ImVec2(avail.x - 16.0f, 54.0f), true);
-                                ImGui::Text("Selected Key %d", timelineSelectedKey);
-                                ImGui::SameLine();
-                                ImGui::SetNextItemWidth(90.0f);
-                                ImGui::DragInt("Frames to next", &selFrame.time_to_next, 0.25f, 1, 240);
-                                ImGui::SameLine();
-                                const char* transLabels[] = {"Linear", "Instant", "Ease"};
-                                int transitionIdx = (int)selFrame.transition_mode;
-                                if (ImGui::Combo("Transition", &transitionIdx, transLabels, IM_ARRAYSIZE(transLabels))) {
-                                    selFrame.transition_mode = (KeyAnimFrame::TransitionMode)transitionIdx;
-                                    selFrame.interpolate_trans_region = (transitionIdx != 1);
-                                }
-                                ImGui::EndChild();
-                            }
 
                             ImGui::EndTabItem();
                         }

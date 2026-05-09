@@ -1,64 +1,108 @@
  (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
 diff --git a/src/Gamefiles/Systems/EditorUISystem.cpp b/src/Gamefiles/Systems/EditorUISystem.cpp
-index 77054dfa8395af37184fbcb1891627348c6545d9..29ca651036a73206f76161ca7492120769413868 100644
+index 29ca651036a73206f76161ca7492120769413868..66805832398b94e29bef090975b9ee149d72d3c7 100644
 --- a/src/Gamefiles/Systems/EditorUISystem.cpp
 +++ b/src/Gamefiles/Systems/EditorUISystem.cpp
-@@ -1045,51 +1045,51 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
+@@ -892,93 +892,95 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
+                     // Calculate the angle in radians between the vector and the positive X-axis
+                     float angle_rad = atan2(dy, dx);
  
-                             ImVec2 uv0 = { j_text.crop_min.x, j_text.crop_min.y };
-                             ImVec2 uv1 = { j_text.crop_max.x, j_text.crop_max.y };
+                     // Convert radians to degrees
+                     float angle_deg = angle_rad * 180.0f / 3.14159265358979323846f;
  
-                             draw->AddImageQuad(
-                                 (ImTextureID)(intptr_t)j_text.texture->id,
-                                 rotated[0],
-                                 rotated[1],
-                                 rotated[2],
-                                 rotated[3],
-                                 ImVec2(uv0.x, uv0.y),
-                                 ImVec2(uv1.x, uv0.y),
-                                 ImVec2(uv1.x, uv1.y),
-                                 ImVec2(uv0.x, uv1.y)
-                             );
-                         }
- 
-                         // CLICK SELECT
-                         if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-                             jointselected = idx;
-                         }
- 
-                 
+                     // Optional: Normalize angle to [0, 360) degrees
+                     if (angle_deg < 0) {
+                         angle_deg += 360.0f;
                      }
  
--                } else if (!timingModeActive) {
-+                } else {
- 
-                     
+                     return angle_deg;
+                 };
  
  
+                 // Draw canvas base
+                 draw->AddRectFilled(canvasPos, ImVec2(canvasPos.x+canvasSize.x, canvasPos.y+canvasSize.y), IM_COL32(20,20,30,255));
  
-                     // NORMAL FRAME: DRAW
+                 // Get mouse position
+                 ImVec2 mpos = ImGui::GetIO().MousePos;
+ 
+ 
+                 
+                 static bool timelinePlaying = false;
+                 static float timelinePlayTime = 0.0f;
+-                static int timelineCurrentFrame = 0;
++                static int timelineCurrentTick = 0;
+                 static int timelineSelectedKey = -1;
+ 
+                 auto getAnimationTotalFrames = [&](const Animation& anim) -> int {
+                     int total = 0;
+                     for (const auto& fr : anim.frames) total += std::max(1, fr.time_to_next);
+                     return std::max(1, total);
+                 };
+ 
+                 auto frameToKeyAndLerp = [&](const Animation& anim, int frame, int& outKey, int& outNext, float& outT) {
+                     if (anim.frames.empty()) { outKey = -1; outNext = -1; outT = 0.0f; return; }
+                     int total = getAnimationTotalFrames(anim);
+                     int wrapped = ((frame % total) + total) % total;
+                     int accum = 0;
+                     for (int i = 0; i < (int)anim.frames.size(); i++) {
+                         int dt = std::max(1, anim.frames[i].time_to_next);
+                         if (wrapped < accum + dt) {
+                             outKey = i;
+                             outNext = (i + 1) % (int)anim.frames.size();
+                             outT = (float)(wrapped - accum) / (float)dt;
+                             return;
+                         }
+                         accum += dt;
+                     }
+                     outKey = (int)anim.frames.size() - 1;
+                     outNext = 0;
+                     outT = 0.0f;
+                 };
+ 
+                 // DRAW JOINTS and IMAGE TEXTURES in LOOP
+                 // **************************************
+ 
+                 int render_anim_frame = selected_anim_frame;
+                 int render_next_frame = -1;
+                 float render_lerp_t = 0.0f;
+                 bool render_interpolated = false;
+ 
+                 if (timingModeActive && anim_selected != -1 && !animations[anim_selected].frames.empty()) {
+                     if (timelinePlaying) {
+                         timelinePlayTime += ImGui::GetIO().DeltaTime * 60.0f;
+-                        timelineCurrentFrame = (int)timelinePlayTime;
++                        int totalTicks = std::max(1, getAnimationTotalFrames(animations[anim_selected]));
++                        if (timelinePlayTime >= (float)totalTicks) timelinePlayTime = fmodf(timelinePlayTime, (float)totalTicks);
++                        timelineCurrentTick = (int)timelinePlayTime;
+                     }
+-                    frameToKeyAndLerp(animations[anim_selected], timelineCurrentFrame, render_anim_frame, render_next_frame, render_lerp_t);
++                    frameToKeyAndLerp(animations[anim_selected], timelineCurrentTick, render_anim_frame, render_next_frame, render_lerp_t);
+                     timelineSelectedKey = render_anim_frame;
+                     if (render_anim_frame >= 0) {
+                         const auto& kf = animations[anim_selected].frames[render_anim_frame];
+                         render_interpolated = kf.interpolate_trans_region && kf.transition_mode != KeyAnimFrame::TransitionMode::Instant;
+                         if (kf.transition_mode == KeyAnimFrame::TransitionMode::EaseInOut) {
+                             render_lerp_t = render_lerp_t * render_lerp_t * (3.0f - 2.0f * render_lerp_t);
+                         } else if (!render_interpolated) {
+                             render_lerp_t = 0.0f;
+                         }
+                     }
+                 }
+                 
+                 if (render_anim_frame == -1) {
+ 
                      for (int i = 0; i < (*avatar_selected).default_texturing.joints.size(); i++) {
  
                          int idx = get_idx_from_jlayer_id((*avatar_selected), i);
  
-                         auto& anchor_j = (*avatar_selected).default_frame.joints[idx];
-                         auto anim_j = animations[anim_selected].frames[render_anim_frame].joints[idx];
-                         if (render_interpolated && render_next_frame >= 0) {
-                             const auto& next_j = animations[anim_selected].frames[render_next_frame].joints[idx];
-                             anim_j.origin.x = anim_j.origin.x + (next_j.origin.x - anim_j.origin.x) * render_lerp_t;
-                             anim_j.origin.y = anim_j.origin.y + (next_j.origin.y - anim_j.origin.y) * render_lerp_t;
-                             anim_j.rotation = anim_j.rotation + (next_j.rotation - anim_j.rotation) * render_lerp_t;
-                         }
- 
+                         auto& j = (*avatar_selected).default_frame.joints[idx];
                          auto& j_text = (*avatar_selected).default_texturing.joints[idx];
  
-                       
-                         float direction_point_x = 0.0f;
-                         float direction_point_y = 0.0f;
+                         ImVec2 a = WorldToScreen(ImVec2(j.origin.x, j.origin.y));
+                         ImVec2 b = WorldToScreen(ImVec2(j.origin.x + j.direction.x,
+                                                     j.origin.y + j.direction.y));
  
-@@ -1198,50 +1198,76 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
-                 // JOINT MOVEMENT AND SELECTION
-                 // --> Some things haave to be edited in here, 
+@@ -1200,72 +1202,98 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                  // --> We always use default texturing for editing joints in drag,
                  // --> but when dragging we want to edit joint data for whatever animation we are in,
                  // --> editing the active frame and then saving to the animation data, saved as varaitions of default framing...
@@ -82,32 +126,65 @@ index 77054dfa8395af37184fbcb1891627348c6545d9..29ca651036a73206f76161ca74921207
  
                  // Joint dragging logic
                  if (timingModeActive) {
-+                    int totalAnimFramesForControls = (anim_selected != -1) ? getAnimationTotalFrames(animations[anim_selected]) : 1;
-+                    totalAnimFramesForControls = std::max(1, totalAnimFramesForControls);
-+                    timelineCurrentFrame = std::clamp(timelineCurrentFrame, 0, totalAnimFramesForControls - 1);
-+
-+                    ImVec2 controlBarMin(canvasPos.x + 10.0f, canvasPos.y + canvasSize.y - 48.0f);
-+                    ImVec2 controlBarMax(canvasPos.x + canvasSize.x - 10.0f, canvasPos.y + canvasSize.y - 10.0f);
-+                    draw->AddRectFilled(controlBarMin, controlBarMax, IM_COL32(18, 18, 24, 225), 6.0f);
-+                    draw->AddRect(controlBarMin, controlBarMax, IM_COL32(90, 90, 110, 255), 6.0f, 0, 1.0f);
-+
-+                    ImGui::SetCursorScreenPos(ImVec2(controlBarMin.x + 8.0f, controlBarMin.y + 6.0f));
-+                    ImGui::BeginGroup();
-+                    if (ImGui::Button("|<")) { timelineCurrentFrame = 0; timelinePlayTime = 0.0f; timelinePlaying = false; }
-+                    ImGui::SameLine();
-+                    if (ImGui::Button("<")) { timelineCurrentFrame = std::max(0, timelineCurrentFrame - 1); timelinePlaying = false; timelinePlayTime = (float)timelineCurrentFrame; }
-+                    ImGui::SameLine();
-+                    if (ImGui::Button("▶")) { timelinePlaying = true; timelinePlayTime = (float)timelineCurrentFrame; }
-+                    ImGui::SameLine();
-+                    if (ImGui::Button("■")) { timelinePlaying = false; }
-+                    ImGui::SameLine();
-+                    if (ImGui::Button(">")) { timelineCurrentFrame = std::min(totalAnimFramesForControls - 1, timelineCurrentFrame + 1); timelinePlaying = false; timelinePlayTime = (float)timelineCurrentFrame; }
-+                    ImGui::SameLine();
-+                    if (ImGui::Button(">|")) { timelineCurrentFrame = totalAnimFramesForControls - 1; timelinePlayTime = (float)timelineCurrentFrame; timelinePlaying = false; }
-+                    ImGui::SameLine();
-+                    ImGui::Text("Frame %d/%d", timelineCurrentFrame, std::max(0, totalAnimFramesForControls - 1));
-+                    ImGui::EndGroup();
-+
+                     int totalAnimFramesForControls = (anim_selected != -1) ? getAnimationTotalFrames(animations[anim_selected]) : 1;
+                     totalAnimFramesForControls = std::max(1, totalAnimFramesForControls);
+-                    timelineCurrentFrame = std::clamp(timelineCurrentFrame, 0, totalAnimFramesForControls - 1);
++                    timelineCurrentTick = std::clamp(timelineCurrentTick, 0, totalAnimFramesForControls - 1);
+ 
+                     ImVec2 controlBarMin(canvasPos.x + 10.0f, canvasPos.y + canvasSize.y - 48.0f);
+                     ImVec2 controlBarMax(canvasPos.x + canvasSize.x - 10.0f, canvasPos.y + canvasSize.y - 10.0f);
+                     draw->AddRectFilled(controlBarMin, controlBarMax, IM_COL32(18, 18, 24, 225), 6.0f);
+                     draw->AddRect(controlBarMin, controlBarMax, IM_COL32(90, 90, 110, 255), 6.0f, 0, 1.0f);
+ 
+                     ImGui::SetCursorScreenPos(ImVec2(controlBarMin.x + 8.0f, controlBarMin.y + 6.0f));
+                     ImGui::BeginGroup();
+-                    if (ImGui::Button("|<")) { timelineCurrentFrame = 0; timelinePlayTime = 0.0f; timelinePlaying = false; }
++                    if (ImGui::Button("|<")) { timelineCurrentTick = 0; timelinePlayTime = 0.0f; timelinePlaying = false; }
+                     ImGui::SameLine();
+-                    if (ImGui::Button("<")) { timelineCurrentFrame = std::max(0, timelineCurrentFrame - 1); timelinePlaying = false; timelinePlayTime = (float)timelineCurrentFrame; }
++                    if (ImGui::Button("<")) {
++                        int pk=0,pn=0; float pt=0.0f;
++                        frameToKeyAndLerp(animations[anim_selected], timelineCurrentTick, pk, pn, pt);
++                        if (pk > 0) { int t=0; for(int i=0;i<pk-1;i++) t += std::max(1, animations[anim_selected].frames[i].time_to_next); timelineCurrentTick=t; }
++                        else timelineCurrentTick = 0;
++                        timelinePlaying = false; timelinePlayTime = (float)timelineCurrentTick; }
+                     ImGui::SameLine();
+-                    if (ImGui::Button("▶")) { timelinePlaying = true; timelinePlayTime = (float)timelineCurrentFrame; }
++                    if (ImGui::Button("▶")) { timelinePlaying = true; timelinePlayTime = (float)timelineCurrentTick; }
+                     ImGui::SameLine();
+                     if (ImGui::Button("■")) { timelinePlaying = false; }
+                     ImGui::SameLine();
+-                    if (ImGui::Button(">")) { timelineCurrentFrame = std::min(totalAnimFramesForControls - 1, timelineCurrentFrame + 1); timelinePlaying = false; timelinePlayTime = (float)timelineCurrentFrame; }
++                    if (ImGui::Button(">")) {
++                        int ck=0,cn=0; float ct=0.0f;
++                        frameToKeyAndLerp(animations[anim_selected], timelineCurrentTick, ck, cn, ct);
++                        int t=0; for(int i=0;i<=ck && i < (int)animations[anim_selected].frames.size();i++) t += std::max(1, animations[anim_selected].frames[i].time_to_next);
++                        timelineCurrentTick = std::min(totalAnimFramesForControls - 1, t);
++                        timelinePlaying = false; timelinePlayTime = (float)timelineCurrentTick; }
+                     ImGui::SameLine();
+-                    if (ImGui::Button(">|")) { timelineCurrentFrame = totalAnimFramesForControls - 1; timelinePlayTime = (float)timelineCurrentFrame; timelinePlaying = false; }
++                    if (ImGui::Button(">|")) { timelineCurrentTick = totalAnimFramesForControls - 1; timelinePlayTime = (float)timelineCurrentTick; timelinePlaying = false; }
+                     ImGui::SameLine();
+-                    ImGui::Text("Frame %d/%d", timelineCurrentFrame, std::max(0, totalAnimFramesForControls - 1));
++                    ImGui::Text("Time %d ms", timelineCurrentTick * 16);
++                    if (timelineSelectedKey >= 0 && timelineSelectedKey < (int)animations[anim_selected].frames.size()) {
++                        auto& selFrame = animations[anim_selected].frames[timelineSelectedKey];
++                        ImGui::SameLine();
++                        ImGui::Text("| Key %d", timelineSelectedKey);
++                        ImGui::SameLine();
++                        ImGui::SetNextItemWidth(100.0f);
++                        ImGui::DragInt("Ms to next", &selFrame.time_to_next, 0.25f, 1, 240, "%d ticks");
++                        ImGui::SameLine();
++                        const char* transLabels[] = {"Linear", "Instant", "Ease"};
++                        int transitionIdx = (int)selFrame.transition_mode;
++                        ImGui::SetNextItemWidth(110.0f);
++                        if (ImGui::Combo("Transition", &transitionIdx, transLabels, IM_ARRAYSIZE(transLabels))) {
++                            selFrame.transition_mode = (KeyAnimFrame::TransitionMode)transitionIdx;
++                            selFrame.interpolate_trans_region = (transitionIdx != 1);
++                        }
++                    }
+                     ImGui::EndGroup();
+ 
                      draw->AddText(
                          ImVec2(canvasPos.x + 5.0f, (canvasPos.y + 35.0f) - ImGui::GetFontSize() - 5.0f),
                          IM_COL32(255, 210, 40, 255),
@@ -131,9 +208,9 @@ index 77054dfa8395af37184fbcb1891627348c6545d9..29ca651036a73206f76161ca74921207
  
                          // distance check for hover
                          float dx2 = mouse.x - c2.x;
-                         float dy2 = mouse.y - c2.y;
-                         bool hov2 = (dx2*dx2 + dy2*dy2) <= (radius * radius);
-@@ -1800,69 +1826,50 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
+@@ -1824,51 +1852,51 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
+ 
+                             dl->AddRectFilled(
                                  p0,
                                  ImVec2(p0.x + avail.x, p0.y + avail.y),
                                  IM_COL32(22,22,22,255)
@@ -157,27 +234,9 @@ index 77054dfa8395af37184fbcb1891627348c6545d9..29ca651036a73206f76161ca74921207
                              // ============================================================
                              int totalAnimFrames = getAnimationTotalFrames(animations[anim_selected]);
                              totalFrames = std::max(totalFrames, totalAnimFrames + 30);
-                             timelineCurrentFrame = std::clamp(timelineCurrentFrame, 0, std::max(0, totalAnimFrames - 1));
+-                            timelineCurrentFrame = std::clamp(timelineCurrentFrame, 0, std::max(0, totalAnimFrames - 1));
++                            timelineCurrentTick = std::clamp(timelineCurrentTick, 0, std::max(0, totalAnimFrames - 1));
  
--                            ImGui::SetCursorScreenPos(ImVec2(p0.x + 8.0f, p0.y + 8.0f));
--                            ImGui::BeginChild("timing_controls_bar", ImVec2(avail.x - 16.0f, 44.0f), true);
--                            if (ImGui::Button("|<")) { timelineCurrentFrame = 0; timelinePlayTime = 0.0f; }
--                            ImGui::SameLine();
--                            if (ImGui::Button("<")) { timelineCurrentFrame = std::max(0, timelineCurrentFrame - 1); timelinePlaying = false; timelinePlayTime = (float)timelineCurrentFrame; }
--                            ImGui::SameLine();
--                            if (ImGui::Button("▶")) { timelinePlaying = true; timelinePlayTime = (float)timelineCurrentFrame; }
--                            ImGui::SameLine();
--                            if (ImGui::Button("■")) { timelinePlaying = false; }
--                            ImGui::SameLine();
--                            if (ImGui::Button(">")) { timelineCurrentFrame = std::min(totalAnimFrames - 1, timelineCurrentFrame + 1); timelinePlaying = false; timelinePlayTime = (float)timelineCurrentFrame; }
--                            ImGui::SameLine();
--                            if (ImGui::Button(">|")) { timelineCurrentFrame = totalAnimFrames - 1; timelinePlayTime = (float)timelineCurrentFrame; }
--                            ImGui::SameLine();
--                            ImGui::Text("Frame %d/%d", timelineCurrentFrame, std::max(0, totalAnimFrames - 1));
--                            ImGui::EndChild();
--                            p0.y += 52.0f;
--                            avail.y -= 52.0f;
--
                              ImVec2 mouse = ImGui::GetIO().MousePos;
  
                              bool hovered =
@@ -202,7 +261,167 @@ index 77054dfa8395af37184fbcb1891627348c6545d9..29ca651036a73206f76161ca74921207
  
                                      timelineScroll -= ImGui::GetIO().MouseWheel * 60.0f;
  
-                                     if (timelineScroll < -80.0f)
+@@ -2060,148 +2088,137 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
+                                             / pixelsPerFrame
+                                         );
+ 
+                                     // PURE DELTA
+                                     int delta =
+                                         current_mouse_frame -
+                                         drag_initial_mouse_frame;
+ 
+                                     // NEW ABSOLUTE FLAG POSITION
+                                     int desired_absolute_frame =
+                                         drag_initial_flag_frame +
+                                         delta;
+ 
+                                     // PREVIOUS FLAG POSITION
+                                     int previous_absolute_frame = 0;
+ 
+                                     for (int i = 0; i < idx; i++) {
+                                         previous_absolute_frame += frames[i].time_to_next;
+                                     }
+ 
+                                     // NEW TIMING
+                                     int newDelta =
+                                         desired_absolute_frame -
+                                         previous_absolute_frame;
+ 
+-                                    newDelta = std::max(1, newDelta);
++                                    int minDelta = 1;
++                                    int maxDelta = 9999;
++                                    if (idx < (int)frames.size()-1) {
++                                        int nextAbs = previous_absolute_frame + std::max(1, frames[idx-1].time_to_next) + std::max(1, frames[idx].time_to_next);
++                                        maxDelta = std::max(1, nextAbs - previous_absolute_frame - 1);
++                                    }
++                                    newDelta = std::clamp(newDelta, minDelta, maxDelta);
+ 
+                                     frames[idx - 1].time_to_next = newDelta;
+                                     timelineSelectedKey = idx;
+                                 }
+ 
+                             } else {
+ 
+                                 drag_initialized = false;
+                             }
+ 
+ 
+ 
+ 
+                             // ============================================================
+                             // SCRUBBER
+                             // ============================================================
+ 
+                             float scrubY =
+                                 p0.y +
+-                                (timelineCurrentFrame * pixelsPerFrame) -
++                                (timelineCurrentTick * pixelsPerFrame) -
+                                 timelineScroll;
+ 
+                             bool hoverScrubber =
+                                 mouse.x >= p0.x &&
+                                 mouse.x <= p0.x + avail.x &&
+                                 mouse.y >= scrubY - 12.0f &&
+                                 mouse.y <= scrubY + 12.0f;
+ 
+                             static bool draggingScrubber = false;
+ 
+                             if (frame_flag_dragging == -1 && hoverScrubber &&
+                                 ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+                             {
+                                 draggingScrubber = true;
+                             }
+ 
+                             if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+                                 draggingScrubber = false;
+                             }
+ 
+                             if (draggingScrubber) {
+ 
+                                 float local =
+                                     mouse.y - p0.y + timelineScroll;
+ 
+-                                timelineCurrentFrame =
++                                timelineCurrentTick =
+                                     (int)round(local / pixelsPerFrame);
+ 
+-                                timelineCurrentFrame =
+-                                    std::clamp(timelineCurrentFrame, 0, totalFrames);
++                                timelineCurrentTick =
++                                    std::clamp(timelineCurrentTick, 0, std::max(0,totalAnimFrames-1));
+                             }
+ 
+                             // scrubber line
+                             dl->AddLine(
+                                 ImVec2(p0.x, scrubY),
+                                 ImVec2(p0.x + avail.x, scrubY),
+                                 IM_COL32(255,40,40,255),
+                                 3.0f
+                             );
+ 
+                             // scrubber triangle
+                             dl->AddTriangleFilled(
+                                 ImVec2(railX - 18.0f, scrubY),
+                                 ImVec2(railX - 2.0f, scrubY - 10.0f),
+                                 ImVec2(railX - 2.0f, scrubY + 10.0f),
+                                 IM_COL32(255,50,50,255)
+                             );
+ 
+                             // current frame label
+                             dl->AddText(
+                                 ImVec2(p0.x + 140.0f, scrubY - 10.0f),
+                                 IM_COL32(255,80,80,255),
+-                                std::string("FRAME " + std::to_string(timelineCurrentFrame)).c_str()
++                                std::string("TIME " + std::to_string(timelineCurrentTick * 16) + " ms").c_str()
+                             );
+ 
+                             ImGui::InvisibleButton(
+                                 "timeline_capture",
+                                 avail
+                             );
+ 
+-                            if (timelineSelectedKey >= 0 && timelineSelectedKey < (int)animations[anim_selected].frames.size()) {
+-                                auto& selFrame = animations[anim_selected].frames[timelineSelectedKey];
+-                                ImGui::SetCursorScreenPos(ImVec2(p0.x + 8.0f, p0.y + avail.y - 62.0f));
+-                                ImGui::BeginChild("timing_selected_frame", ImVec2(avail.x - 16.0f, 54.0f), true);
+-                                ImGui::Text("Selected Key %d", timelineSelectedKey);
+-                                ImGui::SameLine();
+-                                ImGui::SetNextItemWidth(90.0f);
+-                                ImGui::DragInt("Frames to next", &selFrame.time_to_next, 0.25f, 1, 240);
+-                                ImGui::SameLine();
+-                                const char* transLabels[] = {"Linear", "Instant", "Ease"};
+-                                int transitionIdx = (int)selFrame.transition_mode;
+-                                if (ImGui::Combo("Transition", &transitionIdx, transLabels, IM_ARRAYSIZE(transLabels))) {
+-                                    selFrame.transition_mode = (KeyAnimFrame::TransitionMode)transitionIdx;
+-                                    selFrame.interpolate_trans_region = (transitionIdx != 1);
+-                                }
+-                                ImGui::EndChild();
+-                            }
+ 
+                             ImGui::EndTabItem();
+                         }
+ 
+                         ImGui::EndTabBar();
+ 
+                         
+ 
+                     }
+ 
+                     ImGui::EndChild();
+                     ImGui::GetStyle().WindowPadding = orig;
+ 
+                     
+ 
+                 }
+ 
+             }
+ 
+         };
+ 
+         
+ 
+         ImGui::End();
+         ImGui::PopStyleColor(6);
  
 EOF
 )
