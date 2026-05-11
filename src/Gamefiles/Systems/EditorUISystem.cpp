@@ -106,6 +106,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
     static bool dcaeJustOpened = false;
 
     // Not wired to real joint system yet
+
+
+    
     
 
 
@@ -248,6 +251,14 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
         static int anim_selected = -1;
 
         static int selected_anim_frame = -1;
+
+        static bool editing_anim_w_interpolation = false;
+
+        static int timings_preview_frame = -1;
+
+
+        static bool onion_frame_anch = false;
+        static bool onion_frame_prev = false;
 
         if (ImGui::Begin("Create Avatar...", nullptr, flags)) {
 
@@ -518,7 +529,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 if (ImGui::Button("+", ImVec2(buttonWidth, 0))) {
 
                     if (avatar_selected_idx != -1) 
-                        animations[anim_selected].new_frame(KeyAnimFrame(avatars[avatar_selected_idx]));
+                        animations[anim_selected].new_frame(avatars[avatar_selected_idx]);
 
                     temp_query_selected_anim_frame = animations[anim_selected].frames.size() - 1; // Shouold return -1 if the size is 0, so default frame
                     selected_anim_frame = temp_query_selected_anim_frame;
@@ -568,8 +579,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                     if (selected_anim_frame != -1) {
 
+                        // Call the constructor to copy another frame, still need an avatar to link it to for Original joint draw order
                         if (avatar_selected_idx != -1) 
-                            animations[anim_selected].new_frame(KeyAnimFrame( animations[anim_selected].frames[selected_anim_frame] ));
+                            animations[anim_selected].new_frame(avatars[avatar_selected_idx], animations[anim_selected].frames[selected_anim_frame]);
 
                         temp_query_selected_anim_frame = animations[anim_selected].frames.size() - 1; // Shouold return -1 if the size is 0, so default frame
                         selected_anim_frame = temp_query_selected_anim_frame;
@@ -579,7 +591,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         // Just build a new frame with the default anchor positioning
 
                         if (avatar_selected_idx != -1) 
-                            animations[anim_selected].new_frame(KeyAnimFrame(avatars[avatar_selected_idx]));
+                            animations[anim_selected].new_frame(avatars[avatar_selected_idx]);
 
                         temp_query_selected_anim_frame = animations[anim_selected].frames.size() - 1; // Shouold return -1 if the size is 0, so default frame
                         selected_anim_frame = temp_query_selected_anim_frame;
@@ -625,18 +637,11 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 ImGui::Separator();
 
 
+                // Query to avoid breaking stuff?
+
                 if (temp_query_selected_anim_frame != selected_anim_frame) {
 
-                    if (ImGui::Button("Open Frame Editor")) {
-
-                        selected_anim_frame = temp_query_selected_anim_frame;
-
-                        // ==================================================
-
-
-
-
-                    }
+                    selected_anim_frame = temp_query_selected_anim_frame;
                 }
 
                 ImGui::Separator();
@@ -646,11 +651,13 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
 
 
-                static bool timingModeActive = false;
 
-                // Joint Operations on WHOLE AVATAR
 
-                if (!timingModeActive && selected_anim_frame == -1) {
+                // Joint Operations on WHOLE AVATAR, which should ONLY
+                // affect the
+                // ANCHOR FRAME
+
+                if (selected_anim_frame == -1) {
 
                     ImGui::Text("Default Frame Joints");
 
@@ -668,8 +675,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             // Create a new instance of the structure for the rendering of a joint (image, crop, offset, ...)
                             // and Create a new instance of the structure for the placement of a joint (position, direction, layerid)
                             avatars[avatar_selected_idx].default_texturing.joints.push_back(AvatarJoint("Untitled Joint"));
-                            avatars[avatar_selected_idx].default_frame.joints.push_back(JointFramePosition({ {(float)num1, (float)num2}, {(float)num3, (float)num4}, (int)((*avatar_selected).default_texturing.joints.size()) }));
-                            (*avatar_selected).sync_default_layer_ids();
+                            avatars[avatar_selected_idx].default_frame.joints.push_back(JointFramePosition({ {(float)num1, (float)num2}, {(float)num3, (float)num4}}));
+                            (*avatar_selected).assign_unique_anchor_ids();
                         }
 
                     }
@@ -680,7 +687,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 (*avatar_selected).default_texturing.joints.erase((*avatar_selected).default_texturing.joints.begin() + jointselected);
                             }
                             jointselected = -1;
-                            (*avatar_selected).sync_default_layer_ids();
+                            (*avatar_selected).assign_unique_anchor_ids();
                         }
 
                     }
@@ -696,8 +703,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 JointFramePosition dupePos = (*avatar_selected).default_frame.joints[jointselected];
                                 
                                 (*avatar_selected).default_texturing.joints.push_back(AvatarJoint(dupeText.name + " cpy"));
-                                (*avatar_selected).default_frame.joints.push_back(JointFramePosition({dupePos.origin.x + 20.0f, dupePos.origin.y + 20.0f}, {dupePos.direction.x, dupePos.direction.y}, (int)((*avatar_selected).default_texturing.joints.size())));
-                                (*avatar_selected).sync_default_layer_ids();
+                                (*avatar_selected).default_frame.joints.push_back(JointFramePosition( {dupePos.origin.x + 20.0f, dupePos.origin.y + 20.0f}, {dupePos.direction.x, dupePos.direction.y} ));
+                                (*avatar_selected).assign_unique_anchor_ids();
 
                                 jointselected = (*avatar_selected).default_texturing.joints.size()-1;
 
@@ -710,77 +717,65 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 (*avatar_selected).default_texturing.joints[jointselected].scale = dupeText.scale;
                                 (*avatar_selected).default_texturing.joints[jointselected].offset = dupeText.offset;
                                 
-                                (*avatar_selected).sync_default_layer_ids();
+                                (*avatar_selected).assign_unique_anchor_ids();
                             }
                         }
 
                     }
-
-                }
-
                 
+                    if (ImGui::Button("^ Joint Up Layer", ImVec2(-1, 28))) {
 
-                ImGui::Separator();
+                        if (avatar_selected != nullptr  && avatar_selected_idx != -1) {
 
+                            if (jointselected != -1 && (*avatar_selected).default_texturing.joints.size() >= 2 && jointselected >= 1 && jointselected < (*avatar_selected).default_texturing.joints.size()) {
+                                
+                                int idx1 = get_idx_from_jlayer_id(*avatar_selected, jointselected);
+                                int idx2 = get_idx_from_jlayer_id(*avatar_selected, jointselected-1);
+                                
+                                
+                                
+                                AvatarJoint tempText = (*avatar_selected).default_texturing.joints[idx1];
+                                JointFramePosition tempPos = (*avatar_selected).default_frame.joints[idx1];
 
-                
-                if (ImGui::Button("^ Joint Up Layer", ImVec2(-1, 28))) {
+                                (*avatar_selected).default_texturing.joints[idx1] = (*avatar_selected).default_texturing.joints[idx2];
+                                (*avatar_selected).default_texturing.joints[idx2] = tempText;
 
-                    if (avatar_selected != nullptr  && avatar_selected_idx != -1) {
+                                (*avatar_selected).default_frame.joints[idx1] = (*avatar_selected).default_frame.joints[idx2];
+                                (*avatar_selected).default_frame.joints[idx2] = tempPos;
 
-                        if (jointselected != -1 && (*avatar_selected).default_texturing.joints.size() >= 2 && jointselected >= 1 && jointselected < (*avatar_selected).default_texturing.joints.size()) {
-                            
-                            int idx1 = get_idx_from_jlayer_id(*avatar_selected, jointselected);
-                            int idx2 = get_idx_from_jlayer_id(*avatar_selected, jointselected-1);
-                            
-                            
-                            
-                            AvatarJoint tempText = (*avatar_selected).default_texturing.joints[idx1];
-                            JointFramePosition tempPos = (*avatar_selected).default_frame.joints[idx1];
-
-                            (*avatar_selected).default_texturing.joints[idx1] = (*avatar_selected).default_texturing.joints[idx2];
-                            (*avatar_selected).default_texturing.joints[idx2] = tempText;
-
-                            (*avatar_selected).default_frame.joints[idx1] = (*avatar_selected).default_frame.joints[idx2];
-                            (*avatar_selected).default_frame.joints[idx2] = tempPos;
-
-                            jointselected = idx2;
-                            
-                            jointnamebuffer[0] = '\n';
-                            (*avatar_selected).sync_default_layer_ids();
-                        }
-                    }
-
-                    
-                }
-
-                if (ImGui::Button("v Joint Down Layer", ImVec2(-1, 28))) {
-
-                    if (avatar_selected != nullptr && avatar_selected_idx != -1) {
-
-                        if (jointselected != -1 && (*avatar_selected).default_texturing.joints.size() >= 2 && jointselected >= 0 && jointselected < (*avatar_selected).default_texturing.joints.size()-1) {
-                            
-                            int idx1 = get_idx_from_jlayer_id(*avatar_selected, jointselected);
-                            int idx2 = get_idx_from_jlayer_id(*avatar_selected, jointselected+1);
-                            
-                            AvatarJoint tempText = (*avatar_selected).default_texturing.joints[idx1];
-                            JointFramePosition tempPos = (*avatar_selected).default_frame.joints[idx1];
-
-                            (*avatar_selected).default_texturing.joints[idx1] = (*avatar_selected).default_texturing.joints[idx2];
-                            (*avatar_selected).default_texturing.joints[idx2] = tempText;
-
-                            (*avatar_selected).default_frame.joints[idx1] = (*avatar_selected).default_frame.joints[idx2];
-                            (*avatar_selected).default_frame.joints[idx2] = tempPos;
-
-                            jointselected = idx2;
-                            (*avatar_selected).sync_default_layer_ids();
+                                jointselected = idx2;
+                                
+                                jointnamebuffer[0] = '\n';
+                                (*avatar_selected).assign_unique_anchor_ids();
+                            }
                         }
 
                         
                     }
 
-                    
-                    
+                    if (ImGui::Button("v Joint Down Layer", ImVec2(-1, 28))) {
+
+                        if (avatar_selected != nullptr && avatar_selected_idx != -1) {
+
+                            if (jointselected != -1 && (*avatar_selected).default_texturing.joints.size() >= 2 && jointselected >= 0 && jointselected < (*avatar_selected).default_texturing.joints.size()-1) {
+                                
+                                int idx1 = get_idx_from_jlayer_id(*avatar_selected, jointselected);
+                                int idx2 = get_idx_from_jlayer_id(*avatar_selected, jointselected+1);
+                                
+                                AvatarJoint tempText = (*avatar_selected).default_texturing.joints[idx1];
+                                JointFramePosition tempPos = (*avatar_selected).default_frame.joints[idx1];
+
+                                (*avatar_selected).default_texturing.joints[idx1] = (*avatar_selected).default_texturing.joints[idx2];
+                                (*avatar_selected).default_texturing.joints[idx2] = tempText;
+
+                                (*avatar_selected).default_frame.joints[idx1] = (*avatar_selected).default_frame.joints[idx2];
+                                (*avatar_selected).default_frame.joints[idx2] = tempPos;
+
+                                jointselected = idx2;
+                                (*avatar_selected).assign_unique_anchor_ids();
+                            }
+                        }
+                    }
                 }
 
 
@@ -819,20 +814,57 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
 
                 ImVec2 canvasPos = ImGui::GetCursorScreenPos();
-                ImVec2 canvasSize = {ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y};
+                ImVec2 canvasSize;
+
+
+                // controller_bar info
+                // ---------------------
+                // Animation Preview Controller
+                // --> For tweaking the position of the scrubber,
+                //     and the current animation state so that animation
+                //     and transitions can be previewed and edited 
+                //     accordingly
+                // --> DVD Player esq control options
+                // ============================
+                // Button Options:
+                //
+                // [ |< ] [ << ] [ |> / || ] [ >> ] [ >| ] [ # ]
+                //
+                // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                // --> [ |> ] / [ || ] : Play / Pause the animation playing
+                //
+                //
+
+
+                // Frame Animation Editor
+                // ========================
+                //
+                // 
+                //
+
+
+                float controller_bar_height = 65.0f;
+
+                
+                if (editing_anim_w_interpolation) {
+                    canvasSize = {ImGui::GetContentRegionAvail().x, (ImGui::GetContentRegionAvail().y - controller_bar_height) };
+                } else {
+                    canvasSize = {ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y};
+                }
+
+
                 ImDrawList* draw = ImGui::GetWindowDrawList();
-
-
                 
                 // CANVAS
 
-                static Vec2 local_canvas_scroll = {0.0f, 0.0f};
-                static float local_canvas_zoom = 32.0f;
+                static Vec2 local_canvas_scroll = {-80.0f, -250.0f};
+                static float local_canvas_zoom = 1.5f;
 
                 static bool draggingLastFrame = false;
                 static ImVec2 drag_start;
                 static ImVec2 mouse_start;
                 
+
                 auto WorldToScreen = [&](ImVec2 pos) {
                     return ImVec2(
                         canvasPos.x + (pos.x - local_canvas_scroll.x) * local_canvas_zoom,
@@ -904,75 +936,35 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 };
 
 
+                ImU32 canv_col = IM_COL32(20,20,30,255);
+
+                if (selected_anim_frame == -1) {
+                    canv_col = IM_COL32(10,16,12,255);
+                }
+
                 // Draw canvas base
-                draw->AddRectFilled(canvasPos, ImVec2(canvasPos.x+canvasSize.x, canvasPos.y+canvasSize.y), IM_COL32(20,20,30,255));
+
+                draw->AddRectFilled(canvasPos, ImVec2(canvasPos.x+canvasSize.x, canvasPos.y + canvasSize.y), canv_col);
 
                 // Get mouse position
                 ImVec2 mpos = ImGui::GetIO().MousePos;
 
 
-                
-                static bool timelinePlaying = false;
-                static float timelinePlayTime = 0.0f;
-                static int timelineCurrentTick = 0;
-                static int timelineSelectedKey = -1;
-
-                auto getAnimationTotalFrames = [&](const Animation& anim) -> int {
-                    int total = 0;
-                    for (const auto& fr : anim.frames) total += std::max(1, fr.time_to_next);
-                    return std::max(1, total);
-                };
-
-                auto frameToKeyAndLerp = [&](const Animation& anim, int frame, int& outKey, int& outNext, float& outT) {
-                    if (anim.frames.empty()) { outKey = -1; outNext = -1; outT = 0.0f; return; }
-                    int total = getAnimationTotalFrames(anim);
-                    int wrapped = ((frame % total) + total) % total;
-                    int accum = 0;
-                    for (int i = 0; i < (int)anim.frames.size(); i++) {
-                        int dt = std::max(1, anim.frames[i].time_to_next);
-                        if (wrapped < accum + dt) {
-                            outKey = i;
-                            outNext = (i + 1) % (int)anim.frames.size();
-                            outT = (float)(wrapped - accum) / (float)dt;
-                            return;
-                        }
-                        accum += dt;
-                    }
-                    outKey = (int)anim.frames.size() - 1;
-                    outNext = 0;
-                    outT = 0.0f;
-                };
-
                 // DRAW JOINTS and IMAGE TEXTURES in LOOP
                 // **************************************
 
-                int render_anim_frame = selected_anim_frame;
-                int render_next_frame = -1;
-                float render_lerp_t = 0.0f;
-                bool render_interpolated = false;
-
-                if (timingModeActive && anim_selected != -1 && !animations[anim_selected].frames.empty()) {
-                    if (timelinePlaying) {
-                        timelinePlayTime += ImGui::GetIO().DeltaTime * 60.0f;
-                        int totalTicks = std::max(1, getAnimationTotalFrames(animations[anim_selected]));
-                        if (timelinePlayTime >= (float)totalTicks) timelinePlayTime = fmodf(timelinePlayTime, (float)totalTicks);
-                        timelineCurrentTick = (int)timelinePlayTime;
-                    }
-                    frameToKeyAndLerp(animations[anim_selected], timelineCurrentTick, render_anim_frame, render_next_frame, render_lerp_t);
-                    timelineSelectedKey = render_anim_frame;
-                    if (render_anim_frame >= 0) {
-                        const auto& kf = animations[anim_selected].frames[render_anim_frame];
-                        render_interpolated = kf.interpolate_trans_region && kf.transition_mode != KeyAnimFrame::TransitionMode::Instant;
-                        if (kf.transition_mode == KeyAnimFrame::TransitionMode::EaseInOut) {
-                            render_lerp_t = render_lerp_t * render_lerp_t * (3.0f - 2.0f * render_lerp_t);
-                        } else if (!render_interpolated) {
-                            render_lerp_t = 0.0f;
-                        }
-                    }
-                }
+                // onion_frame_anch...
                 
-                if (render_anim_frame == -1) {
+                
+                // If selected_anim_frame == -1,
+                // Then that means the ANCHOR FRAME is selected
+                //
+                // Any other selected frame indicates there is
+                // a valid animation and a frame of that animation is chosen
+            
+                if (selected_anim_frame == -1) {
 
+                    // --> ANCHOR FRAME: DRAW
                     for (int i = 0; i < (*avatar_selected).default_texturing.joints.size(); i++) {
 
                         int idx = get_idx_from_jlayer_id((*avatar_selected), i);
@@ -1071,27 +1063,317 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                 } else {
 
-                    
+
+                    // --> First, if onion layering is on for the anchor frame,
+                    //      TINT IT GREEN, MAKE IT TRANSPARENT, DISPLAY IT
+
+                    if (onion_frame_anch) {
+                        
+                        
+
+                        for (int i = 0; i < (*avatar_selected).default_texturing.joints.size(); i++) {
+
+                            int idx = get_idx_from_jlayer_id((*avatar_selected), i);
+
+                            auto& j = (*avatar_selected).default_frame.joints[idx];
+                            auto& j_text = (*avatar_selected).default_texturing.joints[idx];
+
+                            ImVec2 a = WorldToScreen(ImVec2(j.origin.x, j.origin.y));
+                            ImVec2 b = WorldToScreen(ImVec2(j.origin.x + j.direction.x,
+                                                        j.origin.y + j.direction.y));
+
+                            float dist = DistancePointToSegment(mpos, a, b);
+                            float thickness = 5.0f;
+
+                            ImU32 color = IM_COL32(200, 200, 200, 60);
+
+                            draw->AddLine(a, b, color, thickness);
+
+                            if (j_text.texture != nullptr) {
+                                ImVec2 center = WorldToScreen(ImVec2(j.origin.x, j.origin.y));
+
+                                float width  = j_text.texture->width  * j_text.scale.x * local_canvas_zoom;
+                                float height = j_text.texture->height * j_text.scale.y * local_canvas_zoom;
+
+                                // Direction → angle
+                                ImVec2 dir = { j.direction.x, j.direction.y };
+                                float baseAngle = atan2f(dir.y, dir.x);
+                                float angle = baseAngle + j_text.rotation;
+
+                                float cosA = cosf(angle);
+                                float sinA = sinf(angle);
+
+                                // Offset (in world space --> scaled)
+                                ImVec2 offset = {
+                                    j_text.offset.x * local_canvas_zoom,
+                                    j_text.offset.y * local_canvas_zoom
+                                };
+
+                                // Define local quad (centered)
+                                ImVec2 half = { width * 0.5f, height * 0.5f };
+
+                                ImVec2 corners[4] = {
+                                    {-half.x, -half.y},
+                                    { half.x, -half.y},
+                                    { half.x,  half.y},
+                                    {-half.x,  half.y}
+                                };
+
+                                ImVec2 rotated[4];
+
+                                for (int k = 0; k < 4; k++) {
+                                    float x = corners[k].x + offset.x;
+                                    float y = corners[k].y + offset.y;
+
+                                    rotated[k].x = center.x + (x * cosA - y * sinA);
+                                    rotated[k].y = center.y + (x * sinA + y * cosA);
+                                }
+
+                                ImVec2 uv0 = { j_text.crop_min.x, j_text.crop_min.y };
+                                ImVec2 uv1 = { j_text.crop_max.x, j_text.crop_max.y };
+
+                                ImU32 ghostTint = IM_COL32(200, 255, 200, 90);
+
+
+                                draw->AddImageQuad(
+                                    (ImTextureID)(intptr_t)j_text.texture->id,
+                                    rotated[0],
+                                    rotated[1],
+                                    rotated[2],
+                                    rotated[3],
+                                    ImVec2(uv0.x, uv0.y),
+                                    ImVec2(uv1.x, uv0.y),
+                                    ImVec2(uv1.x, uv1.y),
+                                    ImVec2(uv0.x, uv1.y),
+                                    ghostTint
+                                );
+                            }
+                        }
+                    }
+
+
+
+                    // --> Second, if there are more than 1 frames in animation and it is supposed to be displayed
+                    //      MAKE IT TRANSPARENT, DISPLAY IT
+
+                    if (onion_frame_prev && anim_selected != -1) {
+
+                        auto& anim = animations[anim_selected];
+
+                        if (anim.frames.size() > 1) {
+                            // ------------------->
+                            // Code for drawing previous onion frame
+
+                            int adj_anim_frame = selected_anim_frame - 1;
+
+                            if (adj_anim_frame < 0) {
+                                adj_anim_frame = anim.frames.size()-1;
+                            }
+
+                            for (int i = 0; i < (*avatar_selected).default_texturing.joints.size(); i++) {
+                                
+                                int idx = get_idx_from_jlayer_id((*avatar_selected), i);
+                                auto& anchor_j = (*avatar_selected).default_frame.joints[idx];
+                                auto& anim_j = animations[anim_selected].frames[adj_anim_frame].joints[idx];
+                                auto& j_text = (*avatar_selected).default_texturing.joints[idx];
+                                float direction_point_x = 0.0f;
+                                float direction_point_y = 0.0f;
+                                direction_point_x = RotNewPositionVec({anchor_j.origin.x + anim_j.origin.x, anchor_j.origin.y + anim_j.origin.y}, anchor_j.direction, anim_j.rotation).x;
+                                direction_point_y = RotNewPositionVec({anchor_j.origin.x + anim_j.origin.x, anchor_j.origin.y + anim_j.origin.y}, anchor_j.direction, anim_j.rotation).y;
+                                ImVec2 a = WorldToScreen(ImVec2(anchor_j.origin.x + anim_j.origin.x, anchor_j.origin.y + anim_j.origin.y));
+                                ImVec2 b = WorldToScreen(ImVec2(direction_point_x, direction_point_y));
+                                float dist = DistancePointToSegment(mpos, a, b);
+                                ImU32 color = IM_COL32(255, 255, 255, 80); // default
+                                float thickness = 4.0f;
+                                draw->AddLine(a, b, color, thickness);
+
+                                if (j_text.texture != nullptr) {
+                                    ImVec2 center = WorldToScreen(ImVec2(anchor_j.origin.x + anim_j.origin.x, anchor_j.origin.y + anim_j.origin.y));
+                                    float width  = j_text.texture->width  * j_text.scale.x * local_canvas_zoom;
+                                    float height = j_text.texture->height * j_text.scale.y * local_canvas_zoom;
+                                    Vec2 newDir = RotNewDirectionVec(anchor_j.direction, anim_j.rotation);
+                                    ImVec2 dir = { newDir.x, newDir.y };
+                                    float baseAngle = atan2f(dir.y, dir.x);
+                                    float angle = baseAngle + j_text.rotation;
+                                    float cosA = cosf(angle);
+                                    float sinA = sinf(angle);
+                                    ImVec2 offset = {
+                                        j_text.offset.x * local_canvas_zoom,
+                                        j_text.offset.y * local_canvas_zoom
+                                    };
+                                    ImVec2 half = { width * 0.5f, height * 0.5f };
+                                    ImVec2 corners[4] = {
+                                        {-half.x, -half.y},
+                                        { half.x, -half.y},
+                                        { half.x,  half.y},
+                                        {-half.x,  half.y}
+                                    };
+
+                                    ImVec2 rotated[4];
+
+                                    for (int k = 0; k < 4; k++) {
+                                        float x = corners[k].x + offset.x;
+                                        float y = corners[k].y + offset.y;
+                                        rotated[k].x = center.x + (x * cosA - y * sinA);
+                                        rotated[k].y = center.y + (x * sinA + y * cosA);
+                                    }
+
+                                    ImU32 ghostTint = IM_COL32(255, 255, 255, 120);
+                                    ImVec2 uv0 = { j_text.crop_min.x, j_text.crop_min.y };
+                                    ImVec2 uv1 = { j_text.crop_max.x, j_text.crop_max.y };
+
+                                    
+
+                                    draw->AddImageQuad(
+                                        (ImTextureID)(intptr_t)j_text.texture->id,
+                                        rotated[0],
+                                        rotated[1],
+                                        rotated[2],
+                                        rotated[3],
+                                        ImVec2(uv0.x, uv0.y),
+                                        ImVec2(uv1.x, uv0.y),
+                                        ImVec2(uv1.x, uv1.y),
+                                        ImVec2(uv0.x, uv1.y),
+                                        ghostTint
+                                    );
+                                }
+
+                            }
+                        }
+
+
+
+                        if (anim.frames.size() > 2) {
+                            // ------------------->
+                            // Code for drawing previous onion frame
+
+                            int adj_anim_frame = selected_anim_frame;
+
+                            for (int i = 0; i < 2; i++) {
+                                // Cycle back twice
+                                adj_anim_frame--;
+                                if (adj_anim_frame < 0) {
+                                    adj_anim_frame = anim.frames.size()-1;
+                                }
+                            }
+
+                            for (int i = 0; i < (*avatar_selected).default_texturing.joints.size(); i++) {
+                            
+                                int idx = get_idx_from_jlayer_id((*avatar_selected), i);
+                                auto& anchor_j = (*avatar_selected).default_frame.joints[idx];
+                                auto& anim_j = animations[anim_selected].frames[adj_anim_frame].joints[idx];
+                                auto& j_text = (*avatar_selected).default_texturing.joints[idx];
+                                float direction_point_x = 0.0f;
+                                float direction_point_y = 0.0f;
+                                direction_point_x = RotNewPositionVec({anchor_j.origin.x + anim_j.origin.x, anchor_j.origin.y + anim_j.origin.y}, anchor_j.direction, anim_j.rotation).x;
+                                direction_point_y = RotNewPositionVec({anchor_j.origin.x + anim_j.origin.x, anchor_j.origin.y + anim_j.origin.y}, anchor_j.direction, anim_j.rotation).y;
+                                ImVec2 a = WorldToScreen(ImVec2(anchor_j.origin.x + anim_j.origin.x, anchor_j.origin.y + anim_j.origin.y));
+                                ImVec2 b = WorldToScreen(ImVec2(direction_point_x, direction_point_y));
+                                float dist = DistancePointToSegment(mpos, a, b);
+                                ImU32 color = IM_COL32(255, 255, 255, 45); // default
+                                float thickness = 4.0f;
+                                draw->AddLine(a, b, color, thickness);
+
+                                if (j_text.texture != nullptr) {
+                                    ImVec2 center = WorldToScreen(ImVec2(anchor_j.origin.x + anim_j.origin.x, anchor_j.origin.y + anim_j.origin.y));
+                                    float width  = j_text.texture->width  * j_text.scale.x * local_canvas_zoom;
+                                    float height = j_text.texture->height * j_text.scale.y * local_canvas_zoom;
+                                    Vec2 newDir = RotNewDirectionVec(anchor_j.direction, anim_j.rotation);
+                                    ImVec2 dir = { newDir.x, newDir.y };
+                                    float baseAngle = atan2f(dir.y, dir.x);
+                                    float angle = baseAngle + j_text.rotation;
+                                    float cosA = cosf(angle);
+                                    float sinA = sinf(angle);
+                                    ImVec2 offset = {
+                                        j_text.offset.x * local_canvas_zoom,
+                                        j_text.offset.y * local_canvas_zoom
+                                    };
+                                    ImVec2 half = { width * 0.5f, height * 0.5f };
+                                    ImVec2 corners[4] = {
+                                        {-half.x, -half.y},
+                                        { half.x, -half.y},
+                                        { half.x,  half.y},
+                                        {-half.x,  half.y}
+                                    };
+
+                                    ImVec2 rotated[4];
+
+                                    for (int k = 0; k < 4; k++) {
+                                        float x = corners[k].x + offset.x;
+                                        float y = corners[k].y + offset.y;
+                                        rotated[k].x = center.x + (x * cosA - y * sinA);
+                                        rotated[k].y = center.y + (x * sinA + y * cosA);
+                                    }
+
+                                    ImU32 ghostTint = IM_COL32(255, 255, 255, 80);
+                                    ImVec2 uv0 = { j_text.crop_min.x, j_text.crop_min.y };
+                                    ImVec2 uv1 = { j_text.crop_max.x, j_text.crop_max.y };
+
+                                    
+
+                                    draw->AddImageQuad(
+                                        (ImTextureID)(intptr_t)j_text.texture->id,
+                                        rotated[0],
+                                        rotated[1],
+                                        rotated[2],
+                                        rotated[3],
+                                        ImVec2(uv0.x, uv0.y),
+                                        ImVec2(uv1.x, uv0.y),
+                                        ImVec2(uv1.x, uv1.y),
+                                        ImVec2(uv0.x, uv1.y),
+                                        ghostTint
+                                    );
+                                }
+
+                            }
+                        }
+
+                        
+
+                    }
+
 
 
 
                     // NORMAL FRAME: DRAW
-                    for (int i = 0; i < (*avatar_selected).default_texturing.joints.size(); i++) {
+                    // --------------------
+                    // (Actual draw, no more onion layers)
 
-                        int idx = get_idx_from_jlayer_id((*avatar_selected), i);
+                    // Allocate an array of the indicies to draw on the heap
+                    const int joint_count = (*avatar_selected).default_texturing.joints.size();
+                    int* jidx_draw_order = new int[joint_count];
+
+                    // Sort code:
+                    // ---------------
+                    // draw_order needs to contain a list of all of the indecies
+                    // referring to the joint's idx positions in their default_texturing.joints vector;
+                    // 
+
+                    for (int i = 0; i < joint_count; i++) {
+
+                        int jidx = 0;
+
+                        for (int j = 0; j < joint_count; j++) {
+                            if (i == animations[anim_selected].frames[selected_anim_frame].joints[j].draw_order || j >= animations[anim_selected].frames[selected_anim_frame].joints.size()) {
+                                // The second case is a failsafe, but we should never be able to count past
+                                // the joints in an animation otherwise theres a mismatch
+                                assert(j < animations[anim_selected].frames[selected_anim_frame].joints.size() );
+                                jidx = j;
+                                break;
+                            }
+                        }
+                        
+                        jidx_draw_order[i] = jidx;
+                    }
+
+                    for (int i = 0; i < joint_count; i++) {
+
+                        // jidx size == joint_count by definition so... not doing an assertion here... yet...
+                        int idx = jidx_draw_order[i];
 
                         auto& anchor_j = (*avatar_selected).default_frame.joints[idx];
-                        auto anim_j = animations[anim_selected].frames[render_anim_frame].joints[idx];
-                        if (render_interpolated && render_next_frame >= 0) {
-                            const auto& next_j = animations[anim_selected].frames[render_next_frame].joints[idx];
-                            anim_j.origin.x = anim_j.origin.x + (next_j.origin.x - anim_j.origin.x) * render_lerp_t;
-                            anim_j.origin.y = anim_j.origin.y + (next_j.origin.y - anim_j.origin.y) * render_lerp_t;
-                            anim_j.rotation = anim_j.rotation + (next_j.rotation - anim_j.rotation) * render_lerp_t;
-                        }
-
+                        auto& anim_j = animations[anim_selected].frames[selected_anim_frame].joints[idx];
                         auto& j_text = (*avatar_selected).default_texturing.joints[idx];
-
-                      
                         float direction_point_x = 0.0f;
                         float direction_point_y = 0.0f;
 
@@ -1185,19 +1467,19 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
                             jointselected = idx;
                         }
-
-                
                     }
 
-
-
-
+                    // Clean up heap memory with jidx draw order
+                    delete[] jidx_draw_order;
                 }
+
+                
 
 
                 // @IMAWarriors TODO
 
                 // JOINT MOVEMENT AND SELECTION
+                
                 // --> Some things haave to be edited in here, 
                 // --> We always use default texturing for editing joints in drag,
                 // --> but when dragging we want to edit joint data for whatever animation we are in,
@@ -1221,64 +1503,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
 
                 // Joint dragging logic
-                if (timingModeActive) {
-                    int totalAnimFramesForControls = (anim_selected != -1) ? getAnimationTotalFrames(animations[anim_selected]) : 1;
-                    totalAnimFramesForControls = std::max(1, totalAnimFramesForControls);
-                    timelineCurrentTick = std::clamp(timelineCurrentTick, 0, totalAnimFramesForControls - 1);
-
-                    ImVec2 controlBarMin(canvasPos.x + 10.0f, canvasPos.y + canvasSize.y - 48.0f);
-                    ImVec2 controlBarMax(canvasPos.x + canvasSize.x - 10.0f, canvasPos.y + canvasSize.y - 10.0f);
-                    draw->AddRectFilled(controlBarMin, controlBarMax, IM_COL32(18, 18, 24, 225), 6.0f);
-                    draw->AddRect(controlBarMin, controlBarMax, IM_COL32(90, 90, 110, 255), 6.0f, 0, 1.0f);
-
-                    ImGui::SetCursorScreenPos(ImVec2(controlBarMin.x + 8.0f, controlBarMin.y + 6.0f));
-                    ImGui::BeginGroup();
-                    if (ImGui::Button("|<")) { timelineCurrentTick = 0; timelinePlayTime = 0.0f; timelinePlaying = false; }
-                    ImGui::SameLine();
-                    if (ImGui::Button("<")) {
-                        int pk=0,pn=0; float pt=0.0f;
-                        frameToKeyAndLerp(animations[anim_selected], timelineCurrentTick, pk, pn, pt);
-                        if (pk > 0) { int t=0; for(int i=0;i<pk-1;i++) t += std::max(1, animations[anim_selected].frames[i].time_to_next); timelineCurrentTick=t; }
-                        else timelineCurrentTick = 0;
-                        timelinePlaying = false; timelinePlayTime = (float)timelineCurrentTick; }
-                    ImGui::SameLine();
-                    if (ImGui::Button("▶")) { timelinePlaying = true; timelinePlayTime = (float)timelineCurrentTick; }
-                    ImGui::SameLine();
-                    if (ImGui::Button("■")) { timelinePlaying = false; }
-                    ImGui::SameLine();
-                    if (ImGui::Button(">")) {
-                        int ck=0,cn=0; float ct=0.0f;
-                        frameToKeyAndLerp(animations[anim_selected], timelineCurrentTick, ck, cn, ct);
-                        int t=0; for(int i=0;i<=ck && i < (int)animations[anim_selected].frames.size();i++) t += std::max(1, animations[anim_selected].frames[i].time_to_next);
-                        timelineCurrentTick = std::min(totalAnimFramesForControls - 1, t);
-                        timelinePlaying = false; timelinePlayTime = (float)timelineCurrentTick; }
-                    ImGui::SameLine();
-                    if (ImGui::Button(">|")) { timelineCurrentTick = totalAnimFramesForControls - 1; timelinePlayTime = (float)timelineCurrentTick; timelinePlaying = false; }
-                    ImGui::SameLine();
-                    ImGui::Text("Time %d ms", timelineCurrentTick * 16);
-                    if (timelineSelectedKey >= 0 && timelineSelectedKey < (int)animations[anim_selected].frames.size()) {
-                        auto& selFrame = animations[anim_selected].frames[timelineSelectedKey];
-                        ImGui::SameLine();
-                        ImGui::Text("| Key %d", timelineSelectedKey);
-                        ImGui::SameLine();
-                        ImGui::SetNextItemWidth(100.0f);
-                        ImGui::DragInt("Ms to next", &selFrame.time_to_next, 0.25f, 1, 240, "%d ticks");
-                        ImGui::SameLine();
-                        const char* transLabels[] = {"Linear", "Instant", "Ease"};
-                        int transitionIdx = (int)selFrame.transition_mode;
-                        ImGui::SetNextItemWidth(110.0f);
-                        if (ImGui::Combo("Transition", &transitionIdx, transLabels, IM_ARRAYSIZE(transLabels))) {
-                            selFrame.transition_mode = (KeyAnimFrame::TransitionMode)transitionIdx;
-                            selFrame.interpolate_trans_region = (transitionIdx != 1);
-                        }
-                    }
-                    ImGui::EndGroup();
-
-                    draw->AddText(
-                        ImVec2(canvasPos.x + 5.0f, (canvasPos.y + 35.0f) - ImGui::GetFontSize() - 5.0f),
-                        IM_COL32(255, 210, 40, 255),
-                        std::string("Timing Preview Key: " + std::to_string(std::max(0, render_anim_frame))).c_str() );
-                } else if (selected_anim_frame == -1) {
+                if (selected_anim_frame == -1) {
 
                     // Dragging script setup and draw dragging notation
                     if (jointselected != -1) {
@@ -1504,9 +1729,11 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     local_canvas_zoom += ImGui::GetIO().MouseWheel * 1.0f;
                     if (ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
                         if (!draggingLastFrame) {
+
                             draggingLastFrame = true;
                             drag_start = {local_canvas_scroll.x, local_canvas_scroll.y};
                             mouse_start = ImGui::GetIO().MousePos;
+                            
                         } else {
                             local_canvas_scroll = {
                                 drag_start.x - (ImGui::GetIO().MousePos.x - mouse_start.x) / local_canvas_zoom,
@@ -1532,16 +1759,19 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     std::string("(" + std::to_string(local_canvas_scroll.x) + ", " + std::to_string(local_canvas_scroll.y) + ")   " + std::to_string(local_canvas_zoom)).c_str() );
 
 
-                if (selected_anim_frame == -1) {
-                    draw->AddText(
-                        ImVec2(canvasPos.x + 5.0f, (canvasPos.y + 35.0f) - ImGui::GetFontSize() - 5.0f),
-                        IM_COL32(20, 255, 70, 255),
-                        std::string("Anchor Frame: ").c_str() );
-                } else {
-                    draw->AddText(
-                        ImVec2(canvasPos.x + 5.0f, (canvasPos.y + 35.0f) - ImGui::GetFontSize() - 5.0f),
-                        IM_COL32(255, 255, 255, 255),
-                        std::string("Frame #" + std::to_string(selected_anim_frame) + ": ").c_str() );
+                // Label of what frame we are editing
+                if (!editing_anim_w_interpolation) {
+                    if (selected_anim_frame == -1) {
+                        draw->AddText(
+                            ImVec2(canvasPos.x + 5.0f, (canvasPos.y + 35.0f) - ImGui::GetFontSize() - 5.0f),
+                            IM_COL32(20, 255, 70, 255),
+                            std::string("Anchor Frame: ").c_str() );
+                    } else {
+                        draw->AddText(
+                            ImVec2(canvasPos.x + 5.0f, (canvasPos.y + 35.0f) - ImGui::GetFontSize() - 5.0f),
+                            IM_COL32(255, 255, 255, 255),
+                            std::string("Frame #" + std::to_string(selected_anim_frame) + ": ").c_str() );
+                    }
                 }
 
                 // Draw Origin then Canvvas lines ***********
@@ -1600,8 +1830,14 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     draw->AddLine(a, b, IM_COL32(80,80,80,255), 1.0f);
                 }
 
-            
+                // ~~~~~~~~~~~~~~~~~~~~~~~~
+                // Animation Control Bar Rendering?
+                // *******
 
+                if (editing_anim_w_interpolation) {
+
+                    draw->AddRectFilled(ImVec2(canvasPos.x, (canvasPos.y + canvasSize.y)), ImVec2(canvasPos.x + canvasSize.x, canvasPos.y + canvasSize.y + controller_bar_height), IM_COL32(40,40,60,255));
+                }
 
                 ImGui::EndChild();
 
@@ -1614,6 +1850,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
 
                 // JOINT INSPECTOR PALLET
+                
 
                 if (jointselected != -1 || selected_anim_frame != -1) {
 
@@ -1625,10 +1862,11 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             true
                         );
 
-                    timingModeActive = false;
-                    if (ImGui::BeginTabBar("WorkspaceTabs")) {
+                    if (ImGui::BeginTabBar("animtypetabs")) {
 
                         if (ImGui::BeginTabItem("Frame")) {
+
+                            editing_anim_w_interpolation = false;
 
                             if (jointselected!=-1) {
                             
@@ -1821,6 +2059,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                                         Row(">> Rot.", [&]() { ImGui::DragFloat("##dr", &joint.rotation, 0.1f); });
 
+                                        Row("Draw Order: ", [&]() { ImGui::Text(std::to_string(joint.draw_order).c_str()); });
+
                                         ImGui::EndTable();
 
 
@@ -1829,6 +2069,55 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                     
 
                                 }
+
+
+                                ImGui::Separator();
+
+                                // Onion the previous frame,
+                                // Onion the anchor frame,
+
+                                ImGui::Checkbox("Anchor Frame Ref", &onion_frame_anch);
+
+
+                                ImGui::Checkbox("Previous Frame Ref", &onion_frame_prev);
+
+                                ImGui::Separator();
+
+                                if (selected_anim_frame != -1) {
+
+                                    if (ImGui::Button("^^ Draw Order")) {
+
+                                        if (avatar_selected != nullptr  && avatar_selected_idx != -1 && anim_selected != -1) {
+
+                                            if (jointselected != -1 && (*avatar_selected).default_texturing.joints.size() >= 2 && jointselected >= 1 && jointselected < (*avatar_selected).default_texturing.joints.size()) {
+                                                
+                                                int sel_draw_order = animations[anim_selected].frames[selected_anim_frame].joints[jointselected].draw_order;
+
+                                                animations[anim_selected].frames[selected_anim_frame].joints[jointselected].draw_order = animations[anim_selected].frames[selected_anim_frame].joints[jointselected-1].draw_order;
+                                                animations[anim_selected].frames[selected_anim_frame].joints[jointselected-1].draw_order = sel_draw_order;
+                                            }
+                                        }
+
+                                        
+                                    }
+
+                                    if (ImGui::Button("vv Draw Order")) {
+
+                                        if (avatar_selected != nullptr && avatar_selected_idx != -1) {
+
+                                            if (jointselected != -1 && (*avatar_selected).default_texturing.joints.size() >= 2 && jointselected >= 0 && jointselected < (*avatar_selected).default_texturing.joints.size()-1) {
+                                                
+                                                int sel_draw_order = animations[anim_selected].frames[selected_anim_frame].joints[jointselected].draw_order;
+
+                                                animations[anim_selected].frames[selected_anim_frame].joints[jointselected].draw_order = animations[anim_selected].frames[selected_anim_frame].joints[jointselected+1].draw_order;
+                                                animations[anim_selected].frames[selected_anim_frame].joints[jointselected+1].draw_order = sel_draw_order;
+
+                                            }
+                                        }
+                                    }
+
+                                }
+
                             
                             
                                 
@@ -1839,7 +2128,10 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         }
 
                         if (ImGui::BeginTabItem("Timing")) {
-                            timingModeActive = true;
+
+                            // ----- set the main static variable controller this shit to true: ------
+
+                            editing_anim_w_interpolation = true;
 
                             // ============================================================
                             // TIMELINE PANEL SPACE
@@ -1862,6 +2154,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                             static int totalFrames = 300;
 
+                            static int currentFrame = 0;
 
                             // THIS is the important part
                             static float timelineScroll = 0.0f;
@@ -1872,9 +2165,6 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             // ============================================================
                             // SCROLL + ZOOM
                             // ============================================================
-                            int totalAnimFrames = getAnimationTotalFrames(animations[anim_selected]);
-                            totalFrames = std::max(totalFrames, totalAnimFrames + 30);
-                            timelineCurrentTick = std::clamp(timelineCurrentTick, 0, std::max(0, totalAnimFrames - 1));
 
                             ImVec2 mouse = ImGui::GetIO().MousePos;
 
@@ -1991,8 +2281,6 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 i++;
                             }
 
-                            static int frame_flag_dragging = -1;
-
                             for (const auto& flag : flags) {
 
                                 float y =
@@ -2013,16 +2301,13 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                     mouse.x > railX - 10.0f &&
                                     mouse.x < railX + 140.0f;
 
-                                if (this_flag_hovered &&
-                                    ImGui::IsMouseClicked(ImGuiMouseButton_Left))
-                                {
-                                    frame_flag_dragging = flag.keyframe_index;
-                                    timelinePlaying = false;
+                                if (this_flag_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                                    selected_anim_frame = flag.keyframe_index;
                                 }
 
                                 ImU32 drawColor = flag.color;
 
-                                if (this_flag_hovered || frame_flag_dragging == flag.keyframe_index) {
+                                if (this_flag_hovered || selected_anim_frame == flag.keyframe_index) {
                                     drawColor = IM_COL32(255,255,255,255);
                                 }
 
@@ -2047,85 +2332,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 );
                             }
 
-                            if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
 
-                                frame_flag_dragging = -1;
-
-                            }
-
-                            static int drag_initial_mouse_frame = 0;
-                            static int drag_initial_flag_frame = 0;
-                            static bool drag_initialized = false;
-
-                            if (frame_flag_dragging != -1 && ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
-
-                                auto& frames = animations[anim_selected].frames;
-
-                                int idx = frame_flag_dragging;
-
-                                // cannot drag first frame
-                                if (idx > 0) {
-
-                                    // INITIALIZE DRAG STATE ON FIRST FRAME
-                                    
-
-                                    if (!drag_initialized) {
-
-                                        drag_initialized = true;
-
-                                        drag_initial_mouse_frame =
-                                            (int)round(
-                                                (mouse.y - p0.y + timelineScroll) / pixelsPerFrame
-                                            );
-
-                                        drag_initial_flag_frame = flags[idx].frame;
-                                    }
-
-                                    // CURRENT MOUSE FRAME
-                                    int current_mouse_frame =
-                                        (int)round(
-                                            (mouse.y - p0.y + timelineScroll)
-                                            / pixelsPerFrame
-                                        );
-
-                                    // PURE DELTA
-                                    int delta =
-                                        current_mouse_frame -
-                                        drag_initial_mouse_frame;
-
-                                    // NEW ABSOLUTE FLAG POSITION
-                                    int desired_absolute_frame =
-                                        drag_initial_flag_frame +
-                                        delta;
-
-                                    // PREVIOUS FLAG POSITION
-                                    int previous_absolute_frame = 0;
-
-                                    for (int i = 0; i < idx; i++) {
-                                        previous_absolute_frame += frames[i].time_to_next;
-                                    }
-
-                                    // NEW TIMING
-                                    int newDelta =
-                                        desired_absolute_frame -
-                                        previous_absolute_frame;
-
-                                    int minDelta = 1;
-                                    int maxDelta = 9999;
-                                    if (idx < (int)frames.size()-1) {
-                                        int nextAbs = previous_absolute_frame + std::max(1, frames[idx-1].time_to_next) + std::max(1, frames[idx].time_to_next);
-                                        maxDelta = std::max(1, nextAbs - previous_absolute_frame - 1);
-                                    }
-                                    newDelta = std::clamp(newDelta, minDelta, maxDelta);
-
-                                    frames[idx - 1].time_to_next = newDelta;
-                                    timelineSelectedKey = idx;
-                                }
-
-                            } else {
-
-                                drag_initialized = false;
-                            }
+                            // =====================
 
 
 
@@ -2136,7 +2344,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                             float scrubY =
                                 p0.y +
-                                (timelineCurrentTick * pixelsPerFrame) -
+                                (currentFrame * pixelsPerFrame) -
                                 timelineScroll;
 
                             bool hoverScrubber =
@@ -2147,7 +2355,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                             static bool draggingScrubber = false;
 
-                            if (frame_flag_dragging == -1 && hoverScrubber &&
+                            if (hoverScrubber &&
                                 ImGui::IsMouseClicked(ImGuiMouseButton_Left))
                             {
                                 draggingScrubber = true;
@@ -2162,11 +2370,11 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 float local =
                                     mouse.y - p0.y + timelineScroll;
 
-                                timelineCurrentTick =
+                                currentFrame =
                                     (int)round(local / pixelsPerFrame);
 
-                                timelineCurrentTick =
-                                    std::clamp(timelineCurrentTick, 0, std::max(0,totalAnimFrames-1));
+                                currentFrame =
+                                    std::clamp(currentFrame, 0, totalFrames);
                             }
 
                             // scrubber line
@@ -2189,14 +2397,13 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             dl->AddText(
                                 ImVec2(p0.x + 140.0f, scrubY - 10.0f),
                                 IM_COL32(255,80,80,255),
-                                std::string("TIME " + std::to_string(timelineCurrentTick * 16) + " ms").c_str()
+                                std::string("FRAME " + std::to_string(currentFrame)).c_str()
                             );
 
                             ImGui::InvisibleButton(
                                 "timeline_capture",
                                 avail
                             );
-
 
                             ImGui::EndTabItem();
                         }

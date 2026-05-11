@@ -13,34 +13,37 @@
 // The actual position and rotation of a joint for a frame
 
 struct JointFramePosition {
+
+    int unique_id;
+
     Vec2 origin;
     Vec2 direction;
-    int layer_id;
 
     JointFramePosition () {
         origin = {0.0f, 0.0f};
         direction = {32.0f, 0.0f};
-        layer_id = 0;
     }
 
 
-    JointFramePosition (Vec2 orig, Vec2 dir, int lid) {
+    JointFramePosition (Vec2 orig, Vec2 dir) {
         origin = orig;
         direction = dir;
-        layer_id = lid;
     }
+
 };
 
 struct AnimJointAdjustmentFrame {
 
+    int unique_id;
+
     Vec2 origin;
     float rotation;
-    int layer_offset;
+    int draw_order;
 
-    AnimJointAdjustmentFrame (Vec2 orig_offset, float rot_offset, int lid_offset) {
+    AnimJointAdjustmentFrame (Vec2 orig_offset, float rot_offset, int d_order) {
         origin = orig_offset;
         rotation = rot_offset;
-        layer_offset = lid_offset;
+        draw_order = d_order;
     }
 };
 
@@ -48,6 +51,7 @@ struct AnimJointAdjustmentFrame {
 // --> Armor, Shirts, Expressions on their faces, etc.
 
 struct AvatarJoint {
+
     // Name of joint
     std::string name;
 
@@ -79,6 +83,8 @@ struct AvatarJoint {
     
     AvatarJoint (const std::string & _name) {
         this->name = _name;
+
+
     }
 
 };
@@ -90,6 +96,9 @@ struct AvatarJoint {
 
 struct AvatarTextureRig {
     std::vector<AvatarJoint> joints;
+
+
+
 };
 
 struct KeyFrame {
@@ -130,23 +139,26 @@ class Avatar {
             position = {0.0f, 0.0f};
         }
 
-        void sync_default_layer_ids() {
-            for (int i = 0; i < default_frame.joints.size(); i++) {
-                default_frame.joints[i].layer_id = i;
-            }
-        }
 
-        void wipe_joints () {
-
-        }
-
-        void wipe_active_frame () {
-
-        }
         
-        void wipe_animations () {
-            // animations.clear();
+        void assign_unique_anchor_ids () {
+
+            // Arbitrary ordering, simply for use of reference
+            // Should be updated whenever updating the default frames joints
+
+            for (int i = 0; i < default_frame.joints.size(); i++) {
+                default_frame.joints[i].unique_id = i;
+            }
+
+            // layer_id order (or draw order) should be set to be the same as unique id
+            // order on the default/anchor frame, but can be varied, and
+            // transitions between joints in animation are only worried about the same unique id's existing.
+            //
+            // animation application should only worry about this as well
+
+
         }
+
 
 
 
@@ -178,35 +190,21 @@ struct KeyAnimFrame {
     KeyAnimFrame (const Avatar& _avatar) {
 
         for (int i = 0; i < _avatar.default_frame.joints.size(); i++) {
-            joints.push_back(AnimJointAdjustmentFrame({0.0f, 0.0f}, 0.0f, 0));
+
+            int jidx = 0;
+            while (jidx != _avatar.default_frame.joints[i].unique_id || jidx > _avatar.default_frame.joints.size()) {
+                jidx++;
+            }
+
+            // assert the joint id we found is valid within the avatar bounds
+            assert (jidx < _avatar.default_frame.joints.size());
+
+            // Default draw order should for a key animation frame
+            joints.push_back(AnimJointAdjustmentFrame({0.0f, 0.0f}, 0.0f, jidx));
         }
 
     }
 
-    // Constructor to take in a previous frame and construct joints that match that frame,
-    // I guess its just a copy constructor
-
-    KeyAnimFrame (const KeyAnimFrame & frame) {
-
-        for (int i = 0; i < frame.joints.size(); i++) {
-
-            joints.push_back(AnimJointAdjustmentFrame(frame.joints[i].origin, frame.joints[i].rotation, frame.joints[i].layer_offset));
-
-        }
-
-        sequence_id = frame.sequence_id;
-        time_to_next = frame.time_to_next;
-        interpolate_trans_region = frame.interpolate_trans_region;
-        transition_mode = frame.transition_mode;
-
-    }
-
-    // Constructor for the AnimJoints which are all relative to the default joint
-    KeyAnimFrame (int joint_count) {
-        for (int i = 0; i < joint_count; i++) {
-            joints.push_back(AnimJointAdjustmentFrame({0.0f, 0.0f}, 0.0f, 0));
-        }
-    }
 
 };
 
@@ -232,15 +230,55 @@ struct Animation {
             frame.sequence_id = i;
             i++;
         }
-
     }
 
-    void new_frame (const KeyAnimFrame & _frame) {
+    void new_frame (const Avatar& _avatar) {
 
+	    KeyAnimFrame frame = KeyAnimFrame(_avatar);
+
+        // Copy Unique IDs so that these will be consistent across joints
+        // across the animation and can be used as reference points for sorting
+        // where a joint with existing ID should be drawn given an animation frame
+        // and a new draw order
+        // ---------------------------------------
+        for (int i = 0; i < frame.joints.size(); i++) {
+            frame.joints[i].unique_id = _avatar.default_frame.joints[i].unique_id;
+        }
+
+        
+        if (frames.size() > 0)
+            assert(joints_defined == frame.joints.size());
+        else
+            joints_defined = frame.joints.size();
+
+        frames.push_back(frame);
+
+        if (frames.size() > 0)
+            frames[frames.size() - 1].sequence_id =  frames.size() - 1;
+
+        sync_frame_order_seq_id();
+    }
+
+
+    // Overload takes a keyframe as an input to... copy it I guess...
+    // --> For copying prevoius frames
+    void new_frame (const Avatar& _avatar, const KeyAnimFrame & _frame) {
+
+        // Assert compatability between avatar joints and the frame we want to add's joints
+        // (in this case, usually a previous frame of the animation that wants to be copied)
+        assert(_avatar.default_frame.joints.size() == _frame.joints.size());
+
+        // Remember constructor by default assigns draw order depending on unique id of avatar joints;
+        // if we want to copy we have to manually assign 
 	    KeyAnimFrame copy = _frame;
-        
-        
 
+        // This draw order should be drawn from the previous frame,
+        // but it should be compatible with the original avatar
+        // ---------------------------------------
+        for (int i = 0; i < copy.joints.size(); i++) {
+            copy.joints[i].unique_id = _frame.joints[i].unique_id;
+        }
+        
         if (frames.size() > 0)
             assert(joints_defined == copy.joints.size());
         else
@@ -254,7 +292,7 @@ struct Animation {
         sync_frame_order_seq_id();
     }
 
-    
+
 
     void resize_joints_defined (const Avatar & _avatar) {
 
