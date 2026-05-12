@@ -522,7 +522,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                 } 
 
-                
+                static bool manual_anim_frame_switch = false;
 
                 ImGui::BeginDisabled(frame_control_disabled);
                 
@@ -532,7 +532,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         animations[anim_selected].new_frame(avatars[avatar_selected_idx]);
 
                     temp_query_selected_anim_frame = animations[anim_selected].frames.size() - 1; // Shouold return -1 if the size is 0, so default frame
-                    selected_anim_frame = temp_query_selected_anim_frame;
+                    manual_anim_frame_switch = true;
 
 
                 }
@@ -544,7 +544,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     if (temp_query_selected_anim_frame != -1) {
                         animations[anim_selected].frames.erase(animations[anim_selected].frames.begin() + temp_query_selected_anim_frame);
                         temp_query_selected_anim_frame = -1;
-                        selected_anim_frame = temp_query_selected_anim_frame;
+                        manual_anim_frame_switch = true;
                     }
 
                 }
@@ -555,8 +555,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     if (temp_query_selected_anim_frame != -1 && temp_query_selected_anim_frame > 0 && temp_query_selected_anim_frame < animations[anim_selected].frames.size()) {
                         std::swap(animations[anim_selected].frames[temp_query_selected_anim_frame], animations[anim_selected].frames[temp_query_selected_anim_frame - 1]);
                         temp_query_selected_anim_frame--;
-                        selected_anim_frame = temp_query_selected_anim_frame;
                         animations[anim_selected].sync_frame_order_seq_id();
+                        manual_anim_frame_switch = true;
                     }
                 }
 
@@ -567,8 +567,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     if (temp_query_selected_anim_frame != -1 && temp_query_selected_anim_frame >= 0 && temp_query_selected_anim_frame < animations[anim_selected].frames.size()-1) {
                         std::swap(animations[anim_selected].frames[temp_query_selected_anim_frame], animations[anim_selected].frames[temp_query_selected_anim_frame + 1]);
                         temp_query_selected_anim_frame++;
-                        selected_anim_frame = temp_query_selected_anim_frame;
                         animations[anim_selected].sync_frame_order_seq_id();
+                        manual_anim_frame_switch = true;
                     }
                 }
 
@@ -584,7 +584,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             animations[anim_selected].new_frame(avatars[avatar_selected_idx], animations[anim_selected].frames[selected_anim_frame]);
 
                         temp_query_selected_anim_frame = animations[anim_selected].frames.size() - 1; // Shouold return -1 if the size is 0, so default frame
-                        selected_anim_frame = temp_query_selected_anim_frame;
+                        manual_anim_frame_switch = true;
 
                     } else {
 
@@ -594,7 +594,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             animations[anim_selected].new_frame(avatars[avatar_selected_idx]);
 
                         temp_query_selected_anim_frame = animations[anim_selected].frames.size() - 1; // Shouold return -1 if the size is 0, so default frame
-                        selected_anim_frame = temp_query_selected_anim_frame;
+                        manual_anim_frame_switch = true;
 
                     }
                 }
@@ -612,8 +612,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.05f, 0.3f, 0.05f, 1.0f));  // Even darker green on active
 
                     // Draw the "Anchor Frame" selectable as the first item
-                    if (ImGui::Selectable("Anchor Frame", (temp_query_selected_anim_frame == -1))) {
+                    if (ImGui::Selectable("Anchor Frame", (selected_anim_frame == -1))) {
                         temp_query_selected_anim_frame = -1;
+                        manual_anim_frame_switch = true;
                     }
 
                     // Pop the style colors to revert back to default for the rest of the list
@@ -622,12 +623,13 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     // Draw the rest of the animation frames
                     for (int i = 0; i < animations[anim_selected].frames.size(); i++) {
                         ImGui::PushID(i);
-                        bool sel = (i == temp_query_selected_anim_frame);
+                        bool sel = (i == selected_anim_frame);
 
                         const std::string framename = std::string("Fr. #") + std::to_string(i);
 
                         if (ImGui::Selectable(framename.c_str(), sel)) {
                             temp_query_selected_anim_frame = i;
+                            manual_anim_frame_switch = true;
                         }
 
                         ImGui::PopID();
@@ -639,19 +641,12 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                 // Query to avoid breaking stuff?
 
-                if (temp_query_selected_anim_frame != selected_anim_frame) {
-
+                if (manual_anim_frame_switch && temp_query_selected_anim_frame != selected_anim_frame) {
                     selected_anim_frame = temp_query_selected_anim_frame;
+                    manual_anim_frame_switch = false;
                 }
 
                 ImGui::Separator();
-
-
-
-
-
-
-
 
                 // Joint Operations on WHOLE AVATAR, which should ONLY
                 // affect the
@@ -979,7 +974,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         float dist = DistancePointToSegment(mpos, a, b);
 
                         bool hovered = dist < 8.0f;
-                        bool selected = (i == jointselected);
+                        bool selected = (idx == jointselected);
 
                         ImU32 color;
 
@@ -1386,7 +1381,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         float dist = DistancePointToSegment(mpos, a, b);
 
                         bool hovered = dist < 8.0f;
-                        bool selected = (i == jointselected);
+                        bool selected = (idx == jointselected);
 
                         ImU32 color;
 
@@ -1772,6 +1767,19 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             IM_COL32(255, 255, 255, 255),
                             std::string("Frame #" + std::to_string(selected_anim_frame) + ": ").c_str() );
                     }
+                } else {
+                    // If we ARE editing with interpolation
+
+                    draw->AddText(
+                            ImVec2(canvasPos.x + 5.0f, (canvasPos.y + 15.0f) - ImGui::GetFontSize() - 2.0f),
+                            IM_COL32(255, 20, 20, 255),
+                            std::string("ANIMATION MODE: ").c_str() );
+
+                    draw->AddText(
+                            ImVec2(canvasPos.x + 75.0f, (canvasPos.y + 15.0f) - ImGui::GetFontSize() - 2.0f),
+                            IM_COL32(255, 255, 255, 255),
+                            std::string("Key Frame: " + std::to_string(selected_anim_frame)).c_str() );
+
                 }
 
                 // Draw Origin then Canvvas lines ***********
@@ -2089,12 +2097,22 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                                         if (avatar_selected != nullptr  && avatar_selected_idx != -1 && anim_selected != -1) {
 
-                                            if (jointselected != -1 && (*avatar_selected).default_texturing.joints.size() >= 2 && jointselected >= 1 && jointselected < (*avatar_selected).default_texturing.joints.size()) {
-                                                
-                                                int sel_draw_order = animations[anim_selected].frames[selected_anim_frame].joints[jointselected].draw_order;
+                                            if (jointselected != -1 && (*avatar_selected).default_texturing.joints.size() >= 2 && jointselected >= 0 && jointselected < (*avatar_selected).default_texturing.joints.size()) {
+                                                auto& frame_joints = animations[anim_selected].frames[selected_anim_frame].joints;
+                                                int sel_draw_order = frame_joints[jointselected].draw_order;
+                                                int swap_idx = -1;
 
-                                                animations[anim_selected].frames[selected_anim_frame].joints[jointselected].draw_order = animations[anim_selected].frames[selected_anim_frame].joints[jointselected-1].draw_order;
-                                                animations[anim_selected].frames[selected_anim_frame].joints[jointselected-1].draw_order = sel_draw_order;
+                                                for (int i = 0; i < frame_joints.size(); i++) {
+                                                    if (i != jointselected && frame_joints[i].draw_order == sel_draw_order - 1) {
+                                                        swap_idx = i;
+                                                        break;
+                                                    }
+                                                }
+
+                                                if (swap_idx != -1) {
+                                                    frame_joints[jointselected].draw_order = frame_joints[swap_idx].draw_order;
+                                                    frame_joints[swap_idx].draw_order = sel_draw_order;
+                                                }
                                             }
                                         }
 
@@ -2105,12 +2123,22 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                                         if (avatar_selected != nullptr && avatar_selected_idx != -1) {
 
-                                            if (jointselected != -1 && (*avatar_selected).default_texturing.joints.size() >= 2 && jointselected >= 0 && jointselected < (*avatar_selected).default_texturing.joints.size()-1) {
-                                                
-                                                int sel_draw_order = animations[anim_selected].frames[selected_anim_frame].joints[jointselected].draw_order;
+                                            if (jointselected != -1 && (*avatar_selected).default_texturing.joints.size() >= 2 && jointselected >= 0 && jointselected < (*avatar_selected).default_texturing.joints.size()) {
+                                                auto& frame_joints = animations[anim_selected].frames[selected_anim_frame].joints;
+                                                int sel_draw_order = frame_joints[jointselected].draw_order;
+                                                int swap_idx = -1;
 
-                                                animations[anim_selected].frames[selected_anim_frame].joints[jointselected].draw_order = animations[anim_selected].frames[selected_anim_frame].joints[jointselected+1].draw_order;
-                                                animations[anim_selected].frames[selected_anim_frame].joints[jointselected+1].draw_order = sel_draw_order;
+                                                for (int i = 0; i < frame_joints.size(); i++) {
+                                                    if (i != jointselected && frame_joints[i].draw_order == sel_draw_order + 1) {
+                                                        swap_idx = i;
+                                                        break;
+                                                    }
+                                                }
+
+                                                if (swap_idx != -1) {
+                                                    frame_joints[jointselected].draw_order = frame_joints[swap_idx].draw_order;
+                                                    frame_joints[swap_idx].draw_order = sel_draw_order;
+                                                }
 
                                             }
                                         }
@@ -2270,11 +2298,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                     IM_COL32(
                                         ((255 + (i * 50)) % 255),
                                         ((120 + (i * 50)) % 255),
-                                        ((180 + (i * 50)) % 255),
-                                        255
-                                    ),
-                                    i
-                                });
+                                        ((180 + (i * 50)) % 255), 255), 
+                                    i});
 
                                 scrub_fr += fr.time_to_next;
 
@@ -2308,7 +2333,15 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 ImU32 drawColor = flag.color;
 
                                 if (this_flag_hovered || selected_anim_frame == flag.keyframe_index) {
-                                    drawColor = IM_COL32(255,255,255,255);
+                                    if (selected_anim_frame != flag.keyframe_index) {
+                                        drawColor = IM_COL32(120,120,150,255);
+                                    } else {
+                                        if (!this_flag_hovered) {
+                                            drawColor = IM_COL32(200,200,200,255);
+                                        } else {
+                                            drawColor = IM_COL32(255,255,255,255);
+                                        }
+                                    }
                                 }
 
                                 dl->AddLine(

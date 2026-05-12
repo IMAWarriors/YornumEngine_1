@@ -40,10 +40,20 @@ struct AnimJointAdjustmentFrame {
     float rotation;
     int draw_order;
 
+    bool normal_rotation = true;
+
     AnimJointAdjustmentFrame (Vec2 orig_offset, float rot_offset, int d_order) {
         origin = orig_offset;
         rotation = rot_offset;
         draw_order = d_order;
+    }
+
+    void SetRotMode_Normal () {
+        normal_rotation = true;
+    }
+    
+    void SetRotMode_Inverse () {
+        normal_rotation = false;
     }
 };
 
@@ -160,6 +170,16 @@ class Avatar {
         }
 
 
+        // A tick is what could often be called a frame of animation,
+        // but the problem is frames are constant measured in ms
+        // --> More common use of frames in my code is in reference to KEY FRAMES which happen at
+        // arbitrary user defined times, but always occur on some tick
+
+        void IM_DrawAvatar (Vec2 position, float scale, Animation animation, int tick_ms);
+
+        void DrawAvatar (Vec2 position, float scale, Animation animation, int tick_ms);
+
+
 
 
     private:
@@ -182,11 +202,10 @@ struct KeyAnimFrame {
 
     int sequence_id = 0;
     int time_to_next = 8;
-    bool interpolate_trans_region = true;
-
+   
     TransitionMode transition_mode = TransitionMode::Linear;
 
-    // Constructor to build key anim frame (ex. into animation list) by making same # joints per key frame for an avatar
+    // Constructor to build key anim frame from Avatar (ex. into animation list) by making same # joints per key frame for an avatar
     KeyAnimFrame (const Avatar& _avatar) {
 
         for (int i = 0; i < _avatar.default_frame.joints.size(); i++) {
@@ -204,6 +223,8 @@ struct KeyAnimFrame {
         }
 
     }
+
+    
 
 
 };
@@ -292,7 +313,9 @@ struct Animation {
         sync_frame_order_seq_id();
     }
 
-
+    // ============== DANGER CODE ==========================================
+    // This code is scary bc i dont remember waht it does...
+    // I dont think it does anything, so I think I need to delete it and rework the idea it was getting at
 
     void resize_joints_defined (const Avatar & _avatar) {
 
@@ -323,19 +346,29 @@ struct Animation {
 
             // Otherwise is new size is just an expansion, add the additional joints to each frame
 
-            
-
-
-
-
         }
-
-    
-
     }
-    
 
 };
 
+// =============================================================
+// Avatar Interpolation Drawing Definitions:
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+void Avatar::IM_DrawAvatar(Vec2 position, float scale, Animation animation, int tick_ms) {
+
+
+
+
+}
+
+void Avatar::DrawAvatar(Vec2 position, float scale, Animation animation, int tick_ms) {
+
+    
+
+
+}
 
 #endif
+
+

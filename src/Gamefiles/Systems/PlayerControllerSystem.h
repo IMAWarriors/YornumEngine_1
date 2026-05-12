@@ -49,10 +49,10 @@ class PlayerControllerSystem : public System {
                 comp::Velocity & player_velocity = registry.get_component<comp::Velocity>(entity);
 
 
-                float MAX_VELOCITY_X    = 800.0f;
-                float ACCELERATION      = 1800.0f;
+                float MAX_VELOCITY_X    = 650.0f;
+                float ACCELERATION      = 1500.0f;
                 float FRICTION          = 2700.0f;
-                float JUMP_FORCE        = 1200.0f;
+                float JUMP_FORCE        = 1150.0f;
 
                 float target = input.horz_axis * MAX_VELOCITY_X;
 

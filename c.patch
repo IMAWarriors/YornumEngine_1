@@ -1,77 +1,20 @@
  (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
 diff --git a/src/Gamefiles/Systems/EditorUISystem.cpp b/src/Gamefiles/Systems/EditorUISystem.cpp
-index 66805832398b94e29bef090975b9ee149d72d3c7..5258fe2fe43bcc447050133a359cb012786ffc09 100644
+index 0c218187605490ddc9d603ef4c5780cb3b534b7b..99a120bf7d62922018569c0823e016c13db4aae2 100644
 --- a/src/Gamefiles/Systems/EditorUISystem.cpp
 +++ b/src/Gamefiles/Systems/EditorUISystem.cpp
-@@ -921,64 +921,76 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
-                     int total = 0;
-                     for (const auto& fr : anim.frames) total += std::max(1, fr.time_to_next);
-                     return std::max(1, total);
-                 };
- 
-                 auto frameToKeyAndLerp = [&](const Animation& anim, int frame, int& outKey, int& outNext, float& outT) {
-                     if (anim.frames.empty()) { outKey = -1; outNext = -1; outT = 0.0f; return; }
-                     int total = getAnimationTotalFrames(anim);
-                     int wrapped = ((frame % total) + total) % total;
-                     int accum = 0;
-                     for (int i = 0; i < (int)anim.frames.size(); i++) {
-                         int dt = std::max(1, anim.frames[i].time_to_next);
-                         if (wrapped < accum + dt) {
-                             outKey = i;
-                             outNext = (i + 1) % (int)anim.frames.size();
-                             outT = (float)(wrapped - accum) / (float)dt;
-                             return;
-                         }
-                         accum += dt;
-                     }
-                     outKey = (int)anim.frames.size() - 1;
-                     outNext = 0;
-                     outT = 0.0f;
-                 };
- 
-+                auto lerpShortestAngleDeg = [](float a, float b, float t) -> float {
-+                    float delta = fmodf(b - a, 360.0f);
-+                    if (delta > 180.0f) delta -= 360.0f;
-+                    if (delta < -180.0f) delta += 360.0f;
-+                    return a + delta * t;
-+                };
-+
-+                auto tickToMilliseconds = [](int ticks) -> int {
-+                    constexpr float msPerTick = 1000.0f / 60.0f;
-+                    return (int)roundf((float)ticks * msPerTick);
-+                };
-+
-                 // DRAW JOINTS and IMAGE TEXTURES in LOOP
-                 // **************************************
- 
-                 int render_anim_frame = selected_anim_frame;
-                 int render_next_frame = -1;
-                 float render_lerp_t = 0.0f;
-                 bool render_interpolated = false;
- 
-                 if (timingModeActive && anim_selected != -1 && !animations[anim_selected].frames.empty()) {
-                     if (timelinePlaying) {
-                         timelinePlayTime += ImGui::GetIO().DeltaTime * 60.0f;
-                         int totalTicks = std::max(1, getAnimationTotalFrames(animations[anim_selected]));
-                         if (timelinePlayTime >= (float)totalTicks) timelinePlayTime = fmodf(timelinePlayTime, (float)totalTicks);
--                        timelineCurrentTick = (int)timelinePlayTime;
-+                        timelineCurrentTick = ((int)timelinePlayTime) % totalTicks;
-                     }
-                     frameToKeyAndLerp(animations[anim_selected], timelineCurrentTick, render_anim_frame, render_next_frame, render_lerp_t);
-                     timelineSelectedKey = render_anim_frame;
-                     if (render_anim_frame >= 0) {
-                         const auto& kf = animations[anim_selected].frames[render_anim_frame];
-                         render_interpolated = kf.interpolate_trans_region && kf.transition_mode != KeyAnimFrame::TransitionMode::Instant;
-                         if (kf.transition_mode == KeyAnimFrame::TransitionMode::EaseInOut) {
-                             render_lerp_t = render_lerp_t * render_lerp_t * (3.0f - 2.0f * render_lerp_t);
-                         } else if (!render_interpolated) {
-                             render_lerp_t = 0.0f;
-                         }
-                     }
-                 }
+@@ -957,51 +957,51 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                  
-                 if (render_anim_frame == -1) {
+                 
+                 // If selected_anim_frame == -1,
+                 // Then that means the ANCHOR FRAME is selected
+                 //
+                 // Any other selected frame indicates there is
+                 // a valid animation and a frame of that animation is chosen
+             
+                 if (selected_anim_frame == -1) {
  
+                     // --> ANCHOR FRAME: DRAW
                      for (int i = 0; i < (*avatar_selected).default_texturing.joints.size(); i++) {
  
                          int idx = get_idx_from_jlayer_id((*avatar_selected), i);
@@ -81,39 +24,52 @@ index 66805832398b94e29bef090975b9ee149d72d3c7..5258fe2fe43bcc447050133a359cb012
  
                          ImVec2 a = WorldToScreen(ImVec2(j.origin.x, j.origin.y));
                          ImVec2 b = WorldToScreen(ImVec2(j.origin.x + j.direction.x,
-@@ -1064,51 +1076,51 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
-                         // CLICK SELECT
-                         if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-                             jointselected = idx;
+                                                     j.origin.y + j.direction.y));
+ 
+                         float dist = DistancePointToSegment(mpos, a, b);
+ 
+                         bool hovered = dist < 8.0f;
+-                        bool selected = (i == jointselected);
++                        bool selected = (idx == jointselected);
+ 
+                         ImU32 color;
+ 
+                         if (selected) {
+                             color = IM_COL32(0, 200, 255, 255);   // bright cyan selected
+                         }
+                         else if (hovered) {
+                             color = IM_COL32(80, 170, 255, 255);  // blue hover
+                         }
+                         else {
+                             color = IM_COL32(255, 255, 255, 120); // default
                          }
  
-                 
+                         float thickness = selected ? 6.0f : (hovered ? 5.0f : 3.0f);
+ 
+                         draw->AddLine(a, b, color, thickness);
+ 
+                         if (j_text.texture != nullptr) {
+                             ImVec2 center = WorldToScreen(ImVec2(j.origin.x, j.origin.y));
+ 
+                             float width  = j_text.texture->width  * j_text.scale.x * local_canvas_zoom;
+                             float height = j_text.texture->height * j_text.scale.y * local_canvas_zoom;
+ 
+                             // Direction → angle
+                             ImVec2 dir = { j.direction.x, j.direction.y };
+@@ -1364,51 +1364,51 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
+                         }
+                         
+                         jidx_draw_order[i] = jidx;
                      }
  
-                 } else {
+                     for (int i = 0; i < joint_count; i++) {
  
-                     
- 
- 
- 
-                     // NORMAL FRAME: DRAW
-                     for (int i = 0; i < (*avatar_selected).default_texturing.joints.size(); i++) {
- 
-                         int idx = get_idx_from_jlayer_id((*avatar_selected), i);
+                         // jidx size == joint_count by definition so... not doing an assertion here... yet...
+                         int idx = jidx_draw_order[i];
  
                          auto& anchor_j = (*avatar_selected).default_frame.joints[idx];
-                         auto anim_j = animations[anim_selected].frames[render_anim_frame].joints[idx];
-                         if (render_interpolated && render_next_frame >= 0) {
-                             const auto& next_j = animations[anim_selected].frames[render_next_frame].joints[idx];
-                             anim_j.origin.x = anim_j.origin.x + (next_j.origin.x - anim_j.origin.x) * render_lerp_t;
-                             anim_j.origin.y = anim_j.origin.y + (next_j.origin.y - anim_j.origin.y) * render_lerp_t;
--                            anim_j.rotation = anim_j.rotation + (next_j.rotation - anim_j.rotation) * render_lerp_t;
-+                            anim_j.rotation = lerpShortestAngleDeg(anim_j.rotation, next_j.rotation, render_lerp_t);
-                         }
- 
+                         auto& anim_j = animations[anim_selected].frames[selected_anim_frame].joints[idx];
                          auto& j_text = (*avatar_selected).default_texturing.joints[idx];
- 
-                       
                          float direction_point_x = 0.0f;
                          float direction_point_y = 0.0f;
  
@@ -126,7 +82,8 @@ index 66805832398b94e29bef090975b9ee149d72d3c7..5258fe2fe43bcc447050133a359cb012
                          float dist = DistancePointToSegment(mpos, a, b);
  
                          bool hovered = dist < 8.0f;
-                         bool selected = (i == jointselected);
+-                        bool selected = (i == jointselected);
++                        bool selected = (idx == jointselected);
  
                          ImU32 color;
  
@@ -134,244 +91,127 @@ index 66805832398b94e29bef090975b9ee149d72d3c7..5258fe2fe43bcc447050133a359cb012
                              color = IM_COL32(0, 200, 255, 255);   // bright cyan selected
                          }
                          else if (hovered) {
-@@ -1233,58 +1245,58 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
- 
-                     ImGui::SetCursorScreenPos(ImVec2(controlBarMin.x + 8.0f, controlBarMin.y + 6.0f));
-                     ImGui::BeginGroup();
-                     if (ImGui::Button("|<")) { timelineCurrentTick = 0; timelinePlayTime = 0.0f; timelinePlaying = false; }
-                     ImGui::SameLine();
-                     if (ImGui::Button("<")) {
-                         int pk=0,pn=0; float pt=0.0f;
-                         frameToKeyAndLerp(animations[anim_selected], timelineCurrentTick, pk, pn, pt);
-                         if (pk > 0) { int t=0; for(int i=0;i<pk-1;i++) t += std::max(1, animations[anim_selected].frames[i].time_to_next); timelineCurrentTick=t; }
-                         else timelineCurrentTick = 0;
-                         timelinePlaying = false; timelinePlayTime = (float)timelineCurrentTick; }
-                     ImGui::SameLine();
-                     if (ImGui::Button("▶")) { timelinePlaying = true; timelinePlayTime = (float)timelineCurrentTick; }
-                     ImGui::SameLine();
-                     if (ImGui::Button("■")) { timelinePlaying = false; }
-                     ImGui::SameLine();
-                     if (ImGui::Button(">")) {
-                         int ck=0,cn=0; float ct=0.0f;
-                         frameToKeyAndLerp(animations[anim_selected], timelineCurrentTick, ck, cn, ct);
-                         int t=0; for(int i=0;i<=ck && i < (int)animations[anim_selected].frames.size();i++) t += std::max(1, animations[anim_selected].frames[i].time_to_next);
-                         timelineCurrentTick = std::min(totalAnimFramesForControls - 1, t);
-                         timelinePlaying = false; timelinePlayTime = (float)timelineCurrentTick; }
-                     ImGui::SameLine();
-                     if (ImGui::Button(">|")) { timelineCurrentTick = totalAnimFramesForControls - 1; timelinePlayTime = (float)timelineCurrentTick; timelinePlaying = false; }
-                     ImGui::SameLine();
--                    ImGui::Text("Time %d ms", timelineCurrentTick * 16);
-+                    ImGui::Text("Time %d ms", tickToMilliseconds(timelineCurrentTick));
-                     if (timelineSelectedKey >= 0 && timelineSelectedKey < (int)animations[anim_selected].frames.size()) {
-                         auto& selFrame = animations[anim_selected].frames[timelineSelectedKey];
-                         ImGui::SameLine();
-                         ImGui::Text("| Key %d", timelineSelectedKey);
-                         ImGui::SameLine();
-                         ImGui::SetNextItemWidth(100.0f);
--                        ImGui::DragInt("Ms to next", &selFrame.time_to_next, 0.25f, 1, 240, "%d ticks");
-+                        ImGui::DragInt("Duration to next (ms)", &selFrame.time_to_next, 0.25f, 1, 240, "%d ms");
-                         ImGui::SameLine();
-                         const char* transLabels[] = {"Linear", "Instant", "Ease"};
-                         int transitionIdx = (int)selFrame.transition_mode;
-                         ImGui::SetNextItemWidth(110.0f);
-                         if (ImGui::Combo("Transition", &transitionIdx, transLabels, IM_ARRAYSIZE(transLabels))) {
-                             selFrame.transition_mode = (KeyAnimFrame::TransitionMode)transitionIdx;
-                             selFrame.interpolate_trans_region = (transitionIdx != 1);
+                             color = IM_COL32(80, 170, 255, 255);  // blue hover
                          }
-                     }
-                     ImGui::EndGroup();
+                         else {
+                             color = IM_COL32(255, 255, 255, 120); // default
+                         }
  
-                     draw->AddText(
-                         ImVec2(canvasPos.x + 5.0f, (canvasPos.y + 35.0f) - ImGui::GetFontSize() - 5.0f),
-                         IM_COL32(255, 210, 40, 255),
-                         std::string("Timing Preview Key: " + std::to_string(std::max(0, render_anim_frame))).c_str() );
-                 } else if (selected_anim_frame == -1) {
+                         float thickness = selected ? 6.0f : (hovered ? 5.0f : 3.0f);
  
-                     // Dragging script setup and draw dragging notation
-                     if (jointselected != -1) {
+                         draw->AddLine(a, b, color, thickness);
  
-                         ImVec2 mouse = ImGui::GetIO().MousePos;
+                         if (j_text.texture != nullptr) {
+                             ImVec2 center = WorldToScreen(ImVec2(anchor_j.origin.x + anim_j.origin.x, anchor_j.origin.y + anim_j.origin.y));
  
-                         // circle position (world or screen space)
-                         ImVec2 c1 = WorldToScreen(ImVec2((*avatar_selected).default_frame.joints[jointselected].origin.x, (*avatar_selected).default_frame.joints[jointselected].origin.y));
-                         ImVec2 c2 = WorldToScreen(ImVec2((*avatar_selected).default_frame.joints[jointselected].origin.x + (*avatar_selected).default_frame.joints[jointselected].direction.x, (*avatar_selected).default_frame.joints[jointselected].origin.y + (*avatar_selected).default_frame.joints[jointselected].direction.y));
-@@ -1970,109 +1982,117 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
+                             float width  = j_text.texture->width  * j_text.scale.x * local_canvas_zoom;
+                             float height = j_text.texture->height * j_text.scale.y * local_canvas_zoom;
  
-                             std::vector<TimelineFlag> flags;
+                             // Direction → angle
  
-                             int i = 0;
-                             int scrub_fr = 0;
+@@ -2067,72 +2067,92 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
+                                     }
  
-                             for (auto& fr : animations[anim_selected].frames) {
- 
-                                 flags.push_back({
-                                     scrub_fr,
-                                     IM_COL32(
-                                         ((255 + (i * 50)) % 255),
-                                         ((120 + (i * 50)) % 255),
-                                         ((180 + (i * 50)) % 255),
-                                         255
-                                     ),
-                                     i
-                                 });
- 
-                                 scrub_fr += fr.time_to_next;
- 
-                                 i++;
-                             }
- 
-                             static int frame_flag_dragging = -1;
-+                            static int frame_flag_selected = -1;
-+                            static int frame_flag_pressed = -1;
-+                            static ImVec2 frame_flag_press_mouse = ImVec2(0.0f, 0.0f);
- 
-                             for (const auto& flag : flags) {
- 
-                                 float y =
-                                     p0.y +
-                                     (flag.frame * pixelsPerFrame) -
-                                     timelineScroll;
- 
-                                 if (y < p0.y - 20.0f)
-                                     continue;
- 
-                                 if (y > p0.y + avail.y + 20.0f)
-                                     continue;
- 
-                                 bool this_flag_hovered =
-                                     hovered &&
-                                     mouse.y > y - 10.0f &&
-                                     mouse.y < y + 10.0f &&
-                                     mouse.x > railX - 10.0f &&
-                                     mouse.x < railX + 140.0f;
- 
--                                if (this_flag_hovered &&
--                                    ImGui::IsMouseClicked(ImGuiMouseButton_Left))
--                                {
--                                    frame_flag_dragging = flag.keyframe_index;
-+                                if (this_flag_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-+                                    frame_flag_pressed = flag.keyframe_index;
-+                                    frame_flag_press_mouse = mouse;
-+                                    frame_flag_selected = flag.keyframe_index;
-+                                    timelineSelectedKey = flag.keyframe_index;
-                                     timelinePlaying = false;
-                                 }
- 
-                                 ImU32 drawColor = flag.color;
- 
--                                if (this_flag_hovered || frame_flag_dragging == flag.keyframe_index) {
-+                                if (this_flag_hovered || frame_flag_dragging == flag.keyframe_index || frame_flag_selected == flag.keyframe_index) {
-                                     drawColor = IM_COL32(255,255,255,255);
-                                 }
- 
-                                 dl->AddLine(
-                                     ImVec2(railX, y),
-                                     ImVec2(railX + 14.0f, y),
-                                     drawColor,
-                                     2.0f
-                                 );
- 
-                                 dl->AddRectFilled(
-                                     ImVec2(railX + 14.0f, y - 5.0f),
-                                     ImVec2(railX + 34.0f, y + 5.0f),
-                                     drawColor,
-                                     2.0f
-                                 );
- 
-                                 dl->AddText(
-                                     ImVec2(railX + 45.0f, y - 7.0f),
-                                     IM_COL32(190,190,190,255),
-                                     std::to_string(flag.keyframe_index).c_str()
-                                 );
-                             }
- 
-                             if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
--
-                                 frame_flag_dragging = -1;
-+                                frame_flag_pressed = -1;
-+                            }
- 
-+                            if (frame_flag_pressed != -1 && frame_flag_dragging == -1 && ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
-+                                float dragDist = sqrtf((mouse.x - frame_flag_press_mouse.x) * (mouse.x - frame_flag_press_mouse.x) + (mouse.y - frame_flag_press_mouse.y) * (mouse.y - frame_flag_press_mouse.y));
-+                                if (dragDist > 6.0f) frame_flag_dragging = frame_flag_pressed;
-                             }
- 
-                             static int drag_initial_mouse_frame = 0;
-                             static int drag_initial_flag_frame = 0;
-                             static bool drag_initialized = false;
- 
-                             if (frame_flag_dragging != -1 && ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
- 
-                                 auto& frames = animations[anim_selected].frames;
- 
-                                 int idx = frame_flag_dragging;
- 
-                                 // cannot drag first frame
-                                 if (idx > 0) {
- 
-                                     // INITIALIZE DRAG STATE ON FIRST FRAME
                                      
  
-                                     if (!drag_initialized) {
+                                 }
  
-                                         drag_initialized = true;
  
-                                         drag_initial_mouse_frame =
-                                             (int)round(
-                                                 (mouse.y - p0.y + timelineScroll) / pixelsPerFrame
-@@ -2167,51 +2187,51 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
+                                 ImGui::Separator();
  
-                                 timelineCurrentTick =
-                                     std::clamp(timelineCurrentTick, 0, std::max(0,totalAnimFrames-1));
+                                 // Onion the previous frame,
+                                 // Onion the anchor frame,
+ 
+                                 ImGui::Checkbox("Anchor Frame Ref", &onion_frame_anch);
+ 
+ 
+                                 ImGui::Checkbox("Previous Frame Ref", &onion_frame_prev);
+ 
+                                 ImGui::Separator();
+ 
+                                 if (selected_anim_frame != -1) {
+ 
+                                     if (ImGui::Button("^^ Draw Order")) {
+ 
+                                         if (avatar_selected != nullptr  && avatar_selected_idx != -1 && anim_selected != -1) {
+ 
+-                                            if (jointselected != -1 && (*avatar_selected).default_texturing.joints.size() >= 2 && jointselected >= 1 && jointselected < (*avatar_selected).default_texturing.joints.size()) {
+-                                                
+-                                                int sel_draw_order = animations[anim_selected].frames[selected_anim_frame].joints[jointselected].draw_order;
++                                            if (jointselected != -1 && (*avatar_selected).default_texturing.joints.size() >= 2 && jointselected >= 0 && jointselected < (*avatar_selected).default_texturing.joints.size()) {
++                                                auto& frame_joints = animations[anim_selected].frames[selected_anim_frame].joints;
++                                                int sel_draw_order = frame_joints[jointselected].draw_order;
++                                                int swap_idx = -1;
+ 
+-                                                animations[anim_selected].frames[selected_anim_frame].joints[jointselected].draw_order = animations[anim_selected].frames[selected_anim_frame].joints[jointselected-1].draw_order;
+-                                                animations[anim_selected].frames[selected_anim_frame].joints[jointselected-1].draw_order = sel_draw_order;
++                                                for (int i = 0; i < frame_joints.size(); i++) {
++                                                    if (i != jointselected && frame_joints[i].draw_order == sel_draw_order - 1) {
++                                                        swap_idx = i;
++                                                        break;
++                                                    }
++                                                }
++
++                                                if (swap_idx != -1) {
++                                                    frame_joints[jointselected].draw_order = frame_joints[swap_idx].draw_order;
++                                                    frame_joints[swap_idx].draw_order = sel_draw_order;
++                                                }
+                                             }
+                                         }
+ 
+                                         
+                                     }
+ 
+                                     if (ImGui::Button("vv Draw Order")) {
+ 
+                                         if (avatar_selected != nullptr && avatar_selected_idx != -1) {
+ 
+-                                            if (jointselected != -1 && (*avatar_selected).default_texturing.joints.size() >= 2 && jointselected >= 0 && jointselected < (*avatar_selected).default_texturing.joints.size()-1) {
+-                                                
+-                                                int sel_draw_order = animations[anim_selected].frames[selected_anim_frame].joints[jointselected].draw_order;
++                                            if (jointselected != -1 && (*avatar_selected).default_texturing.joints.size() >= 2 && jointselected >= 0 && jointselected < (*avatar_selected).default_texturing.joints.size()) {
++                                                auto& frame_joints = animations[anim_selected].frames[selected_anim_frame].joints;
++                                                int sel_draw_order = frame_joints[jointselected].draw_order;
++                                                int swap_idx = -1;
+ 
+-                                                animations[anim_selected].frames[selected_anim_frame].joints[jointselected].draw_order = animations[anim_selected].frames[selected_anim_frame].joints[jointselected+1].draw_order;
+-                                                animations[anim_selected].frames[selected_anim_frame].joints[jointselected+1].draw_order = sel_draw_order;
++                                                for (int i = 0; i < frame_joints.size(); i++) {
++                                                    if (i != jointselected && frame_joints[i].draw_order == sel_draw_order + 1) {
++                                                        swap_idx = i;
++                                                        break;
++                                                    }
++                                                }
++
++                                                if (swap_idx != -1) {
++                                                    frame_joints[jointselected].draw_order = frame_joints[swap_idx].draw_order;
++                                                    frame_joints[swap_idx].draw_order = sel_draw_order;
++                                                }
+ 
+                                             }
+                                         }
+                                     }
+ 
+                                 }
+ 
+                             
+                             
+                                 
+ 
                              }
- 
-                             // scrubber line
-                             dl->AddLine(
-                                 ImVec2(p0.x, scrubY),
-                                 ImVec2(p0.x + avail.x, scrubY),
-                                 IM_COL32(255,40,40,255),
-                                 3.0f
-                             );
- 
-                             // scrubber triangle
-                             dl->AddTriangleFilled(
-                                 ImVec2(railX - 18.0f, scrubY),
-                                 ImVec2(railX - 2.0f, scrubY - 10.0f),
-                                 ImVec2(railX - 2.0f, scrubY + 10.0f),
-                                 IM_COL32(255,50,50,255)
-                             );
- 
-                             // current frame label
-                             dl->AddText(
-                                 ImVec2(p0.x + 140.0f, scrubY - 10.0f),
-                                 IM_COL32(255,80,80,255),
--                                std::string("TIME " + std::to_string(timelineCurrentTick * 16) + " ms").c_str()
-+                                std::string("TIME " + std::to_string(tickToMilliseconds(timelineCurrentTick)) + " ms").c_str()
-                             );
- 
-                             ImGui::InvisibleButton(
-                                 "timeline_capture",
-                                 avail
-                             );
- 
  
                              ImGui::EndTabItem();
                          }
  
-                         ImGui::EndTabBar();
+                         if (ImGui::BeginTabItem("Timing")) {
  
-                         
+                             // ----- set the main static variable controller this shit to true: ------
  
-                     }
+                             editing_anim_w_interpolation = true;
  
-                     ImGui::EndChild();
-                     ImGui::GetStyle().WindowPadding = orig;
- 
-                     
- 
-                 }
- 
-             }
+                             // ============================================================
+                             // TIMELINE PANEL SPACE
+                             // ============================================================
  
 EOF
 )
