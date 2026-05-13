@@ -1,217 +1,116 @@
  (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
 diff --git a/src/Gamefiles/Systems/EditorUISystem.cpp b/src/Gamefiles/Systems/EditorUISystem.cpp
-index 0c218187605490ddc9d603ef4c5780cb3b534b7b..99a120bf7d62922018569c0823e016c13db4aae2 100644
+index 12ef8a7f60cb3519a9d3ae874fc703a9b0adc1e9..7cc7451a57c7588da4a72036ccc6102011ee6cbc 100644
 --- a/src/Gamefiles/Systems/EditorUISystem.cpp
 +++ b/src/Gamefiles/Systems/EditorUISystem.cpp
-@@ -957,51 +957,51 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
-                 
-                 
-                 // If selected_anim_frame == -1,
-                 // Then that means the ANCHOR FRAME is selected
-                 //
-                 // Any other selected frame indicates there is
-                 // a valid animation and a frame of that animation is chosen
-             
-                 if (selected_anim_frame == -1) {
+@@ -1383,84 +1383,88 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
  
-                     // --> ANCHOR FRAME: DRAW
-                     for (int i = 0; i < (*avatar_selected).default_texturing.joints.size(); i++) {
+                     // -------------- 
+                     // Case Branch:
+                     // ---> If we are in the FRAME editing tab OR we are in the TIMING editing tab with added stipulation
+                     //      that If we CANNOT be in Playback/Preview Animation mode AND the scrubber must be on a KEY FRAME
+                     //      >>  THEN and only then in TIMING MODE (or unambiguously in FRAME EDITING MODE) should we draw
+                     //          according to a single keyframe
+                     // ---> OTHERWISE, we must be in the Timing Editing tab and the scrubber must NOT be on a key frame
+                     //      but rather between key frames (otherwise interpolation doesn't really work or make sense)
+                     //      --> Playback mode may have its own beast to handle
  
-                         int idx = get_idx_from_jlayer_id((*avatar_selected), i);
+                     bool scrubberOnKeyframe = false;
+                     int tick_frame_begin = 0;
  
-                         auto& j = (*avatar_selected).default_frame.joints[idx];
-                         auto& j_text = (*avatar_selected).default_texturing.joints[idx];
+                     // TEMPORARY STATIC CONST
+                     const bool animationPlaybackMode = false;
  
-                         ImVec2 a = WorldToScreen(ImVec2(j.origin.x, j.origin.y));
-                         ImVec2 b = WorldToScreen(ImVec2(j.origin.x + j.direction.x,
-                                                     j.origin.y + j.direction.y));
- 
-                         float dist = DistancePointToSegment(mpos, a, b);
- 
-                         bool hovered = dist < 8.0f;
--                        bool selected = (i == jointselected);
-+                        bool selected = (idx == jointselected);
- 
-                         ImU32 color;
- 
-                         if (selected) {
-                             color = IM_COL32(0, 200, 255, 255);   // bright cyan selected
+                     for (KeyAnimFrame kframe : animations[anim_selected].frames) {
+                         if (currentFrame == tick_frame_begin) {
+                             scrubberOnKeyframe = true;
+                             break;
                          }
-                         else if (hovered) {
-                             color = IM_COL32(80, 170, 255, 255);  // blue hover
-                         }
-                         else {
-                             color = IM_COL32(255, 255, 255, 120); // default
-                         }
- 
-                         float thickness = selected ? 6.0f : (hovered ? 5.0f : 3.0f);
- 
-                         draw->AddLine(a, b, color, thickness);
- 
-                         if (j_text.texture != nullptr) {
-                             ImVec2 center = WorldToScreen(ImVec2(j.origin.x, j.origin.y));
- 
-                             float width  = j_text.texture->width  * j_text.scale.x * local_canvas_zoom;
-                             float height = j_text.texture->height * j_text.scale.y * local_canvas_zoom;
- 
-                             // Direction → angle
-                             ImVec2 dir = { j.direction.x, j.direction.y };
-@@ -1364,51 +1364,51 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
-                         }
-                         
-                         jidx_draw_order[i] = jidx;
+                         tick_frame_begin += kframe.time_to_next;
                      }
  
-                     for (int i = 0; i < joint_count; i++) {
- 
-                         // jidx size == joint_count by definition so... not doing an assertion here... yet...
-                         int idx = jidx_draw_order[i];
- 
-                         auto& anchor_j = (*avatar_selected).default_frame.joints[idx];
-                         auto& anim_j = animations[anim_selected].frames[selected_anim_frame].joints[idx];
-                         auto& j_text = (*avatar_selected).default_texturing.joints[idx];
-                         float direction_point_x = 0.0f;
-                         float direction_point_y = 0.0f;
- 
-                         direction_point_x = RotNewPositionVec({anchor_j.origin.x + anim_j.origin.x, anchor_j.origin.y + anim_j.origin.y}, anchor_j.direction, anim_j.rotation).x;
-                         direction_point_y = RotNewPositionVec({anchor_j.origin.x + anim_j.origin.x, anchor_j.origin.y + anim_j.origin.y}, anchor_j.direction, anim_j.rotation).y;
- 
-                         ImVec2 a = WorldToScreen(ImVec2(anchor_j.origin.x + anim_j.origin.x, anchor_j.origin.y + anim_j.origin.y));
-                         ImVec2 b = WorldToScreen(ImVec2(direction_point_x, direction_point_y));
- 
-                         float dist = DistancePointToSegment(mpos, a, b);
- 
-                         bool hovered = dist < 8.0f;
--                        bool selected = (i == jointselected);
-+                        bool selected = (idx == jointselected);
- 
-                         ImU32 color;
- 
-                         if (selected) {
-                             color = IM_COL32(0, 200, 255, 255);   // bright cyan selected
-                         }
-                         else if (hovered) {
-                             color = IM_COL32(80, 170, 255, 255);  // blue hover
-                         }
-                         else {
-                             color = IM_COL32(255, 255, 255, 120); // default
-                         }
- 
-                         float thickness = selected ? 6.0f : (hovered ? 5.0f : 3.0f);
- 
-                         draw->AddLine(a, b, color, thickness);
- 
-                         if (j_text.texture != nullptr) {
-                             ImVec2 center = WorldToScreen(ImVec2(anchor_j.origin.x + anim_j.origin.x, anchor_j.origin.y + anim_j.origin.y));
- 
-                             float width  = j_text.texture->width  * j_text.scale.x * local_canvas_zoom;
-                             float height = j_text.texture->height * j_text.scale.y * local_canvas_zoom;
- 
-                             // Direction → angle
- 
-@@ -2067,72 +2067,92 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
-                                     }
- 
-                                     
- 
-                                 }
- 
- 
-                                 ImGui::Separator();
- 
-                                 // Onion the previous frame,
-                                 // Onion the anchor frame,
- 
-                                 ImGui::Checkbox("Anchor Frame Ref", &onion_frame_anch);
- 
- 
-                                 ImGui::Checkbox("Previous Frame Ref", &onion_frame_prev);
- 
-                                 ImGui::Separator();
- 
-                                 if (selected_anim_frame != -1) {
- 
-                                     if (ImGui::Button("^^ Draw Order")) {
- 
-                                         if (avatar_selected != nullptr  && avatar_selected_idx != -1 && anim_selected != -1) {
- 
--                                            if (jointselected != -1 && (*avatar_selected).default_texturing.joints.size() >= 2 && jointselected >= 1 && jointselected < (*avatar_selected).default_texturing.joints.size()) {
--                                                
--                                                int sel_draw_order = animations[anim_selected].frames[selected_anim_frame].joints[jointselected].draw_order;
-+                                            if (jointselected != -1 && (*avatar_selected).default_texturing.joints.size() >= 2 && jointselected >= 0 && jointselected < (*avatar_selected).default_texturing.joints.size()) {
-+                                                auto& frame_joints = animations[anim_selected].frames[selected_anim_frame].joints;
-+                                                int sel_draw_order = frame_joints[jointselected].draw_order;
-+                                                int swap_idx = -1;
- 
--                                                animations[anim_selected].frames[selected_anim_frame].joints[jointselected].draw_order = animations[anim_selected].frames[selected_anim_frame].joints[jointselected-1].draw_order;
--                                                animations[anim_selected].frames[selected_anim_frame].joints[jointselected-1].draw_order = sel_draw_order;
-+                                                for (int i = 0; i < frame_joints.size(); i++) {
-+                                                    if (i != jointselected && frame_joints[i].draw_order == sel_draw_order - 1) {
-+                                                        swap_idx = i;
-+                                                        break;
-+                                                    }
-+                                                }
+-                    int tick_frame_idx = 0;
+-                    int key_frame_idx = 0;
+-
+-                    for (KeyAnimFrame kframe : animations[anim_selected].frames) {
+-                        if (key_frame_idx >= selected_anim_frame) {
+-                            assert (key_frame_idx == selected_anim_frame);
+-                            break;
++                    int interp_frame_idx = selected_anim_frame;
++                    int interp_frame_start_tick = 0;
 +
-+                                                if (swap_idx != -1) {
-+                                                    frame_joints[jointselected].draw_order = frame_joints[swap_idx].draw_order;
-+                                                    frame_joints[swap_idx].draw_order = sel_draw_order;
-+                                                }
-                                             }
-                                         }
- 
-                                         
-                                     }
- 
-                                     if (ImGui::Button("vv Draw Order")) {
- 
-                                         if (avatar_selected != nullptr && avatar_selected_idx != -1) {
- 
--                                            if (jointselected != -1 && (*avatar_selected).default_texturing.joints.size() >= 2 && jointselected >= 0 && jointselected < (*avatar_selected).default_texturing.joints.size()-1) {
--                                                
--                                                int sel_draw_order = animations[anim_selected].frames[selected_anim_frame].joints[jointselected].draw_order;
-+                                            if (jointselected != -1 && (*avatar_selected).default_texturing.joints.size() >= 2 && jointselected >= 0 && jointselected < (*avatar_selected).default_texturing.joints.size()) {
-+                                                auto& frame_joints = animations[anim_selected].frames[selected_anim_frame].joints;
-+                                                int sel_draw_order = frame_joints[jointselected].draw_order;
-+                                                int swap_idx = -1;
- 
--                                                animations[anim_selected].frames[selected_anim_frame].joints[jointselected].draw_order = animations[anim_selected].frames[selected_anim_frame].joints[jointselected+1].draw_order;
--                                                animations[anim_selected].frames[selected_anim_frame].joints[jointselected+1].draw_order = sel_draw_order;
-+                                                for (int i = 0; i < frame_joints.size(); i++) {
-+                                                    if (i != jointselected && frame_joints[i].draw_order == sel_draw_order + 1) {
-+                                                        swap_idx = i;
-+                                                        break;
-+                                                    }
-+                                                }
-+
-+                                                if (swap_idx != -1) {
-+                                                    frame_joints[jointselected].draw_order = frame_joints[swap_idx].draw_order;
-+                                                    frame_joints[swap_idx].draw_order = sel_draw_order;
-+                                                }
- 
-                                             }
-                                         }
-                                     }
- 
-                                 }
- 
-                             
-                             
-                                 
- 
-                             }
- 
-                             ImGui::EndTabItem();
++                    // Find the keyframe segment containing currentFrame. We do this instead of relying solely
++                    // on selected_anim_frame so interpolation remains stable while scrubbing.
++                    if (!animations[anim_selected].frames.empty()) {
++                        int tick_cursor = 0;
++                        for (int k = 0; k < (int)animations[anim_selected].frames.size(); k++) {
++                            int segment_len = std::max(1, animations[anim_selected].frames[k].time_to_next);
++                            int segment_end = tick_cursor + segment_len;
++                            if (currentFrame >= tick_cursor && currentFrame < segment_end) {
++                                interp_frame_idx = k;
++                                interp_frame_start_tick = tick_cursor;
++                                break;
++                            }
++                            tick_cursor = segment_end;
                          }
+-
+-                        key_frame_idx++;
+-                        tick_frame_idx += kframe.time_to_next;
+                     }
  
-                         if (ImGui::BeginTabItem("Timing")) {
+-                    // key_frame_idx is the marker for the index of the start tick frame of the first frame between
+-                    // two frames we want to interpolate between
+-
+                     if (editing_anim_w_interpolation && (!scrubberOnKeyframe || animationPlaybackMode)) {
  
-                             // ----- set the main static variable controller this shit to true: ------
+                         // PLAYBACK / PREVIEW DRAW (with INTERPOLATION)
  
-                             editing_anim_w_interpolation = true;
+                         for (int i = 0; i < joint_count; i++) {
  
-                             // ============================================================
-                             // TIMELINE PANEL SPACE
-                             // ============================================================
+                             // 
+                             int idx = jidx_draw_order[i];
+                             auto& joint_anchor = (*avatar_selected).default_frame.joints[idx];
+                             auto& joint_texture = (*avatar_selected).default_texturing.joints[idx];
+-                            auto& joint_anim = animations[anim_selected].frames[selected_anim_frame].joints[idx];
++                            auto& joint_anim = animations[anim_selected].frames[interp_frame_idx].joints[idx];
++
++                            int segment_len = std::max(1, animations[anim_selected].frames[interp_frame_idx].time_to_next);
++                            float percent_through_frame = ((float)(currentFrame - interp_frame_start_tick) / (float)segment_len);
++                            percent_through_frame = std::clamp(percent_through_frame, 0.0f, 1.0f);
+ 
+-                            // interpolate?
+-                            float percent_through_frame = ((float)(tick_frame_idx - currentFrame) / (float)(animations[anim_selected].frames[selected_anim_frame].time_to_next));
+-                            int anim_frame_to_interp = selected_anim_frame + 1;
+-                            anim_frame_to_interp = anim_frame_to_interp % (animations[anim_selected].frames.size());
++                            int anim_frame_to_interp = (interp_frame_idx + 1) % (animations[anim_selected].frames.size());
+ 
+-                            AnimJointAdjustmentFrame joint_interp = animations[anim_selected].frames[selected_anim_frame].joints[idx];
++                            AnimJointAdjustmentFrame joint_interp = animations[anim_selected].frames[interp_frame_idx].joints[idx];
+                             const AnimJointAdjustmentFrame& joint_blend = animations[anim_selected].frames[anim_frame_to_interp].joints[idx];
+ 
+                             // Interpolation math  (too easy??)
+                             joint_interp.origin.x = joint_anim.origin.x + ((joint_blend.origin.x - joint_anim.origin.x) * percent_through_frame);
+                             joint_interp.origin.y = joint_anim.origin.y + ((joint_blend.origin.y - joint_anim.origin.y) * percent_through_frame);
+                             joint_interp.rotation = joint_anim.rotation + ((joint_blend.rotation - joint_anim.rotation) * percent_through_frame);
+ 
+                             //AnimJointAdjustmentFrame joint_interpolation = animations[anim_selected].interpolate_joints(, i, currentFrame);
+                             // The Primary place where we set [a] and [b], the two points for each joint and where they will be displayed
+ 
+                             float direction_point_x = RotNewPositionVec({joint_anchor.origin.x + joint_interp.origin.x, joint_anchor.origin.y + joint_interp.origin.y}, joint_anchor.direction, joint_interp.rotation).x;
+                             float direction_point_y = RotNewPositionVec({joint_anchor.origin.x + joint_interp.origin.x, joint_anchor.origin.y + joint_interp.origin.y}, joint_anchor.direction, joint_interp.rotation).y;
+ 
+                             ImVec2 a = WorldToScreen(ImVec2(joint_anchor.origin.x + joint_interp.origin.x, joint_anchor.origin.y + joint_interp.origin.y));
+                             ImVec2 b = WorldToScreen(ImVec2(direction_point_x, direction_point_y));
+ 
+                             float dist = DistancePointToSegment(mpos, a, b);
+                             ImU32 color = IM_COL32(255, 255, 255, 120); // default
+ 
+                             float thickness = 3.0f;
+ 
+                             draw->AddLine(a, b, color, thickness);
+ 
+                             if (joint_texture.texture != nullptr) {
+ 
  
 EOF
 )

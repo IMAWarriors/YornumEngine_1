@@ -1405,21 +1405,24 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         tick_frame_begin += kframe.time_to_next;
                     }
 
-                    int tick_frame_idx = 0;
-                    int key_frame_idx = 0;
+                    int interp_frame_idx = selected_anim_frame;
+                    int interp_frame_start_tick = 0;
 
-                    for (KeyAnimFrame kframe : animations[anim_selected].frames) {
-                        if (key_frame_idx >= selected_anim_frame) {
-                            assert (key_frame_idx == selected_anim_frame);
-                            break;
+                    // Find the keyframe segment containing currentFrame. We do this instead of relying solely
+                    // on selected_anim_frame so interpolation remains stable while scrubbing.
+                    if (!animations[anim_selected].frames.empty()) {
+                        int tick_cursor = 0;
+                        for (int k = 0; k < (int)animations[anim_selected].frames.size(); k++) {
+                            int segment_len = std::max(1, animations[anim_selected].frames[k].time_to_next);
+                            int segment_end = tick_cursor + segment_len;
+                            if (currentFrame >= tick_cursor && currentFrame < segment_end) {
+                                interp_frame_idx = k;
+                                interp_frame_start_tick = tick_cursor;
+                                break;
+                            }
+                            tick_cursor = segment_end;
                         }
-
-                        key_frame_idx++;
-                        tick_frame_idx += kframe.time_to_next;
                     }
-
-                    // key_frame_idx is the marker for the index of the start tick frame of the first frame between
-                    // two frames we want to interpolate between
 
                     if (editing_anim_w_interpolation && (!scrubberOnKeyframe || animationPlaybackMode)) {
 
@@ -1431,20 +1434,40 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             int idx = jidx_draw_order[i];
                             auto& joint_anchor = (*avatar_selected).default_frame.joints[idx];
                             auto& joint_texture = (*avatar_selected).default_texturing.joints[idx];
-                            auto& joint_anim = animations[anim_selected].frames[selected_anim_frame].joints[idx];
+                            auto& joint_anim = animations[anim_selected].frames[interp_frame_idx].joints[idx];
 
-                            // interpolate?
-                            float percent_through_frame = ((float)(tick_frame_idx - currentFrame) / (float)(animations[anim_selected].frames[selected_anim_frame].time_to_next));
-                            int anim_frame_to_interp = selected_anim_frame + 1;
-                            anim_frame_to_interp = anim_frame_to_interp % (animations[anim_selected].frames.size());
+                            int segment_len = std::max(1, animations[anim_selected].frames[interp_frame_idx].time_to_next);
+                            float percent_through_frame = ((float)(currentFrame - interp_frame_start_tick) / (float)segment_len);
+                            percent_through_frame = std::clamp(percent_through_frame, 0.0f, 1.0f);
 
-                            AnimJointAdjustmentFrame joint_interp = animations[anim_selected].frames[selected_anim_frame].joints[idx];
+                            int anim_frame_to_interp = (interp_frame_idx + 1) % (animations[anim_selected].frames.size());
+
+                            AnimJointAdjustmentFrame joint_interp = animations[anim_selected].frames[interp_frame_idx].joints[idx];
                             const AnimJointAdjustmentFrame& joint_blend = animations[anim_selected].frames[anim_frame_to_interp].joints[idx];
 
                             // Interpolation math  (too easy??)
                             joint_interp.origin.x = joint_anim.origin.x + ((joint_blend.origin.x - joint_anim.origin.x) * percent_through_frame);
                             joint_interp.origin.y = joint_anim.origin.y + ((joint_blend.origin.y - joint_anim.origin.y) * percent_through_frame);
-                            joint_interp.rotation = joint_anim.rotation + ((joint_blend.rotation - joint_anim.rotation) * percent_through_frame);
+
+
+                            if (joint_anim.normal_rotation) {
+
+                                if (joint_anim.rotation < joint_blend.rotation) {
+                                    joint_interp.rotation = joint_anim.rotation + ((joint_blend.rotation - joint_anim.rotation) * percent_through_frame);
+                                } else {
+                                    joint_interp.rotation = joint_anim.rotation + ((joint_blend.rotation - joint_anim.rotation - 360.0f) * percent_through_frame);
+                                }
+
+                            } else {
+
+                                if (joint_anim.rotation < joint_blend.rotation) {
+                                    joint_interp.rotation = joint_anim.rotation + ((joint_blend.rotation - joint_anim.rotation - 360.0f) * percent_through_frame);
+                                } else {
+                                    joint_interp.rotation = joint_anim.rotation + ((joint_blend.rotation - joint_anim.rotation) * percent_through_frame);
+                                }
+
+                            } 
+                            
 
                             //AnimJointAdjustmentFrame joint_interpolation = animations[anim_selected].interpolate_joints(, i, currentFrame);
                             // The Primary place where we set [a] and [b], the two points for each joint and where they will be displayed
