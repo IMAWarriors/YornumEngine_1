@@ -947,6 +947,13 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     return angle_deg;
                 };
 
+                auto WrapDeg180 = [](float angle) -> float {
+                    float wrapped = fmodf(angle, 360.0f);
+                    if (wrapped > 180.0f) wrapped -= 360.0f;
+                    if (wrapped <= -180.0f) wrapped += 360.0f;
+                    return wrapped;
+                };
+
 
                 ImU32 canv_col = IM_COL32(20,20,30,255);
 
@@ -1422,6 +1429,12 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             }
                             tick_cursor = segment_end;
                         }
+
+                        // Handle edge case where currentFrame lands exactly on animation end.
+                        if (currentFrame >= tick_cursor && !animations[anim_selected].frames.empty()) {
+                            interp_frame_idx = (int)animations[anim_selected].frames.size() - 1;
+                            interp_frame_start_tick = std::max(0, tick_cursor - std::max(1, animations[anim_selected].frames[interp_frame_idx].time_to_next));
+                        }
                     }
 
                     if (editing_anim_w_interpolation && (!scrubberOnKeyframe || animationPlaybackMode)) {
@@ -1450,23 +1463,17 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             joint_interp.origin.y = joint_anim.origin.y + ((joint_blend.origin.y - joint_anim.origin.y) * percent_through_frame);
 
 
+                            float raw_delta = (joint_blend.rotation - joint_anim.rotation);
+                            float shortest_delta = WrapDeg180(raw_delta);
+
                             if (joint_anim.normal_rotation) {
-
-                                if (joint_anim.rotation < joint_blend.rotation) {
-                                    joint_interp.rotation = joint_anim.rotation + ((joint_blend.rotation - joint_anim.rotation) * percent_through_frame);
-                                } else {
-                                    joint_interp.rotation = joint_anim.rotation + ((joint_blend.rotation - joint_anim.rotation - 360.0f) * percent_through_frame);
-                                }
-
+                                // Default behavior: rotate along shortest angular path.
+                                joint_interp.rotation = joint_anim.rotation + (shortest_delta * percent_through_frame);
                             } else {
-
-                                if (joint_anim.rotation < joint_blend.rotation) {
-                                    joint_interp.rotation = joint_anim.rotation + ((joint_blend.rotation - joint_anim.rotation - 360.0f) * percent_through_frame);
-                                } else {
-                                    joint_interp.rotation = joint_anim.rotation + ((joint_blend.rotation - joint_anim.rotation) * percent_through_frame);
-                                }
-
-                            } 
+                                // Inverse behavior: rotate along the long way around.
+                                float long_delta = (shortest_delta >= 0.0f) ? (shortest_delta - 360.0f) : (shortest_delta + 360.0f);
+                                joint_interp.rotation = joint_anim.rotation + (long_delta * percent_through_frame);
+                            }
                             
 
                             //AnimJointAdjustmentFrame joint_interpolation = animations[anim_selected].interpolate_joints(, i, currentFrame);
@@ -2691,6 +2698,12 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                                 if (endReached && currentFrame > (lastFrame - 4)) {
                                     timelineScroll += pixelsPerFrame;
+                                }
+
+                                // Auto-scroll up when dragging near the top of timeline view.
+                                const float auto_scroll_top_zone = p0.y + 18.0f;
+                                if (mouse.y <= auto_scroll_top_zone) {
+                                    timelineScroll = std::max(-80.0f, timelineScroll - (pixelsPerFrame * 0.75f));
                                 }
                             }
 
