@@ -522,6 +522,23 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                 } 
 
+                // ============================================================
+                // TIMELINE SETTINGS --> Have to establish in this scope rather than in Timings tab
+                //                       so that the Canvas can read interpolations between frames and such
+                // ============================================================
+
+                static int totalFrames = 300;
+
+                static int currentFrame = 0;
+
+                // THIS is the important part
+                static float timelineScroll = 0.0f;
+
+                // zoom level for time spacing
+                static float pixelsPerFrame = 18.0f;
+
+                // ----------------------------------------------------------------
+
                 static bool manual_anim_frame_switch = false;
 
                 ImGui::BeginDisabled(frame_control_disabled);
@@ -1328,21 +1345,20 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     }
 
 
-
-
-                    // NORMAL FRAME: DRAW
+                    // --> Third, NORMAL FRAME: DRAW
                     // --------------------
                     // (Actual draw, no more onion layers)
 
-                    // Allocate an array of the indicies to draw on the heap
                     const int joint_count = (*avatar_selected).default_texturing.joints.size();
+
+                    // Allocate an array of the indicies to draw on the heap
                     int* jidx_draw_order = new int[joint_count];
 
-                    // Sort code:
-                    // ---------------
-                    // draw_order needs to contain a list of all of the indecies
-                    // referring to the joint's idx positions in their default_texturing.joints vector;
-                    // 
+                    // :: Step 1
+                    // ---------------------
+                    // Sort Code:
+                    // ..................................
+                    // Initialize the allocated memory to hold the correct joint draw order according to the frame
 
                     for (int i = 0; i < joint_count; i++) {
 
@@ -1361,111 +1377,257 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         jidx_draw_order[i] = jidx;
                     }
 
-                    for (int i = 0; i < joint_count; i++) {
+                    // :: Step 2
+                    // ---------------------
+                    // Draw Code:
 
-                        // jidx size == joint_count by definition so... not doing an assertion here... yet...
-                        int idx = jidx_draw_order[i];
+                    // -------------- 
+                    // Case Branch:
+                    // ---> If we are in the FRAME editing tab OR we are in the TIMING editing tab with added stipulation
+                    //      that If we CANNOT be in Playback/Preview Animation mode AND the scrubber must be on a KEY FRAME
+                    //      >>  THEN and only then in TIMING MODE (or unambiguously in FRAME EDITING MODE) should we draw
+                    //          according to a single keyframe
+                    // ---> OTHERWISE, we must be in the Timing Editing tab and the scrubber must NOT be on a key frame
+                    //      but rather between key frames (otherwise interpolation doesn't really work or make sense)
+                    //      --> Playback mode may have its own beast to handle
 
-                        auto& anchor_j = (*avatar_selected).default_frame.joints[idx];
-                        auto& anim_j = animations[anim_selected].frames[selected_anim_frame].joints[idx];
-                        auto& j_text = (*avatar_selected).default_texturing.joints[idx];
-                        float direction_point_x = 0.0f;
-                        float direction_point_y = 0.0f;
+                    bool scrubberOnKeyframe = false;
+                    int tick_frame_begin = 0;
 
-                        direction_point_x = RotNewPositionVec({anchor_j.origin.x + anim_j.origin.x, anchor_j.origin.y + anim_j.origin.y}, anchor_j.direction, anim_j.rotation).x;
-                        direction_point_y = RotNewPositionVec({anchor_j.origin.x + anim_j.origin.x, anchor_j.origin.y + anim_j.origin.y}, anchor_j.direction, anim_j.rotation).y;
+                    // TEMPORARY STATIC CONST
+                    const bool animationPlaybackMode = false;
 
-                        ImVec2 a = WorldToScreen(ImVec2(anchor_j.origin.x + anim_j.origin.x, anchor_j.origin.y + anim_j.origin.y));
-                        ImVec2 b = WorldToScreen(ImVec2(direction_point_x, direction_point_y));
-
-                        float dist = DistancePointToSegment(mpos, a, b);
-
-                        bool hovered = dist < 8.0f;
-                        bool selected = (idx == jointselected);
-
-                        ImU32 color;
-
-                        if (selected) {
-                            color = IM_COL32(0, 200, 255, 255);   // bright cyan selected
+                    for (KeyAnimFrame kframe : animations[anim_selected].frames) {
+                        if (currentFrame == tick_frame_begin) {
+                            scrubberOnKeyframe = true;
+                            break;
                         }
-                        else if (hovered) {
-                            color = IM_COL32(80, 170, 255, 255);  // blue hover
+                        tick_frame_begin += kframe.time_to_next;
+                    }
+
+                    int tick_frame_idx = 0;
+                    int key_frame_idx = 0;
+
+                    for (KeyAnimFrame kframe : animations[anim_selected].frames) {
+                        if (key_frame_idx >= selected_anim_frame) {
+                            assert (key_frame_idx == selected_anim_frame);
+                            break;
                         }
-                        else {
-                            color = IM_COL32(255, 255, 255, 120); // default
-                        }
 
-                        float thickness = selected ? 6.0f : (hovered ? 5.0f : 3.0f);
+                        key_frame_idx++;
+                        tick_frame_idx += kframe.time_to_next;
+                    }
 
-                        draw->AddLine(a, b, color, thickness);
+                    // key_frame_idx is the marker for the index of the start tick frame of the first frame between
+                    // two frames we want to interpolate between
 
-                        if (j_text.texture != nullptr) {
-                            ImVec2 center = WorldToScreen(ImVec2(anchor_j.origin.x + anim_j.origin.x, anchor_j.origin.y + anim_j.origin.y));
+                    if (editing_anim_w_interpolation && (!scrubberOnKeyframe || animationPlaybackMode)) {
 
-                            float width  = j_text.texture->width  * j_text.scale.x * local_canvas_zoom;
-                            float height = j_text.texture->height * j_text.scale.y * local_canvas_zoom;
+                        // PLAYBACK / PREVIEW DRAW (with INTERPOLATION)
 
-                            // Direction → angle
+                        for (int i = 0; i < joint_count; i++) {
 
-                            Vec2 newDir = RotNewDirectionVec(anchor_j.direction, anim_j.rotation);
+                            // 
+                            int idx = jidx_draw_order[i];
+                            auto& joint_anchor = (*avatar_selected).default_frame.joints[idx];
+                            auto& joint_texture = (*avatar_selected).default_texturing.joints[idx];
+                            auto& joint_anim = animations[anim_selected].frames[selected_anim_frame].joints[idx];
 
-                            ImVec2 dir = { newDir.x, newDir.y };
-                            float baseAngle = atan2f(dir.y, dir.x);
-                            float angle = baseAngle + j_text.rotation;
+                            // interpolate?
+                            float percent_through_frame = ((float)(tick_frame_idx - currentFrame) / (float)(animations[anim_selected].frames[selected_anim_frame].time_to_next));
+                            int anim_frame_to_interp = selected_anim_frame + 1;
+                            anim_frame_to_interp = anim_frame_to_interp % (animations[anim_selected].frames.size());
 
-                            float cosA = cosf(angle);
-                            float sinA = sinf(angle);
+                            AnimJointAdjustmentFrame joint_interp = animations[anim_selected].frames[selected_anim_frame].joints[idx];
+                            const AnimJointAdjustmentFrame& joint_blend = animations[anim_selected].frames[anim_frame_to_interp].joints[idx];
 
-                            // Offset (in world space --> scaled)
-                            ImVec2 offset = {
-                                j_text.offset.x * local_canvas_zoom,
-                                j_text.offset.y * local_canvas_zoom
-                            };
+                            // Interpolation math  (too easy??)
+                            joint_interp.origin.x = joint_anim.origin.x + ((joint_blend.origin.x - joint_anim.origin.x) * percent_through_frame);
+                            joint_interp.origin.y = joint_anim.origin.y + ((joint_blend.origin.y - joint_anim.origin.y) * percent_through_frame);
+                            joint_interp.rotation = joint_anim.rotation + ((joint_blend.rotation - joint_anim.rotation) * percent_through_frame);
 
-                            // Define local quad (centered)
-                            ImVec2 half = { width * 0.5f, height * 0.5f };
+                            //AnimJointAdjustmentFrame joint_interpolation = animations[anim_selected].interpolate_joints(, i, currentFrame);
+                            // The Primary place where we set [a] and [b], the two points for each joint and where they will be displayed
 
-                            ImVec2 corners[4] = {
-                                {-half.x, -half.y},
-                                { half.x, -half.y},
-                                { half.x,  half.y},
-                                {-half.x,  half.y}
-                            };
+                            float direction_point_x = RotNewPositionVec({joint_anchor.origin.x + joint_interp.origin.x, joint_anchor.origin.y + joint_interp.origin.y}, joint_anchor.direction, joint_interp.rotation).x;
+                            float direction_point_y = RotNewPositionVec({joint_anchor.origin.x + joint_interp.origin.x, joint_anchor.origin.y + joint_interp.origin.y}, joint_anchor.direction, joint_interp.rotation).y;
 
-                            ImVec2 rotated[4];
+                            ImVec2 a = WorldToScreen(ImVec2(joint_anchor.origin.x + joint_interp.origin.x, joint_anchor.origin.y + joint_interp.origin.y));
+                            ImVec2 b = WorldToScreen(ImVec2(direction_point_x, direction_point_y));
 
-                            for (int k = 0; k < 4; k++) {
-                                float x = corners[k].x + offset.x;
-                                float y = corners[k].y + offset.y;
+                            float dist = DistancePointToSegment(mpos, a, b);
+                            ImU32 color = IM_COL32(255, 255, 255, 120); // default
 
-                                rotated[k].x = center.x + (x * cosA - y * sinA);
-                                rotated[k].y = center.y + (x * sinA + y * cosA);
+                            float thickness = 3.0f;
+
+                            draw->AddLine(a, b, color, thickness);
+
+                            if (joint_texture.texture != nullptr) {
+
+                                // Center derivation... FIX JOINTS ANCHORED TO
+                                ImVec2 center = WorldToScreen(ImVec2(joint_anchor.origin.x + joint_interp.origin.x, joint_anchor.origin.y + joint_interp.origin.y));
+
+                                // Texture locale
+                                float width  = joint_texture.texture->width  * joint_texture.scale.x * local_canvas_zoom;
+                                float height = joint_texture.texture->height * joint_texture.scale.y * local_canvas_zoom;
+
+                                // Direction --> angle
+                                Vec2 newDir = RotNewDirectionVec(joint_anchor.direction, joint_interp.rotation);
+                                ImVec2 dir = { newDir.x, newDir.y };
+                                float baseAngle = atan2f(dir.y, dir.x);
+                                float angle = baseAngle + joint_texture.rotation;
+                                float cosA = cosf(angle);
+                                float sinA = sinf(angle);
+
+                                // Offset (in world space --> scaled)
+                                ImVec2 offset = {joint_texture.offset.x * local_canvas_zoom, joint_texture.offset.y * local_canvas_zoom};
+
+                                // Define local quad (centered)
+                                ImVec2 half = { width * 0.5f, height * 0.5f };
+                                ImVec2 corners[4] = {
+                                    {-half.x, -half.y},
+                                    { half.x, -half.y},
+                                    { half.x,  half.y},
+                                    {-half.x,  half.y}
+                                };
+
+                                ImVec2 rotated[4];
+
+                                for (int k = 0; k < 4; k++) {
+                                    float x = corners[k].x + offset.x;
+                                    float y = corners[k].y + offset.y;
+                                    rotated[k].x = center.x + (x * cosA - y * sinA);
+                                    rotated[k].y = center.y + (x * sinA + y * cosA);
+                                }
+
+                                ImVec2 uv0 = { joint_texture.crop_min.x, joint_texture.crop_min.y };
+                                ImVec2 uv1 = { joint_texture.crop_max.x, joint_texture.crop_max.y };
+
+                                draw->AddImageQuad(
+                                    (ImTextureID)(intptr_t)joint_texture.texture->id,
+                                    rotated[0],
+                                    rotated[1],
+                                    rotated[2],
+                                    rotated[3],
+                                    ImVec2(uv0.x, uv0.y),
+                                    ImVec2(uv1.x, uv0.y),
+                                    ImVec2(uv1.x, uv1.y),
+                                    ImVec2(uv0.x, uv1.y)
+                                );
                             }
 
-                            ImVec2 uv0 = { j_text.crop_min.x, j_text.crop_min.y };
-                            ImVec2 uv1 = { j_text.crop_max.x, j_text.crop_max.y };
-
-                            draw->AddImageQuad(
-                                (ImTextureID)(intptr_t)j_text.texture->id,
-                                rotated[0],
-                                rotated[1],
-                                rotated[2],
-                                rotated[3],
-                                ImVec2(uv0.x, uv0.y),
-                                ImVec2(uv1.x, uv0.y),
-                                ImVec2(uv1.x, uv1.y),
-                                ImVec2(uv0.x, uv1.y)
-                            );
                         }
 
-                        // CLICK SELECT
-                        if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-                            jointselected = idx;
+
+
+
+                    } else {
+
+                        // FRAME EDITABLE DRAW
+                        for (int i = 0; i < joint_count; i++) {
+
+                            // jidx size == joint_count by definition so... not doing an assertion here... yet...
+                            int idx = jidx_draw_order[i];
+
+                            auto& anchor_j = (*avatar_selected).default_frame.joints[idx];
+                            auto& anim_j = animations[anim_selected].frames[selected_anim_frame].joints[idx];
+                            auto& j_text = (*avatar_selected).default_texturing.joints[idx];
+                            float direction_point_x = 0.0f;
+                            float direction_point_y = 0.0f;
+
+                            direction_point_x = RotNewPositionVec({anchor_j.origin.x + anim_j.origin.x, anchor_j.origin.y + anim_j.origin.y}, anchor_j.direction, anim_j.rotation).x;
+                            direction_point_y = RotNewPositionVec({anchor_j.origin.x + anim_j.origin.x, anchor_j.origin.y + anim_j.origin.y}, anchor_j.direction, anim_j.rotation).y;
+
+                            ImVec2 a = WorldToScreen(ImVec2(anchor_j.origin.x + anim_j.origin.x, anchor_j.origin.y + anim_j.origin.y));
+                            ImVec2 b = WorldToScreen(ImVec2(direction_point_x, direction_point_y));
+
+                            float dist = DistancePointToSegment(mpos, a, b);
+
+                            bool hovered = dist < 8.0f;
+                            bool selected = (idx == jointselected);
+
+                            ImU32 color;
+
+                            if (selected) {
+                                color = IM_COL32(0, 200, 255, 255);   // bright cyan selected
+                            }
+                            else if (hovered) {
+                                color = IM_COL32(80, 170, 255, 255);  // blue hover
+                            }
+                            else {
+                                color = IM_COL32(255, 255, 255, 120); // default
+                            }
+
+                            float thickness = selected ? 6.0f : (hovered ? 5.0f : 3.0f);
+
+                            draw->AddLine(a, b, color, thickness);
+
+                            if (j_text.texture != nullptr) {
+
+                                // Locations
+                                ImVec2 center = WorldToScreen(ImVec2(anchor_j.origin.x + anim_j.origin.x, anchor_j.origin.y + anim_j.origin.y));
+                                float width  = j_text.texture->width  * j_text.scale.x * local_canvas_zoom;
+                                float height = j_text.texture->height * j_text.scale.y * local_canvas_zoom;
+
+                                // Direction --> angle
+                                Vec2 newDir = RotNewDirectionVec(anchor_j.direction, anim_j.rotation);
+                                ImVec2 dir = { newDir.x, newDir.y };
+                                float baseAngle = atan2f(dir.y, dir.x);
+                                float angle = baseAngle + j_text.rotation;
+                                float cosA = cosf(angle);
+                                float sinA = sinf(angle);
+
+                                // Offset (in world space --> scaled)
+                                ImVec2 offset = {j_text.offset.x * local_canvas_zoom, j_text.offset.y * local_canvas_zoom};
+
+                                // Define local quad (centered)
+                                ImVec2 half = { width * 0.5f, height * 0.5f };
+                                ImVec2 corners[4] = {
+                                    {-half.x, -half.y},
+                                    { half.x, -half.y},
+                                    { half.x,  half.y},
+                                    {-half.x,  half.y}
+                                };
+
+                                ImVec2 rotated[4];
+
+                                for (int k = 0; k < 4; k++) {
+                                    float x = corners[k].x + offset.x;
+                                    float y = corners[k].y + offset.y;
+                                    rotated[k].x = center.x + (x * cosA - y * sinA);
+                                    rotated[k].y = center.y + (x * sinA + y * cosA);
+                                }
+
+                                ImVec2 uv0 = { j_text.crop_min.x, j_text.crop_min.y };
+                                ImVec2 uv1 = { j_text.crop_max.x, j_text.crop_max.y };
+
+                                draw->AddImageQuad(
+                                    (ImTextureID)(intptr_t)j_text.texture->id,
+                                    rotated[0],
+                                    rotated[1],
+                                    rotated[2],
+                                    rotated[3],
+                                    ImVec2(uv0.x, uv0.y),
+                                    ImVec2(uv1.x, uv0.y),
+                                    ImVec2(uv1.x, uv1.y),
+                                    ImVec2(uv0.x, uv1.y)
+                                );
+                            }
+
+                            // CLICK SELECT only should make sense if we are on a keyframe
+                            if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                                jointselected = idx;
+                            }
+
                         }
+
                     }
+
+
 
                     // Clean up heap memory with jidx draw order
                     delete[] jidx_draw_order;
+
                 }
 
                 
@@ -1496,227 +1658,240 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                 static float orig_rot;
 
+                bool scrubberOnKeyframe = false;
+                int tt = 0;
+                int ti = 0;
+                for (KeyAnimFrame kframe : animations[anim_selected].frames) {
+                    if (currentFrame == tt) {
+                        scrubberOnKeyframe = true;
+                        break;
+                    }
+                    tt += kframe.time_to_next;
+                    ti++;
+                }
 
-                // Joint dragging logic
-                if (selected_anim_frame == -1) {
+                if (!editing_anim_w_interpolation || (scrubberOnKeyframe && ti == selected_anim_frame)) {
+                    // Joint dragging logic
+                    if (selected_anim_frame == -1) {
 
-                    // Dragging script setup and draw dragging notation
-                    if (jointselected != -1) {
+                        // Dragging script setup and draw dragging notation
+                        if (jointselected != -1) {
 
-                        ImVec2 mouse = ImGui::GetIO().MousePos;
+                            ImVec2 mouse = ImGui::GetIO().MousePos;
 
-                        // circle position (world or screen space)
-                        ImVec2 c1 = WorldToScreen(ImVec2((*avatar_selected).default_frame.joints[jointselected].origin.x, (*avatar_selected).default_frame.joints[jointselected].origin.y));
-                        ImVec2 c2 = WorldToScreen(ImVec2((*avatar_selected).default_frame.joints[jointselected].origin.x + (*avatar_selected).default_frame.joints[jointselected].direction.x, (*avatar_selected).default_frame.joints[jointselected].origin.y + (*avatar_selected).default_frame.joints[jointselected].direction.y));
-                        float radius = 10.0f;
+                            // circle position (world or screen space)
+                            ImVec2 c1 = WorldToScreen(ImVec2((*avatar_selected).default_frame.joints[jointselected].origin.x, (*avatar_selected).default_frame.joints[jointselected].origin.y));
+                            ImVec2 c2 = WorldToScreen(ImVec2((*avatar_selected).default_frame.joints[jointselected].origin.x + (*avatar_selected).default_frame.joints[jointselected].direction.x, (*avatar_selected).default_frame.joints[jointselected].origin.y + (*avatar_selected).default_frame.joints[jointselected].direction.y));
+                            float radius = 10.0f;
 
-                        // distance check for hover
-                        float dx1 = mouse.x - c1.x;
-                        float dy1 = mouse.y - c1.y;
-                        bool hov1 = (dx1*dx1 + dy1*dy1) <= (radius * radius);
+                            // distance check for hover
+                            float dx1 = mouse.x - c1.x;
+                            float dy1 = mouse.y - c1.y;
+                            bool hov1 = (dx1*dx1 + dy1*dy1) <= (radius * radius);
 
-                        // distance check for hover
-                        float dx2 = mouse.x - c2.x;
-                        float dy2 = mouse.y - c2.y;
-                        bool hov2 = (dx2*dx2 + dy2*dy2) <= (radius * radius);
+                            // distance check for hover
+                            float dx2 = mouse.x - c2.x;
+                            float dy2 = mouse.y - c2.y;
+                            bool hov2 = (dx2*dx2 + dy2*dy2) <= (radius * radius);
 
-                        // choose color
-                        ImU32 col1 = hov1
-                            ? IM_COL32(255, 140, 0, 150)   // orange
-                            : IM_COL32(0, 160, 255, 100);   // bright blue
+                            // choose color
+                            ImU32 col1 = hov1
+                                ? IM_COL32(255, 140, 0, 150)   // orange
+                                : IM_COL32(0, 160, 255, 100);   // bright blue
 
-                        if (!(point1 || point2)) {
-                            if (hov1) {
+                            if (!(point1 || point2)) {
+                                if (hov1) {
 
-                                doingJointMoveThisFrame = true;
+                                    doingJointMoveThisFrame = true;
 
-                                if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-                                    point1 = true;
-                                    point2 = false;
-                                    orig_point = ImVec2((*avatar_selected).default_frame.joints[jointselected].origin.x, (*avatar_selected).default_frame.joints[jointselected].origin.y);
-                                    orig_mouse = ImGui::GetIO().MousePos;
-                                }
-                            } else if (hov2) {
+                                    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                                        point1 = true;
+                                        point2 = false;
+                                        orig_point = ImVec2((*avatar_selected).default_frame.joints[jointselected].origin.x, (*avatar_selected).default_frame.joints[jointselected].origin.y);
+                                        orig_mouse = ImGui::GetIO().MousePos;
+                                    }
+                                } else if (hov2) {
 
-                                doingJointMoveThisFrame = true;
+                                    doingJointMoveThisFrame = true;
 
-                                if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-                                    point1 = false;
-                                    point2 = true;
-                                    orig_point = ImVec2((*avatar_selected).default_frame.joints[jointselected].direction.x, (*avatar_selected).default_frame.joints[jointselected].direction.y);
-                                    orig_mouse = ImGui::GetIO().MousePos;
+                                    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                                        point1 = false;
+                                        point2 = true;
+                                        orig_point = ImVec2((*avatar_selected).default_frame.joints[jointselected].direction.x, (*avatar_selected).default_frame.joints[jointselected].direction.y);
+                                        orig_mouse = ImGui::GetIO().MousePos;
+                                        
+                                    }
+                                    
+                                } else {
                                     
                                 }
-                                
-                            } else {
-                                
                             }
-                        }
 
-                        if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
-                        {
-                            point1 = false;
-                            point2 = false;
-                        }
-
-                        if (point1) {
-                            ImVec2 delta = {ImGui::GetIO().MousePos.x - orig_mouse.x, ImGui::GetIO().MousePos.y - orig_mouse.y};
-
-                            (*avatar_selected).default_frame.joints[jointselected].origin =
+                            if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
                             {
-                                orig_point.x + delta.x / local_canvas_zoom,
-                                orig_point.y + delta.y / local_canvas_zoom
-                            };
-                        }
+                                point1 = false;
+                                point2 = false;
+                            }
 
-                        if (point2) {
-                            ImVec2 delta = {ImGui::GetIO().MousePos.x - orig_mouse.x, ImGui::GetIO().MousePos.y - orig_mouse.y};
+                            if (point1) {
+                                ImVec2 delta = {ImGui::GetIO().MousePos.x - orig_mouse.x, ImGui::GetIO().MousePos.y - orig_mouse.y};
 
-                            (*avatar_selected).default_frame.joints[jointselected].direction =
-                            {
-                                orig_point.x + delta.x / local_canvas_zoom,
-                                orig_point.y + delta.y / local_canvas_zoom
-                            };
-                        }
+                                (*avatar_selected).default_frame.joints[jointselected].origin =
+                                {
+                                    orig_point.x + delta.x / local_canvas_zoom,
+                                    orig_point.y + delta.y / local_canvas_zoom
+                                };
+                            }
+
+                            if (point2) {
+                                ImVec2 delta = {ImGui::GetIO().MousePos.x - orig_mouse.x, ImGui::GetIO().MousePos.y - orig_mouse.y};
+
+                                (*avatar_selected).default_frame.joints[jointselected].direction =
+                                {
+                                    orig_point.x + delta.x / local_canvas_zoom,
+                                    orig_point.y + delta.y / local_canvas_zoom
+                                };
+                            }
+                                
+                            // choose color
+                            ImU32 col2 = hov2
+                                ? IM_COL32(255, 255, 0, 150)   // orange
+                                : IM_COL32(150, 180, 255, 100);   // bright blue
+
+                            // draw filled circle
+                            draw->AddCircleFilled(c1, radius, col1);
+                            draw->AddCircleFilled(c2, radius, col2);
+
                             
-                        // choose color
-                        ImU32 col2 = hov2
-                            ? IM_COL32(255, 255, 0, 150)   // orange
-                            : IM_COL32(150, 180, 255, 100);   // bright blue
 
-                        // draw filled circle
-                        draw->AddCircleFilled(c1, radius, col1);
-                        draw->AddCircleFilled(c2, radius, col2);
 
+                        }
                         
+                    } else {
+
+                        if (jointselected != -1) {
+
+                            // If we are trying to drag-edit an animation frame
+                            ImVec2 mouse = ImGui::GetIO().MousePos;
+
+                            int idx = jointselected;
+
+                            const auto& anchor_joint = (*avatar_selected).default_frame.joints[idx];
+
+                            auto& anim_frame_joint = animations[anim_selected].frames[selected_anim_frame].joints[idx];
+
+                            Vec2 new_direction_point = {0.0f, 0.0f};
+
+                            new_direction_point.x = RotNewPositionVec({anchor_joint.origin.x + anim_frame_joint.origin.x, anchor_joint.origin.y + anim_frame_joint.origin.y}, anchor_joint.direction, anim_frame_joint.rotation).x;
+                            new_direction_point.y = RotNewPositionVec({anchor_joint.origin.x + anim_frame_joint.origin.x, anchor_joint.origin.y + anim_frame_joint.origin.y}, anchor_joint.direction, anim_frame_joint.rotation).y;
+
+                            // circle position (world or screen space)
+                            ImVec2 c1 = WorldToScreen(ImVec2(anchor_joint.origin.x + anim_frame_joint.origin.x, anchor_joint.origin.y + anim_frame_joint.origin.y));
+                            ImVec2 c2 = WorldToScreen(ImVec2(new_direction_point.x, new_direction_point.y));
+                            
+                            float radius = 10.0f;
+
+                            // distance check for hover
+                            float dx1 = mouse.x - c1.x;
+                            float dy1 = mouse.y - c1.y;
+                            bool hov1 = (dx1*dx1 + dy1*dy1) <= (radius * radius);
+
+                            // distance check for hover
+                            float dx2 = mouse.x - c2.x;
+                            float dy2 = mouse.y - c2.y;
+                            bool hov2 = (dx2*dx2 + dy2*dy2) <= (radius * radius);
+
+                            // choose color
+                            ImU32 col1 = hov1
+                                ? IM_COL32(255, 140, 0, 150)   // orange
+                                : IM_COL32(0, 160, 255, 100);   // bright blue
+
+                            if (!(point1 || point2)) {
+                                if (hov1) {
+
+                                    // 1st Point: If hovering the first point...
+                                    doingJointMoveThisFrame = true;
+
+                                    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                                        point1 = true;
+                                        point2 = false;
+                                        orig_point = ImVec2(anim_frame_joint.origin.x, anim_frame_joint.origin.y);
+                                        orig_mouse = ImGui::GetIO().MousePos;
+                                    }
+
+                                } else if (hov2) {
+
+                                    // 2nd Point: If hovering the second point...
+                                    doingJointMoveThisFrame = true;
+
+                                    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                                        point1 = false;
+                                        point2 = true;
+
+                                        // Get direction of joint from default frame and apply rotation that has been done this animation frame
+                                        Vec2 this_dir = RotNewDirectionVec(anchor_joint.direction, anim_frame_joint.rotation);
+
+                                        orig_point = ImVec2(this_dir.x, this_dir.y);
+                                        orig_rot = anim_frame_joint.rotation;
+                                        orig_mouse = ImGui::GetIO().MousePos;
+                                        
+                                    }
+
+                                } else {
 
 
-                    }
-                    
-                } else {
-
-                    if (jointselected != -1) {
-
-                        // If we are trying to drag-edit an animation frame
-                        ImVec2 mouse = ImGui::GetIO().MousePos;
-
-                        int idx = jointselected;
-
-                        const auto& anchor_joint = (*avatar_selected).default_frame.joints[idx];
-
-                        auto& anim_frame_joint = animations[anim_selected].frames[selected_anim_frame].joints[idx];
-
-                        Vec2 new_direction_point = {0.0f, 0.0f};
-
-                        new_direction_point.x = RotNewPositionVec({anchor_joint.origin.x + anim_frame_joint.origin.x, anchor_joint.origin.y + anim_frame_joint.origin.y}, anchor_joint.direction, anim_frame_joint.rotation).x;
-                        new_direction_point.y = RotNewPositionVec({anchor_joint.origin.x + anim_frame_joint.origin.x, anchor_joint.origin.y + anim_frame_joint.origin.y}, anchor_joint.direction, anim_frame_joint.rotation).y;
-
-                        // circle position (world or screen space)
-                        ImVec2 c1 = WorldToScreen(ImVec2(anchor_joint.origin.x + anim_frame_joint.origin.x, anchor_joint.origin.y + anim_frame_joint.origin.y));
-                        ImVec2 c2 = WorldToScreen(ImVec2(new_direction_point.x, new_direction_point.y));
-                        
-                        float radius = 10.0f;
-
-                        // distance check for hover
-                        float dx1 = mouse.x - c1.x;
-                        float dy1 = mouse.y - c1.y;
-                        bool hov1 = (dx1*dx1 + dy1*dy1) <= (radius * radius);
-
-                        // distance check for hover
-                        float dx2 = mouse.x - c2.x;
-                        float dy2 = mouse.y - c2.y;
-                        bool hov2 = (dx2*dx2 + dy2*dy2) <= (radius * radius);
-
-                        // choose color
-                        ImU32 col1 = hov1
-                            ? IM_COL32(255, 140, 0, 150)   // orange
-                            : IM_COL32(0, 160, 255, 100);   // bright blue
-
-                        if (!(point1 || point2)) {
-                            if (hov1) {
-
-                                // 1st Point: If hovering the first point...
-                                doingJointMoveThisFrame = true;
-
-                                if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-                                    point1 = true;
-                                    point2 = false;
-                                    orig_point = ImVec2(anim_frame_joint.origin.x, anim_frame_joint.origin.y);
-                                    orig_mouse = ImGui::GetIO().MousePos;
-                                }
-
-                            } else if (hov2) {
-
-                                // 2nd Point: If hovering the second point...
-                                doingJointMoveThisFrame = true;
-
-                                if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-                                    point1 = false;
-                                    point2 = true;
-
-                                    // Get direction of joint from default frame and apply rotation that has been done this animation frame
-                                    Vec2 this_dir = RotNewDirectionVec(anchor_joint.direction, anim_frame_joint.rotation);
-
-                                    orig_point = ImVec2(this_dir.x, this_dir.y);
-                                    orig_rot = anim_frame_joint.rotation;
-                                    orig_mouse = ImGui::GetIO().MousePos;
                                     
                                 }
-
-                            } else {
-
-
-                                
                             }
+
+                            if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+                                point1 = false;
+                                point2 = false;
+                            }
+
+                            if (point1) {
+                                ImVec2 delta = {ImGui::GetIO().MousePos.x - orig_mouse.x, ImGui::GetIO().MousePos.y - orig_mouse.y};
+                                anim_frame_joint.origin = {
+                                    orig_point.x + delta.x / local_canvas_zoom,
+                                    orig_point.y + delta.y / local_canvas_zoom
+                                };
+
+                            }
+
+                            if (point2) {
+                                ImVec2 delta = {ImGui::GetIO().MousePos.x - orig_mouse.x, ImGui::GetIO().MousePos.y - orig_mouse.y};
+
+                                float anchor_rotation = RotDegBetweenPoints(
+                                    {0.0f, 0.0f},
+                                    anchor_joint.direction
+                                );
+
+                                // Change in rotation based on change in Mouse XY and where the Anchor's point is
+                                //  --> That degree change should tell you where to put the new direction end Vec2 point
+                                //  --> Not changing magnitude of original direction vector, but just the rotation to where mouose goes
+
+                                ImVec2 screen_orig = WorldToScreen(ImVec2(anchor_joint.origin.x + anim_frame_joint.origin.x, anchor_joint.origin.y + anim_frame_joint.origin.y));
+
+                                float new_anim_rotation = RotDegBetweenPoints(
+                                    {screen_orig.x, screen_orig.y},
+                                    { ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y }
+                                );
+
+                                anim_frame_joint.rotation = new_anim_rotation - anchor_rotation;
+                            }
+                                
+                            // choose color
+                            ImU32 col2 = hov2
+                                ? IM_COL32(255, 255, 0, 150)   // orange
+                                : IM_COL32(150, 180, 255, 100);   // bright blue
+
+                            // draw filled circle
+                            draw->AddCircleFilled(c1, radius, col1);
+                            draw->AddCircleFilled(c2, radius, col2);
+
                         }
-
-                        if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-                            point1 = false;
-                            point2 = false;
-                        }
-
-                        if (point1) {
-                            ImVec2 delta = {ImGui::GetIO().MousePos.x - orig_mouse.x, ImGui::GetIO().MousePos.y - orig_mouse.y};
-                            anim_frame_joint.origin = {
-                                orig_point.x + delta.x / local_canvas_zoom,
-                                orig_point.y + delta.y / local_canvas_zoom
-                            };
-
-                        }
-
-                        if (point2) {
-                            ImVec2 delta = {ImGui::GetIO().MousePos.x - orig_mouse.x, ImGui::GetIO().MousePos.y - orig_mouse.y};
-
-                            float anchor_rotation = RotDegBetweenPoints(
-                                {0.0f, 0.0f},
-                                anchor_joint.direction
-                            );
-
-                            // Change in rotation based on change in Mouse XY and where the Anchor's point is
-                            //  --> That degree change should tell you where to put the new direction end Vec2 point
-                            //  --> Not changing magnitude of original direction vector, but just the rotation to where mouose goes
-
-                            ImVec2 screen_orig = WorldToScreen(ImVec2(anchor_joint.origin.x + anim_frame_joint.origin.x, anchor_joint.origin.y + anim_frame_joint.origin.y));
-
-                            float new_anim_rotation = RotDegBetweenPoints(
-                                {screen_orig.x, screen_orig.y},
-                                { ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y }
-                            );
-
-                            anim_frame_joint.rotation = new_anim_rotation - anchor_rotation;
-                        }
-                            
-                        // choose color
-                        ImU32 col2 = hov2
-                            ? IM_COL32(255, 255, 0, 150)   // orange
-                            : IM_COL32(150, 180, 255, 100);   // bright blue
-
-                        // draw filled circle
-                        draw->AddCircleFilled(c1, radius, col1);
-                        draw->AddCircleFilled(c2, radius, col2);
 
                     }
-
                 }
 
                 // Camera dragging scripts
@@ -1771,14 +1946,42 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     // If we ARE editing with interpolation
 
                     draw->AddText(
-                            ImVec2(canvasPos.x + 5.0f, (canvasPos.y + 15.0f) - ImGui::GetFontSize() - 2.0f),
+                            ImVec2(canvasPos.x + 5.0f, (canvasPos.y + 20.0f) - ImGui::GetFontSize() - 2.0f),
                             IM_COL32(255, 20, 20, 255),
                             std::string("ANIMATION MODE: ").c_str() );
 
                     draw->AddText(
-                            ImVec2(canvasPos.x + 75.0f, (canvasPos.y + 15.0f) - ImGui::GetFontSize() - 2.0f),
+                            ImVec2(canvasPos.x + 115.0f, (canvasPos.y + 20.0f) - ImGui::GetFontSize() - 2.0f),
                             IM_COL32(255, 255, 255, 255),
                             std::string("Key Frame: " + std::to_string(selected_anim_frame)).c_str() );
+
+
+                    bool scrubberOnKeyframe = false;
+                    int tick_frame_acc = 0;
+
+                    for (KeyAnimFrame kframe : animations[anim_selected].frames) {
+                        if (currentFrame == tick_frame_acc) {
+                            scrubberOnKeyframe = true;
+                            break;
+                        }
+                        tick_frame_acc += kframe.time_to_next;
+                    }
+
+                    if (scrubberOnKeyframe) {
+
+                        draw->AddText(
+                            ImVec2(canvasPos.x + 220.0f, (canvasPos.y + 20.0f) - ImGui::GetFontSize() - 2.0f),
+                            IM_COL32(100, 255, 100, 255),
+                            std::string("[Key Frame]").c_str() );
+
+                    } else {
+
+                        draw->AddText(
+                            ImVec2(canvasPos.x + 220.0f, (canvasPos.y + 20.0f) - ImGui::GetFontSize() - 2.0f),
+                            IM_COL32(255, 255, 100, 255),
+                            std::string("[Interpolation Frame]").c_str() );
+                    
+                    }
 
                 }
 
@@ -2066,10 +2269,15 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                         Row(">> Y", [&]() { ImGui::DragFloat("##oy", &joint.origin.y, 0.1f); });
 
                                         Row(">> Rot.", [&]() { ImGui::DragFloat("##dr", &joint.rotation, 0.1f); });
+                                        
 
                                         Row("Draw Order: ", [&]() { ImGui::Text(std::to_string(joint.draw_order).c_str()); });
 
                                         ImGui::EndTable();
+
+                                        ImGui::Separator();
+
+                                        ImGui::Checkbox("Normal Interpolation", &joint.normal_rotation);
 
 
                                     }
@@ -2158,7 +2366,6 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         if (ImGui::BeginTabItem("Timing")) {
 
                             // ----- set the main static variable controller this shit to true: ------
-
                             editing_anim_w_interpolation = true;
 
                             // ============================================================
@@ -2176,19 +2383,23 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 IM_COL32(22,22,22,255)
                             );
 
-                            // ============================================================
-                            // TIMELINE SETTINGS
-                            // ============================================================
+                            int animation_tick_frame_length = 0;
 
-                            static int totalFrames = 300;
+                            for (const KeyAnimFrame& kframe : animations[anim_selected].frames) {
+                                animation_tick_frame_length += kframe.time_to_next;
+                            }
 
-                            static int currentFrame = 0;
+                            dl->AddRectFilled(
+                                ImVec2(p0.x, 
+                                    p0.y + ((0 * pixelsPerFrame) - timelineScroll)),
+                                ImVec2(p0.x + avail.x, 
+                                    p0.y + ((animation_tick_frame_length * pixelsPerFrame) - timelineScroll)),
+                                IM_COL32(34,34,34,255)
+                            );
 
-                            // THIS is the important part
-                            static float timelineScroll = 0.0f;
+                            
 
-                            // zoom level for time spacing
-                            static float pixelsPerFrame = 18.0f;
+                           
 
                             // ============================================================
                             // SCROLL + ZOOM
@@ -2203,7 +2414,6 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 mouse.y <= p0.y + avail.y;
 
                             if (hovered) {
-
                                 if (ImGui::GetIO().KeyCtrl) {
 
                                     pixelsPerFrame += ImGui::GetIO().MouseWheel * 2.0f;
@@ -2240,6 +2450,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             // DRAW FRAMES
                             // ============================================================
 
+                            bool endReached = false;
+                            int lastFrame = 0;
+
                             for (int frame = 0; frame <= totalFrames; frame++) {
 
                                 float y =
@@ -2247,12 +2460,23 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                     (frame * pixelsPerFrame) -
                                     timelineScroll;
 
-                                // cull invisible frames
+                                // cull invisible frames BEFORE visible region
                                 if (y < p0.y - 40.0f)
                                     continue;
 
-                                if (y > p0.y + avail.y + 40.0f)
+                                // cull invisible frames AFTER visible region
+                                if (y > p0.y + avail.y + 40.0f) {
+
+                                    if (!endReached)
+                                        lastFrame = frame;
+
+                                    endReached = true;
                                     continue;
+                                }
+
+                                if (frame > animation_tick_frame_length) {
+                                    continue;
+                                }
 
                                 bool major = (frame % 10 == 0);
 
@@ -2279,6 +2503,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             // ============================================================
                             // EXAMPLE FLAGS
                             // ============================================================
+
+                            bool isSomeFlagHovered = false;
 
                             struct TimelineFlag {
                                 int frame;
@@ -2327,7 +2553,13 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                     mouse.x < railX + 140.0f;
 
                                 if (this_flag_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-                                    selected_anim_frame = flag.keyframe_index;
+
+                                    // dont change current frame of scrubber not there
+                                    if (!(ImGui::GetIO().KeyShift)) {
+                                        currentFrame = flag.frame;
+                                    } else {
+                                        selected_anim_frame = flag.keyframe_index;
+                                    }
                                 }
 
                                 ImU32 drawColor = flag.color;
@@ -2363,11 +2595,35 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                     IM_COL32(190,190,190,255),
                                     std::to_string(flag.keyframe_index).c_str()
                                 );
+
+                                if (this_flag_hovered)
+                                    isSomeFlagHovered = true;
+
                             }
 
 
                             // =====================
 
+                            // Given some random millisecond frame in the timeline, find what the last
+                            // Key Frame defined was and return its index basically
+
+                            auto getLastKFrameFromTick = [&](int tick_frame) -> int {
+
+                                if (animations[anim_selected].frames.size() == flags.size()) {
+                                    int i = 0;
+                                    for (const KeyAnimFrame& kframe : animations[anim_selected].frames) {
+                                        const TimelineFlag flag = flags[i];
+                                        if (tick_frame >= flag.frame && tick_frame < flag.frame + kframe.time_to_next ) {
+                                            return i;
+                                        }
+
+                                        i++;
+                                    }
+                                }
+
+                                // Failsafe I guess?
+                                return 0;
+                            };
 
 
 
@@ -2388,9 +2644,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                             static bool draggingScrubber = false;
 
-                            if (hoverScrubber &&
-                                ImGui::IsMouseClicked(ImGuiMouseButton_Left))
-                            {
+                            if (hoverScrubber && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
                                 draggingScrubber = true;
                             }
 
@@ -2400,14 +2654,21 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                             if (draggingScrubber) {
 
-                                float local =
-                                    mouse.y - p0.y + timelineScroll;
+                                // Scroll scrubber when dragging
+                                float local = mouse.y - p0.y + timelineScroll;
+                                currentFrame = (int)round(local / pixelsPerFrame);
+                                currentFrame = std::clamp(currentFrame, 0, totalFrames);
 
-                                currentFrame =
-                                    (int)round(local / pixelsPerFrame);
+                                if (currentFrame > animation_tick_frame_length) {
+                                    currentFrame = animation_tick_frame_length;
+                                }
 
-                                currentFrame =
-                                    std::clamp(currentFrame, 0, totalFrames);
+                                // When dragging the scrubber, click the selected frame into the most relevant one
+                                selected_anim_frame = getLastKFrameFromTick(currentFrame);
+
+                                if (endReached && currentFrame > (lastFrame - 4)) {
+                                    timelineScroll += pixelsPerFrame;
+                                }
                             }
 
                             // scrubber line
@@ -2433,10 +2694,21 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 std::string("FRAME " + std::to_string(currentFrame)).c_str()
                             );
 
-                            ImGui::InvisibleButton(
-                                "timeline_capture",
-                                avail
-                            );
+                            ImGui::InvisibleButton( "timeline_capture", avail);
+
+                            if (!isSomeFlagHovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                                // Left mouse button double-click detected
+
+                                float local = mouse.y - p0.y + timelineScroll;
+                                currentFrame = (int)round(local / pixelsPerFrame);
+                                currentFrame = std::clamp(currentFrame, 0, totalFrames);
+
+                                if (!(ImGui::GetIO().KeyShift)) {
+                                    // When dragging the scrubber, click the selected frame into the most relevant one
+                                    selected_anim_frame = getLastKFrameFromTick(currentFrame);
+                                }
+
+                            }
 
                             ImGui::EndTabItem();
                         }

@@ -119,14 +119,14 @@ void CameraSystem::update (Registry & registry, float deltatime) {
                 
             }
 
-            if (IsKeyDown(KEY_LEFT_CONTROL)) {
+            if (IsKeyDown(KEY_E) && IsKeyDown(KEY_LEFT_SHIFT)) {
                 camera.zoom += 2.0f * deltatime;
                 if (camera.zoom > camera.maxZoom) {
                     camera.zoom = camera.maxZoom;
                 }
             }
 
-            if (IsKeyDown(KEY_LEFT_SHIFT)) {
+            if (IsKeyDown(KEY_Q) && IsKeyDown(KEY_LEFT_SHIFT)) {
                 camera.zoom -= 2.0f * deltatime;
                 if (camera.zoom < camera.minZoom) {
                     camera.zoom = camera.minZoom;

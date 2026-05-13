@@ -126,6 +126,9 @@ struct KeyFrame {
 };
 
 
+class Animation;
+
+
 class Avatar {
     public:
         std::string name;
@@ -175,9 +178,9 @@ class Avatar {
         // --> More common use of frames in my code is in reference to KEY FRAMES which happen at
         // arbitrary user defined times, but always occur on some tick
 
-        void IM_DrawAvatar (Vec2 position, float scale, Animation animation, int tick_ms);
+        void IM_DrawAvatar (Vec2 position, float scale, const Animation& animation, int tick_ms);
 
-        void DrawAvatar (Vec2 position, float scale, Animation animation, int tick_ms);
+        void DrawAvatar (Vec2 position, float scale, const Animation& animation, int tick_ms);
 
 
 
@@ -355,19 +358,6 @@ struct Animation {
 // Avatar Interpolation Drawing Definitions:
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-void Avatar::IM_DrawAvatar(Vec2 position, float scale, Animation animation, int tick_ms) {
-
-
-
-
-}
-
-void Avatar::DrawAvatar(Vec2 position, float scale, Animation animation, int tick_ms) {
-
-    
-
-
-}
 
 #endif
 
