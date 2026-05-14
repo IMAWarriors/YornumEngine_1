@@ -260,6 +260,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
         static bool onion_frame_anch = false;
         static bool onion_frame_prev = false;
 
+        static bool show_preview_joints = true;
+
         if (ImGui::Begin("Create Avatar...", nullptr, flags)) {
 
             if (avatarMenu == AvatarCreatorMenu::AVATAR_SELECTION) {
@@ -341,7 +343,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     
                     if (animations.size() > 0) {
                         ImGui::Text("General Animations");
-                        ImGui::Text("---------------------");
+
+                        ImGui::Separator();
                     }
 
                     
@@ -431,6 +434,12 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
             } else if (avatarMenu == AvatarCreatorMenu::KEYFRAME_EDITOR) {
 
                 const std::string editKind = std::string((*avatar_selected).name + ": " + animations[anim_selected].name);
+
+                if (ImGui::Button("<<")) {
+                    avatarMenu = AvatarCreatorMenu::AVATAR_SELECTION;
+                }
+
+                ImGui::SameLine();
 
                 ImGui::Text(editKind.c_str());
 
@@ -809,6 +818,19 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     ImGui::PopID();
                 }
 
+                ImGui::Separator();
+
+
+                if (editing_anim_w_interpolation) {
+                    ImGui::Text("Previewer:");
+
+                    ImGui::Checkbox("Show Joints", &show_preview_joints);
+
+                }
+
+
+
+
                 ImGui::EndChild();
 
 
@@ -855,7 +877,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 //
 
 
-                float controller_bar_height = 65.0f;
+                float controller_bar_height = 165.0f;
 
                 
                 if (editing_anim_w_interpolation) {
@@ -1376,7 +1398,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         draw_frame_idx = 0;
                         for (int k = 0; k < (int)animations[anim_selected].frames.size(); k++) {
                             int segment_len = std::max(1, animations[anim_selected].frames[k].time_to_next);
-                            int segment_end = tick_cursor + segment_len;
+                            int segment_end = tick_cursor + segment_len + 1;
                             if (currentFrame >= tick_cursor && currentFrame < segment_end) {
                                 draw_frame_idx = k;
                                 break;
@@ -1419,20 +1441,6 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     //      but rather between key frames (otherwise interpolation doesn't really work or make sense)
                     //      --> Playback mode may have its own beast to handle
 
-                    bool scrubberOnKeyframe = false;
-                    int tick_frame_begin = 0;
-
-                    // TEMPORARY STATIC CONST
-                    const bool animationPlaybackMode = false;
-
-                    for (KeyAnimFrame kframe : animations[anim_selected].frames) {
-                        if (currentFrame == tick_frame_begin) {
-                            scrubberOnKeyframe = true;
-                            break;
-                        }
-                        tick_frame_begin += kframe.time_to_next;
-                    }
-
                     int interp_frame_idx = selected_anim_frame;
                     int interp_frame_start_tick = 0;
 
@@ -1441,8 +1449,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     if (!animations[anim_selected].frames.empty()) {
                         int tick_cursor = 0;
                         for (int k = 0; k < (int)animations[anim_selected].frames.size(); k++) {
-                            int segment_len = std::max(1, animations[anim_selected].frames[k].time_to_next);
-                            int segment_end = tick_cursor + segment_len;
+                            int segment_len = animations[anim_selected].frames[k].time_to_next;
+                            int segment_end = tick_cursor + segment_len + 1;
                             if (currentFrame >= tick_cursor && currentFrame < segment_end) {
                                 interp_frame_idx = k;
                                 interp_frame_start_tick = tick_cursor;
@@ -1451,14 +1459,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             tick_cursor = segment_end;
                         }
 
-                        // Handle edge case where currentFrame lands exactly on animation end.
-                        if (currentFrame >= tick_cursor && !animations[anim_selected].frames.empty()) {
-                            interp_frame_idx = (int)animations[anim_selected].frames.size() - 1;
-                            interp_frame_start_tick = std::max(0, tick_cursor - std::max(1, animations[anim_selected].frames[interp_frame_idx].time_to_next));
-                        }
                     }
 
-                    
+
                     if (editing_anim_w_interpolation) {
 
                         // PLAYBACK / PREVIEW DRAW (with INTERPOLATION)
@@ -1471,8 +1474,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             auto& joint_texture = (*avatar_selected).default_texturing.joints[idx];
                             auto& joint_anim = animations[anim_selected].frames[interp_frame_idx].joints[idx];
 
-                            int segment_len = std::max(1, animations[anim_selected].frames[interp_frame_idx].time_to_next);
-                            float percent_through_frame = ((float)(currentFrame - interp_frame_start_tick) / (float)segment_len);
+                            int segment_len = animations[anim_selected].frames[interp_frame_idx].time_to_next;
+                            float percent_through_frame = ((float)(currentFrame - interp_frame_start_tick) / ((float)segment_len));
                             percent_through_frame = std::clamp(percent_through_frame, 0.0f, 1.0f);
 
                             int anim_frame_to_interp = (interp_frame_idx + 1) % (animations[anim_selected].frames.size());
@@ -1508,11 +1511,16 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             ImVec2 b = WorldToScreen(ImVec2(direction_point_x, direction_point_y));
 
                             float dist = DistancePointToSegment(mpos, a, b);
-                            ImU32 color = IM_COL32(255, 255, 255, 120); // default
 
-                            float thickness = 3.0f;
+                            if (show_preview_joints) {
+                            
+                                ImU32 color = IM_COL32(255, 255, 255, 120); // default
 
-                            draw->AddLine(a, b, color, thickness);
+                                float thickness = 3.0f;
+
+                                draw->AddLine(a, b, color, thickness);
+
+                            }
 
                             if (joint_texture.texture != nullptr) {
 
@@ -1710,19 +1718,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                 static float orig_rot;
 
-                bool scrubberOnKeyframe = false;
-                int tt = 0;
-                int ti = 0;
-                for (KeyAnimFrame kframe : animations[anim_selected].frames) {
-                    if (currentFrame == tt) {
-                        scrubberOnKeyframe = true;
-                        break;
-                    }
-                    tt += kframe.time_to_next;
-                    ti++;
-                }
-
-                if (!editing_anim_w_interpolation || (scrubberOnKeyframe && ti == selected_anim_frame)) {
+                if (!editing_anim_w_interpolation) {
                     // Joint dragging logic
                     if (selected_anim_frame == -1) {
 
@@ -1997,6 +1993,19 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 } else {
                     // If we ARE editing with interpolation
 
+                    bool scrubberOnKeyframe = false;
+                    int tick_frame_acc = 0;
+                    int keyframe_idx = 0;
+
+                    for (KeyAnimFrame kframe : animations[anim_selected].frames) {
+                        if (currentFrame == tick_frame_acc) {
+                            scrubberOnKeyframe = true;
+                            break;
+                        }
+                        tick_frame_acc += kframe.time_to_next + 1;
+                        keyframe_idx++;
+                    }
+
                     draw->AddText(
                             ImVec2(canvasPos.x + 5.0f, (canvasPos.y + 20.0f) - ImGui::GetFontSize() - 2.0f),
                             IM_COL32(255, 20, 20, 255),
@@ -2005,19 +2014,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     draw->AddText(
                             ImVec2(canvasPos.x + 115.0f, (canvasPos.y + 20.0f) - ImGui::GetFontSize() - 2.0f),
                             IM_COL32(255, 255, 255, 255),
-                            std::string("Key Frame: " + std::to_string(selected_anim_frame)).c_str() );
-
-
-                    bool scrubberOnKeyframe = false;
-                    int tick_frame_acc = 0;
-
-                    for (KeyAnimFrame kframe : animations[anim_selected].frames) {
-                        if (currentFrame == tick_frame_acc) {
-                            scrubberOnKeyframe = true;
-                            break;
-                        }
-                        tick_frame_acc += kframe.time_to_next;
-                    }
+                            std::string("Key Frame: " + std::to_string(keyframe_idx)).c_str() );
+                    
 
                     if (scrubberOnKeyframe) {
 
@@ -2026,14 +2024,28 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             IM_COL32(100, 255, 100, 255),
                             std::string("[Key Frame]").c_str() );
 
+
+                        draw->AddText(
+                            ImVec2(canvasPos.x + 300.0f, (canvasPos.y + 20.0f) - ImGui::GetFontSize() - 2.0f),
+                            IM_COL32(100, 255, 100, 255),
+                            std::string("Tick Frame: " + std::to_string(currentFrame)).c_str() );
+
                     } else {
 
                         draw->AddText(
                             ImVec2(canvasPos.x + 220.0f, (canvasPos.y + 20.0f) - ImGui::GetFontSize() - 2.0f),
                             IM_COL32(255, 255, 100, 255),
                             std::string("[Interpolation Frame]").c_str() );
+
+                        draw->AddText(
+                            ImVec2(canvasPos.x + 410.0f, (canvasPos.y + 20.0f) - ImGui::GetFontSize() - 2.0f),
+                            IM_COL32(255, 255, 255, 255),
+                            std::string("Tick Frame: " + std::to_string(currentFrame)).c_str() );
                     
                     }
+
+                    
+                    
 
                 }
 
@@ -2097,12 +2109,95 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 // Animation Control Bar Rendering?
                 // *******
 
+                /*
+                
+                ▶
+                ◀
+                ▲
+                ▼
+                ■
+                ▮▮
+                ⏸
+                
+                
+                ⏺
+                ⏪
+                ⏩
+                
+                
+                
+
+                */
+
+                
+                ImGui::EndChild();
+
                 if (editing_anim_w_interpolation) {
 
-                    draw->AddRectFilled(ImVec2(canvasPos.x, (canvasPos.y + canvasSize.y)), ImVec2(canvasPos.x + canvasSize.x, canvasPos.y + canvasSize.y + controller_bar_height), IM_COL32(40,40,60,255));
+                    draw->AddRectFilled(ImVec2(canvasPos.x, (canvasPos.y + canvasSize.y)), ImVec2(canvasPos.x + canvasSize.x, canvasPos.y + canvasSize.y + controller_bar_height), IM_COL32(11,11,18,255));
+                
+                
+                    ImGui::BeginChild(
+                        "PreviewControllerRegion",
+                        ImVec2(0, controller_bar_height),
+                        true
+                    );
+
+                    // Preview Controller
+
+                    ImGui::Text("Preview Controller");
+
+                    ImGui::Separator();
+
+
+                    if (ImGui::Button("<", ImVec2(40, 30))) {
+
+                    }
+
+                    ImGui::SameLine();
+
+                    if (ImGui::Button("⏮", ImVec2(40, 30))) {
+
+                    }
+
+                    ImGui::SameLine();
+
+                    if (ImGui::Button("⏵", ImVec2(70, 30))) {
+
+                    }
+
+                    ImGui::SameLine();
+
+                    if (ImGui::Button("▮", ImVec2(70, 30))) {
+
+                    }
+
+                    ImGui::SameLine();
+
+                    if (ImGui::Button("⏭", ImVec2(40, 30))) {
+
+                    }
+
+                    ImGui::SameLine();
+
+                    if (ImGui::Button("⏯", ImVec2(40, 30))) {
+
+                    }
+
+
+
+
+                    ImGui::EndChild();
+                
+                
+                
+                
                 }
 
-                ImGui::EndChild();
+
+                
+
+
 
                 // End of Canvas
 
@@ -2438,14 +2533,14 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             int animation_tick_frame_length = 0;
 
                             for (const KeyAnimFrame& kframe : animations[anim_selected].frames) {
-                                animation_tick_frame_length += kframe.time_to_next;
+                                animation_tick_frame_length += kframe.time_to_next + 1;
                             }
 
                             dl->AddRectFilled(
                                 ImVec2(p0.x, 
                                     p0.y + ((0 * pixelsPerFrame) - timelineScroll)),
                                 ImVec2(p0.x + avail.x, 
-                                    p0.y + ((animation_tick_frame_length * pixelsPerFrame) - timelineScroll)),
+                                    p0.y + (((animation_tick_frame_length - 1) * pixelsPerFrame) - timelineScroll)),
                                 IM_COL32(34,34,34,255)
                             );
 
@@ -2505,7 +2600,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             bool endReached = false;
                             int lastFrame = 0;
 
-                            for (int frame = 0; frame <= totalFrames; frame++) {
+                            for (int frame = 0; frame <= totalFrames - 1; frame++) {
 
                                 float y =
                                     p0.y +
@@ -2579,7 +2674,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                         ((180 + (i * 50)) % 255), 255), 
                                     i});
 
-                                scrub_fr += fr.time_to_next;
+                                scrub_fr += fr.time_to_next + 1;
 
                                 i++;
                             }
@@ -2665,7 +2760,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                     int i = 0;
                                     for (const KeyAnimFrame& kframe : animations[anim_selected].frames) {
                                         const TimelineFlag flag = flags[i];
-                                        if (tick_frame >= flag.frame && tick_frame < flag.frame + kframe.time_to_next ) {
+                                        if (tick_frame >= flag.frame && tick_frame < flag.frame + kframe.time_to_next + 1  ) {
                                             return i;
                                         }
 
@@ -2696,7 +2791,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                             static bool draggingScrubber = false;
 
-                            if (hoverScrubber && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                            if (hoverScrubber && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !(ImGui::GetIO().KeyShift)) {
                                 draggingScrubber = true;
                             }
 
@@ -2711,9 +2806,29 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 currentFrame = (int)round(local / pixelsPerFrame);
                                 currentFrame = std::clamp(currentFrame, 0, totalFrames);
 
-                                if (currentFrame > animation_tick_frame_length) {
-                                    currentFrame = animation_tick_frame_length;
+                                if (currentFrame > animation_tick_frame_length - 1) {
+                                    currentFrame = animation_tick_frame_length - 1;
                                 }
+
+                                
+                                bool scrubberOnKeyframe = false;
+                                int tick_frame_acc = 0;
+                                int keyframe_idx = 0;
+
+                                for (KeyAnimFrame kframe : animations[anim_selected].frames) {
+
+                                    tick_frame_acc += kframe.time_to_next + 1;
+
+                                    if (currentFrame < tick_frame_acc) {
+                                        keyframe_idx;
+                                        scrubberOnKeyframe = true;
+                                        break;
+                                    }
+                                    
+                                    keyframe_idx++;
+                                }
+
+                                selected_anim_frame = keyframe_idx;
 
                                 // Keep selected frame stable while scrubbing; scrubber drives preview independently.
 
@@ -2721,11 +2836,15 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                     timelineScroll += pixelsPerFrame;
                                 }
 
+                                
+
                                 // Auto-scroll up when dragging near the top of timeline view.
                                 const float auto_scroll_top_zone = p0.y + 18.0f;
                                 if (mouse.y <= auto_scroll_top_zone) {
                                     timelineScroll = std::max(-80.0f, timelineScroll - (pixelsPerFrame * 0.75f));
                                 }
+
+                                
                             }
 
                             // scrubber line
