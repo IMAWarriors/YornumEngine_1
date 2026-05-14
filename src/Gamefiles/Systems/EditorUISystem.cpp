@@ -1367,15 +1367,36 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     // ..................................
                     // Initialize the allocated memory to hold the correct joint draw order according to the frame
 
+                    int draw_frame_idx = selected_anim_frame;
+
+                    // In timing/interpolation mode, the canvas preview should follow scrubber position,
+                    // not whichever frame is selected for manual editing in the frame list.
+                    if (editing_anim_w_interpolation) {
+                        int tick_cursor = 0;
+                        draw_frame_idx = 0;
+                        for (int k = 0; k < (int)animations[anim_selected].frames.size(); k++) {
+                            int segment_len = std::max(1, animations[anim_selected].frames[k].time_to_next);
+                            int segment_end = tick_cursor + segment_len;
+                            if (currentFrame >= tick_cursor && currentFrame < segment_end) {
+                                draw_frame_idx = k;
+                                break;
+                            }
+                            tick_cursor = segment_end;
+                            draw_frame_idx = k;
+                        }
+                    }
+
+                    draw_frame_idx = std::clamp(draw_frame_idx, 0, (int)animations[anim_selected].frames.size() - 1);
+
                     for (int i = 0; i < joint_count; i++) {
 
                         int jidx = 0;
 
                         for (int j = 0; j < joint_count; j++) {
-                            if (i == animations[anim_selected].frames[selected_anim_frame].joints[j].draw_order || j >= animations[anim_selected].frames[selected_anim_frame].joints.size()) {
+                            if (i == animations[anim_selected].frames[draw_frame_idx].joints[j].draw_order || j >= animations[anim_selected].frames[draw_frame_idx].joints.size()) {
                                 // The second case is a failsafe, but we should never be able to count past
                                 // the joints in an animation otherwise theres a mismatch
-                                assert(j < animations[anim_selected].frames[selected_anim_frame].joints.size() );
+                                assert(j < animations[anim_selected].frames[draw_frame_idx].joints.size() );
                                 jidx = j;
                                 break;
                             }
@@ -1437,7 +1458,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         }
                     }
 
-                    if (editing_anim_w_interpolation && (!scrubberOnKeyframe || animationPlaybackMode)) {
+                    
+                    if (editing_anim_w_interpolation) {
 
                         // PLAYBACK / PREVIEW DRAW (with INTERPOLATION)
 
@@ -2693,8 +2715,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                     currentFrame = animation_tick_frame_length;
                                 }
 
-                                // When dragging the scrubber, click the selected frame into the most relevant one
-                                selected_anim_frame = getLastKFrameFromTick(currentFrame);
+                                // Keep selected frame stable while scrubbing; scrubber drives preview independently.
 
                                 if (endReached && currentFrame > (lastFrame - 4)) {
                                     timelineScroll += pixelsPerFrame;
@@ -2738,11 +2759,6 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 float local = mouse.y - p0.y + timelineScroll;
                                 currentFrame = (int)round(local / pixelsPerFrame);
                                 currentFrame = std::clamp(currentFrame, 0, totalFrames);
-
-                                if (!(ImGui::GetIO().KeyShift)) {
-                                    // When dragging the scrubber, click the selected frame into the most relevant one
-                                    selected_anim_frame = getLastKFrameFromTick(currentFrame);
-                                }
 
                             }
 

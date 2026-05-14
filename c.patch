@@ -1,178 +1,98 @@
  (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
 diff --git a/src/Gamefiles/Systems/EditorUISystem.cpp b/src/Gamefiles/Systems/EditorUISystem.cpp
-index d8a6523dffc37ca35326e90ed15b2f5bab03d410..2f9ab0fa97297f3996cdcb8fcfe1b481f63a6ea5 100644
+index 2f9ab0fa97297f3996cdcb8fcfe1b481f63a6ea5..df081da8ad67ee335ea105c4b46796e9829e4078 100644
 --- a/src/Gamefiles/Systems/EditorUISystem.cpp
 +++ b/src/Gamefiles/Systems/EditorUISystem.cpp
-@@ -925,50 +925,57 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
+@@ -1345,59 +1345,80 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
+                                 }
  
-                     // Add rotated direction vector to input position to get new absolute position
-                     return Vec2{input_position.x + rotated_direction.x, input_position.y + rotated_direction.y};
-                     
-                 };
- 
-                 auto RotDegBetweenPoints = [](Vec2 orig_position, Vec2 dir_position) -> float {
-                     // Calculate the vector from orig_position to dir_position
-                     float dx = dir_position.x - orig_position.x;
-                     float dy = dir_position.y - orig_position.y;
- 
-                     // Calculate the angle in radians between the vector and the positive X-axis
-                     float angle_rad = atan2(dy, dx);
- 
-                     // Convert radians to degrees
-                     float angle_deg = angle_rad * 180.0f / 3.14159265358979323846f;
- 
-                     // Optional: Normalize angle to [0, 360) degrees
-                     if (angle_deg < 0) {
-                         angle_deg += 360.0f;
-                     }
- 
-                     return angle_deg;
-                 };
- 
-+                auto WrapDeg180 = [](float angle) -> float {
-+                    float wrapped = fmodf(angle, 360.0f);
-+                    if (wrapped > 180.0f) wrapped -= 360.0f;
-+                    if (wrapped <= -180.0f) wrapped += 360.0f;
-+                    return wrapped;
-+                };
-+
- 
-                 ImU32 canv_col = IM_COL32(20,20,30,255);
- 
-                 if (selected_anim_frame == -1) {
-                     canv_col = IM_COL32(10,16,12,255);
-                 }
- 
-                 // Draw canvas base
- 
-                 draw->AddRectFilled(canvasPos, ImVec2(canvasPos.x+canvasSize.x, canvasPos.y + canvasSize.y), canv_col);
- 
-                 // Get mouse position
-                 ImVec2 mpos = ImGui::GetIO().MousePos;
- 
- 
-                 // DRAW JOINTS and IMAGE TEXTURES in LOOP
-                 // **************************************
- 
-                 // onion_frame_anch...
-                 
-                 
-                 // If selected_anim_frame == -1,
-                 // Then that means the ANCHOR FRAME is selected
-                 //
-                 // Any other selected frame indicates there is
-@@ -1400,95 +1407,95 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
-                     for (KeyAnimFrame kframe : animations[anim_selected].frames) {
-                         if (currentFrame == tick_frame_begin) {
-                             scrubberOnKeyframe = true;
-                             break;
+                             }
                          }
-                         tick_frame_begin += kframe.time_to_next;
+ 
+                         
+ 
                      }
  
-                     int interp_frame_idx = selected_anim_frame;
-                     int interp_frame_start_tick = 0;
  
-                     // Find the keyframe segment containing currentFrame. We do this instead of relying solely
-                     // on selected_anim_frame so interpolation remains stable while scrubbing.
-                     if (!animations[anim_selected].frames.empty()) {
-                         int tick_cursor = 0;
-                         for (int k = 0; k < (int)animations[anim_selected].frames.size(); k++) {
-                             int segment_len = std::max(1, animations[anim_selected].frames[k].time_to_next);
-                             int segment_end = tick_cursor + segment_len;
-                             if (currentFrame >= tick_cursor && currentFrame < segment_end) {
-                                 interp_frame_idx = k;
-                                 interp_frame_start_tick = tick_cursor;
+                     // --> Third, NORMAL FRAME: DRAW
+                     // --------------------
+                     // (Actual draw, no more onion layers)
+ 
+                     const int joint_count = (*avatar_selected).default_texturing.joints.size();
+ 
+                     // Allocate an array of the indicies to draw on the heap
+                     int* jidx_draw_order = new int[joint_count];
+ 
+                     // :: Step 1
+                     // ---------------------
+                     // Sort Code:
+                     // ..................................
+                     // Initialize the allocated memory to hold the correct joint draw order according to the frame
+ 
++                    int draw_frame_idx = selected_anim_frame;
++
++                    // In timing/interpolation mode, the canvas preview should follow scrubber position,
++                    // not whichever frame is selected for manual editing in the frame list.
++                    if (editing_anim_w_interpolation) {
++                        int tick_cursor = 0;
++                        draw_frame_idx = 0;
++                        for (int k = 0; k < (int)animations[anim_selected].frames.size(); k++) {
++                            int segment_len = std::max(1, animations[anim_selected].frames[k].time_to_next);
++                            int segment_end = tick_cursor + segment_len;
++                            if (currentFrame >= tick_cursor && currentFrame < segment_end) {
++                                draw_frame_idx = k;
++                                break;
++                            }
++                            tick_cursor = segment_end;
++                            draw_frame_idx = k;
++                        }
++                    }
++
++                    draw_frame_idx = std::clamp(draw_frame_idx, 0, (int)animations[anim_selected].frames.size() - 1);
++
+                     for (int i = 0; i < joint_count; i++) {
+ 
+                         int jidx = 0;
+ 
+                         for (int j = 0; j < joint_count; j++) {
+-                            if (i == animations[anim_selected].frames[selected_anim_frame].joints[j].draw_order || j >= animations[anim_selected].frames[selected_anim_frame].joints.size()) {
++                            if (i == animations[anim_selected].frames[draw_frame_idx].joints[j].draw_order || j >= animations[anim_selected].frames[draw_frame_idx].joints.size()) {
+                                 // The second case is a failsafe, but we should never be able to count past
+                                 // the joints in an animation otherwise theres a mismatch
+-                                assert(j < animations[anim_selected].frames[selected_anim_frame].joints.size() );
++                                assert(j < animations[anim_selected].frames[draw_frame_idx].joints.size() );
+                                 jidx = j;
                                  break;
                              }
-                             tick_cursor = segment_end;
                          }
-+
-+                        // Handle edge case where currentFrame lands exactly on animation end.
-+                        if (currentFrame >= tick_cursor && !animations[anim_selected].frames.empty()) {
-+                            interp_frame_idx = (int)animations[anim_selected].frames.size() - 1;
-+                            interp_frame_start_tick = std::max(0, tick_cursor - std::max(1, animations[anim_selected].frames[interp_frame_idx].time_to_next));
-+                        }
+                         
+                         jidx_draw_order[i] = jidx;
                      }
  
-                     if (editing_anim_w_interpolation && (!scrubberOnKeyframe || animationPlaybackMode)) {
+                     // :: Step 2
+                     // ---------------------
+                     // Draw Code:
  
-                         // PLAYBACK / PREVIEW DRAW (with INTERPOLATION)
+                     // -------------- 
+                     // Case Branch:
+                     // ---> If we are in the FRAME editing tab OR we are in the TIMING editing tab with added stipulation
+                     //      that If we CANNOT be in Playback/Preview Animation mode AND the scrubber must be on a KEY FRAME
+                     //      >>  THEN and only then in TIMING MODE (or unambiguously in FRAME EDITING MODE) should we draw
+                     //          according to a single keyframe
+                     // ---> OTHERWISE, we must be in the Timing Editing tab and the scrubber must NOT be on a key frame
+                     //      but rather between key frames (otherwise interpolation doesn't really work or make sense)
+                     //      --> Playback mode may have its own beast to handle
  
-                         for (int i = 0; i < joint_count; i++) {
+                     bool scrubberOnKeyframe = false;
+                     int tick_frame_begin = 0;
  
-                             // 
-                             int idx = jidx_draw_order[i];
-                             auto& joint_anchor = (*avatar_selected).default_frame.joints[idx];
-                             auto& joint_texture = (*avatar_selected).default_texturing.joints[idx];
-                             auto& joint_anim = animations[anim_selected].frames[interp_frame_idx].joints[idx];
+@@ -2671,101 +2692,95 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
+                                 mouse.x <= p0.x + avail.x &&
+                                 mouse.y >= scrubY - 12.0f &&
+                                 mouse.y <= scrubY + 12.0f;
  
-                             int segment_len = std::max(1, animations[anim_selected].frames[interp_frame_idx].time_to_next);
-                             float percent_through_frame = ((float)(currentFrame - interp_frame_start_tick) / (float)segment_len);
-                             percent_through_frame = std::clamp(percent_through_frame, 0.0f, 1.0f);
+                             static bool draggingScrubber = false;
  
-                             int anim_frame_to_interp = (interp_frame_idx + 1) % (animations[anim_selected].frames.size());
- 
-                             AnimJointAdjustmentFrame joint_interp = animations[anim_selected].frames[interp_frame_idx].joints[idx];
-                             const AnimJointAdjustmentFrame& joint_blend = animations[anim_selected].frames[anim_frame_to_interp].joints[idx];
- 
-                             // Interpolation math  (too easy??)
-                             joint_interp.origin.x = joint_anim.origin.x + ((joint_blend.origin.x - joint_anim.origin.x) * percent_through_frame);
-                             joint_interp.origin.y = joint_anim.origin.y + ((joint_blend.origin.y - joint_anim.origin.y) * percent_through_frame);
- 
- 
--                            if (joint_anim.normal_rotation) {
--
--                                if (joint_anim.rotation < joint_blend.rotation) {
--                                    joint_interp.rotation = joint_anim.rotation + ((joint_blend.rotation - joint_anim.rotation) * percent_through_frame);
--                                } else {
--                                    joint_interp.rotation = joint_anim.rotation + ((joint_blend.rotation - joint_anim.rotation - 360.0f) * percent_through_frame);
--                                }
-+                            float raw_delta = (joint_blend.rotation - joint_anim.rotation);
-+                            float shortest_delta = WrapDeg180(raw_delta);
- 
-+                            if (joint_anim.normal_rotation) {
-+                                // Default behavior: rotate along shortest angular path.
-+                                joint_interp.rotation = joint_anim.rotation + (shortest_delta * percent_through_frame);
-                             } else {
--
--                                if (joint_anim.rotation < joint_blend.rotation) {
--                                    joint_interp.rotation = joint_anim.rotation + ((joint_blend.rotation - joint_anim.rotation - 360.0f) * percent_through_frame);
--                                } else {
--                                    joint_interp.rotation = joint_anim.rotation + ((joint_blend.rotation - joint_anim.rotation) * percent_through_frame);
--                                }
--
--                            } 
-+                                // Inverse behavior: rotate along the long way around.
-+                                float long_delta = (shortest_delta >= 0.0f) ? (shortest_delta - 360.0f) : (shortest_delta + 360.0f);
-+                                joint_interp.rotation = joint_anim.rotation + (long_delta * percent_through_frame);
-+                            }
-                             
- 
-                             //AnimJointAdjustmentFrame joint_interpolation = animations[anim_selected].interpolate_joints(, i, currentFrame);
-                             // The Primary place where we set [a] and [b], the two points for each joint and where they will be displayed
- 
-                             float direction_point_x = RotNewPositionVec({joint_anchor.origin.x + joint_interp.origin.x, joint_anchor.origin.y + joint_interp.origin.y}, joint_anchor.direction, joint_interp.rotation).x;
-                             float direction_point_y = RotNewPositionVec({joint_anchor.origin.x + joint_interp.origin.x, joint_anchor.origin.y + joint_interp.origin.y}, joint_anchor.direction, joint_interp.rotation).y;
- 
-                             ImVec2 a = WorldToScreen(ImVec2(joint_anchor.origin.x + joint_interp.origin.x, joint_anchor.origin.y + joint_interp.origin.y));
-                             ImVec2 b = WorldToScreen(ImVec2(direction_point_x, direction_point_y));
- 
-                             float dist = DistancePointToSegment(mpos, a, b);
-                             ImU32 color = IM_COL32(255, 255, 255, 120); // default
- 
-                             float thickness = 3.0f;
- 
-                             draw->AddLine(a, b, color, thickness);
- 
-                             if (joint_texture.texture != nullptr) {
- 
-                                 // Center derivation... FIX JOINTS ANCHORED TO
-                                 ImVec2 center = WorldToScreen(ImVec2(joint_anchor.origin.x + joint_interp.origin.x, joint_anchor.origin.y + joint_interp.origin.y));
- 
-                                 // Texture locale
-                                 float width  = joint_texture.texture->width  * joint_texture.scale.x * local_canvas_zoom;
-@@ -2670,50 +2677,56 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                              if (hoverScrubber && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
                                  draggingScrubber = true;
                              }
@@ -192,18 +112,19 @@ index d8a6523dffc37ca35326e90ed15b2f5bab03d410..2f9ab0fa97297f3996cdcb8fcfe1b481
                                      currentFrame = animation_tick_frame_length;
                                  }
  
-                                 // When dragging the scrubber, click the selected frame into the most relevant one
-                                 selected_anim_frame = getLastKFrameFromTick(currentFrame);
+-                                // When dragging the scrubber, click the selected frame into the most relevant one
+-                                selected_anim_frame = getLastKFrameFromTick(currentFrame);
++                                // Keep selected frame stable while scrubbing; scrubber drives preview independently.
  
                                  if (endReached && currentFrame > (lastFrame - 4)) {
                                      timelineScroll += pixelsPerFrame;
                                  }
-+
-+                                // Auto-scroll up when dragging near the top of timeline view.
-+                                const float auto_scroll_top_zone = p0.y + 18.0f;
-+                                if (mouse.y <= auto_scroll_top_zone) {
-+                                    timelineScroll = std::max(-80.0f, timelineScroll - (pixelsPerFrame * 0.75f));
-+                                }
+ 
+                                 // Auto-scroll up when dragging near the top of timeline view.
+                                 const float auto_scroll_top_zone = p0.y + 18.0f;
+                                 if (mouse.y <= auto_scroll_top_zone) {
+                                     timelineScroll = std::max(-80.0f, timelineScroll - (pixelsPerFrame * 0.75f));
+                                 }
                              }
  
                              // scrubber line
@@ -229,6 +150,45 @@ index d8a6523dffc37ca35326e90ed15b2f5bab03d410..2f9ab0fa97297f3996cdcb8fcfe1b481
                                  std::string("FRAME " + std::to_string(currentFrame)).c_str()
                              );
  
+                             ImGui::InvisibleButton( "timeline_capture", avail);
+ 
+                             if (!isSomeFlagHovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                                 // Left mouse button double-click detected
+ 
+                                 float local = mouse.y - p0.y + timelineScroll;
+                                 currentFrame = (int)round(local / pixelsPerFrame);
+                                 currentFrame = std::clamp(currentFrame, 0, totalFrames);
+ 
+-                                if (!(ImGui::GetIO().KeyShift)) {
+-                                    // When dragging the scrubber, click the selected frame into the most relevant one
+-                                    selected_anim_frame = getLastKFrameFromTick(currentFrame);
+-                                }
+-
+                             }
+ 
+                             ImGui::EndTabItem();
+                         }
+ 
+                         ImGui::EndTabBar();
+ 
+                         
+ 
+                     }
+ 
+                     ImGui::EndChild();
+                     ImGui::GetStyle().WindowPadding = orig;
+ 
+                     
+ 
+                 }
+ 
+             }
+ 
+         };
+ 
+         
+ 
+         ImGui::End();
  
 EOF
 )
