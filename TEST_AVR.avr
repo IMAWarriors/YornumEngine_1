@@ -1,0 +1,16 @@
+~AVATAR_FILE
+VERSION_1
+~AVATAR_NAME
+Untitled Avatar
+~DEFAULT_TEXTURING
+4
+Untitled Joint assets/sprites/characters\test2\test2_body.png 0 0 1 1 0 0 0 1 1
+Untitled Joint assets/sprites/characters\test2\test2_head.png 0 0 1 1 0 0 0 1 1
+Untitled Joint assets/sprites/characters\test2\test2_rightleg.png 0 0 1 1 0 0 0 1 1
+Untitled Joint cpy assets/sprites/characters\test2\test2_rightleg.png 0 0 1 1 0 0 0 1 1
+~ANCHOR_FRAME
+0 33.3333 -76 32 0
+1 32.6667 -115.667 32 0
+2 39.3333 -41 29.3333 -19.3333
+3 36 -19 28.6667 22.6667
+~END_OF_FILE

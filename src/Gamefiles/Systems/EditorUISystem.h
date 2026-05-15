@@ -15,6 +15,7 @@
 #include "../../../external/rlimgui/rlImGui.h"
 #include "../../../external/imgui/imgui.h"
 #include "../Elements/Avatar/Avatar.h"
+#include "../Elements/Avatar/Animation.h"
 
 #include <vector>
 #include <string>
@@ -64,6 +65,8 @@ class EditorUISystem : public System {
         const std::string SCENEDIR = "assets/scenes/";
         const std::string TILESETDIR = "assets/sprites/tilesets/";
         const std::string BACKGROUNDIMAGEDIR = "assets/sprites/backgrounds/";
+        const std::string AVATARDIR = "assets/avatars/";
+        const std::string ANIMATIONDIR = "assets/animations/";
 
         // saved info to be serialized
         std::vector<Avatar> avatars;
@@ -73,16 +76,37 @@ class EditorUISystem : public System {
         Avatar * avatar_to_edit = nullptr;
 
         // Permanent Texturing info
-        
-
-        
-
-        
-
+    
         int randInt(int num1, int num2) {
             static std::mt19937 rng(std::random_device{}());
             static std::uniform_int_distribution<int> dist(num1, num2);
             return dist(rng);
+        }
+
+
+        void SyncAndReloadAvatars(const std::string& path) {
+
+            avatars.clear();
+
+            std::vector<std::string> avrpaths = assets.GetFilepathsInDirectory(AVATARDIR, "avr");
+            std::vector<std::string> avrnames = assets.GetFilenamesInDirectory(AVATARDIR, "avr");
+
+            for (const std::string& fname : avrnames) {
+
+                Avatar copy;
+                bool success = copy.LoadAvrFile(fname, AVATARDIR);
+                // assert(success);
+                avatars.push_back(copy);
+                
+                
+            }
+
+        }
+        
+        
+        void SyncAndReloadAnimations(const std::string& path) {
+           
+
         }
        
 
@@ -93,6 +117,8 @@ class EditorUISystem : public System {
             ImGuiIO& io = ImGui::GetIO();
             io.IniFilename = "../../../cache/imgui/EMain_imgui.ini";
 
+            SyncAndReloadAvatars(AVATARDIR);
+            SyncAndReloadAnimations(ANIMATIONDIR);
          
         }
         

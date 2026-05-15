@@ -57,7 +57,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
     static bool WORKSPACE_WINDOW_DRAW = true;
 
 
-
+    const int INTENDED_FPS = (int)config::GAME_WORLD_FPS;
 
 
 
@@ -182,6 +182,11 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
             ImGui::GetStyle().WindowPadding = orig;
 
     };
+
+    auto strip_ext = [](const std::string& s) {
+        size_t pos = s.find_last_of('.');
+        return (pos == std::string::npos) ? s : s.substr(0, pos);
+    };
         
 
     auto DistancePointToSegment = [](ImVec2 p, ImVec2 a, ImVec2 b) {
@@ -262,6 +267,10 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
         static bool show_preview_joints = true;
 
+        static bool play_preview_animation = false;
+
+        static float preview_anim_accumulated_ms = 0;
+
         if (ImGui::Begin("Create Avatar...", nullptr, flags)) {
 
             if (avatarMenu == AvatarCreatorMenu::AVATAR_SELECTION) {
@@ -317,7 +326,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                     ImGui::Text("Rename:");
 
-                    static int lastAvatarSelected = avatar_selected_idx;
+                    static int lastAvatarSelected = -1;
                     static char avatarNameBuffer[128] = "Untitled Avatar";
 
                     if (avatar_selected_idx != lastAvatarSelected) {
@@ -354,7 +363,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         animations[animations.size()-1].frames.clear();
                     }
 
-		    ImGui::SameLine();
+		            ImGui::SameLine();
                     if (ImGui::Button("Copy Animation", ImVec2(-1, 28)) && anim_selected >= 0 && anim_selected < (int)animations.size()) {
                         Animation copied = animations[anim_selected];
                         copied.name += " Copy";
@@ -433,10 +442,32 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
             
             } else if (avatarMenu == AvatarCreatorMenu::KEYFRAME_EDITOR) {
 
+                bool saveAvrPopup = false;
+                bool leaveAvrEditorPopup = false;
+
                 const std::string editKind = std::string((*avatar_selected).name + ": " + animations[anim_selected].name);
 
                 if (ImGui::Button("<<")) {
-                    avatarMenu = AvatarCreatorMenu::AVATAR_SELECTION;
+
+                    leaveAvrEditorPopup = true;
+                    
+                }
+
+                ImGui::SameLine();
+
+
+                // @@@@
+
+                
+
+                if (ImGui::Button("&&")) {
+                
+                    if (avatar_selected != nullptr) {
+
+                        saveAvrPopup = true;
+                    
+                    }
+
                 }
 
                 ImGui::SameLine();
@@ -540,6 +571,31 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                 static int currentFrame = 0;
 
+                // Get the proper length of the animation in ticks
+                int animation_tick_frame_length = 0;
+
+                for (const KeyAnimFrame& kframe : animations[anim_selected].frames) {
+                    animation_tick_frame_length += kframe.time_to_next + 1;
+                }
+
+                // If the preview setting is open and we are playing the animation,
+                // go ahead and move the current Frame ticker forward
+
+                if (anim_selected != -1 && play_preview_animation) {
+
+                    preview_anim_accumulated_ms += (float)(1.0f / INTENDED_FPS) * (1000.0f);
+
+                    if (preview_anim_accumulated_ms > animations[anim_selected].ms_per_tick_frame) {
+                        preview_anim_accumulated_ms -= animations[anim_selected].ms_per_tick_frame;
+                        currentFrame++;
+
+                        if (currentFrame > animation_tick_frame_length - 1) {
+                            currentFrame = 0;
+                        }
+                    }
+                }
+                
+
                 // THIS is the important part
                 static float timelineScroll = 0.0f;
 
@@ -572,6 +628,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         temp_query_selected_anim_frame = -1;
                         manual_anim_frame_switch = true;
                     }
+
+                    animations[anim_selected].sync_frame_order_seq_id();
 
                 }
 
@@ -1475,7 +1533,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             auto& joint_anim = animations[anim_selected].frames[interp_frame_idx].joints[idx];
 
                             int segment_len = animations[anim_selected].frames[interp_frame_idx].time_to_next;
-                            float percent_through_frame = ((float)(currentFrame - interp_frame_start_tick) / ((float)segment_len));
+                            float percent_through_frame = ((float)(currentFrame - interp_frame_start_tick) / ((float)segment_len + 1));
                             percent_through_frame = std::clamp(percent_through_frame, 0.0f, 1.0f);
 
                             int anim_frame_to_interp = (interp_frame_idx + 1) % (animations[anim_selected].frames.size());
@@ -1997,13 +2055,22 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     int tick_frame_acc = 0;
                     int keyframe_idx = 0;
 
-                    for (KeyAnimFrame kframe : animations[anim_selected].frames) {
+                    for (const KeyAnimFrame& kframe : animations[anim_selected].frames) {
+                        if (currentFrame < tick_frame_acc) {
+                            break;
+                        }
+                        tick_frame_acc += kframe.time_to_next + 1;
+                        keyframe_idx++;
+                    }
+
+                    tick_frame_acc = 0;
+
+                    for (const KeyAnimFrame& kframe : animations[anim_selected].frames) {
                         if (currentFrame == tick_frame_acc) {
                             scrubberOnKeyframe = true;
                             break;
                         }
                         tick_frame_acc += kframe.time_to_next + 1;
-                        keyframe_idx++;
                     }
 
                     draw->AddText(
@@ -2111,31 +2178,82 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                 /*
                 
-                ▶
-                ◀
-                ▲
-                ▼
-                ■
-                ▮▮
-                ⏸
-                
-                
-                ⏺
-                ⏪
-                ⏩
-                
-                
-                
 
                 */
 
+                // Reserve layout space for the manually drawn canvas so following widgets
+                // (like the preview controller) stay inside CenterView instead of being
+                // pushed outside the editor row.
+
+
+
+
+
+
+                ImGui::Dummy(canvasSize);
+
+                struct TimelineFlag {
+                    int frame;
+                    ImU32 color;
+                    int keyframe_index;
+                };
+
                 
-                ImGui::EndChild();
+
+                std::vector<TimelineFlag> flags;
 
                 if (editing_anim_w_interpolation) {
 
-                    draw->AddRectFilled(ImVec2(canvasPos.x, (canvasPos.y + canvasSize.y)), ImVec2(canvasPos.x + canvasSize.x, canvasPos.y + canvasSize.y + controller_bar_height), IM_COL32(11,11,18,255));
-                
+                    int i = 0;
+                    int scrub_fr = 0;
+
+                    // Build timeline flags
+                    for (auto& fr : animations[anim_selected].frames) {
+
+                        flags.push_back({
+                            scrub_fr,
+                            IM_COL32(
+                                ((255 + (i * 50)) % 255),
+                                ((120 + (i * 50)) % 255),
+                                ((180 + (i * 50)) % 255), 255), 
+                            i});
+
+                        scrub_fr += fr.time_to_next + 1;
+
+                        i++;
+                    }
+
+                    // Sort timeline flags
+                    std::sort(flags.begin(), flags.end(),[](const TimelineFlag& a, const TimelineFlag& b) {
+                        return a.frame < b.frame;
+                    });
+
+                    // ======== LAMBDA CONTROLLERS =================>
+
+                    auto FindPreviousKeyframe = [&](int frame) -> int {
+                        int prev = 0;
+                        for (const TimelineFlag& fl : flags) {
+                            if (fl.frame < frame) {
+                                prev = fl.frame;
+                            } else {
+                                break;
+                            }
+                        }
+                        return prev;
+                    };
+                    
+                    auto FindNextKeyframe = [&](int frame) -> int {
+                        for (const TimelineFlag& fl : flags) {
+                            if (fl.frame > frame) {
+                                return fl.frame;
+                            }
+                        }
+                        return animation_tick_frame_length - 1;
+                    };
+
+                    // ===========================================>
+
+                    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.04f,0.04f,0.04f,0.94f));
                 
                     ImGui::BeginChild(
                         "PreviewControllerRegion",
@@ -2145,54 +2263,101 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                     // Preview Controller
 
-                    ImGui::Text("Preview Controller");
+                    ImGui::Text("Animation Controller");
 
                     ImGui::Separator();
 
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f,0.15f,0.15f,0.8f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.2f,0.2f,0.2f,0.8f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.1f,0.1f,0.1f,0.8f));
 
-                    if (ImGui::Button("<", ImVec2(40, 30))) {
 
-                    }
+                    if (ImGui::Button(" |< ", ImVec2(40, 30))) {
 
-                    ImGui::SameLine();
+                        // First find frame tick index of last key frame
 
-                    if (ImGui::Button("⏮", ImVec2(40, 30))) {
-
-                    }
-
-                    ImGui::SameLine();
-
-                    if (ImGui::Button("⏵", ImVec2(70, 30))) {
+                        play_preview_animation = false;
+                        currentFrame = FindPreviousKeyframe(currentFrame);
 
                     }
 
                     ImGui::SameLine();
 
-                    if (ImGui::Button("▮", ImVec2(70, 30))) {
+                    if (ImGui::Button(" << ", ImVec2(40, 30))) {
+
+                        play_preview_animation = false;
+                        currentFrame = std::max(0, currentFrame - 1);
 
                     }
 
                     ImGui::SameLine();
 
-                    if (ImGui::Button("⏭", ImVec2(40, 30))) {
+                    if (play_preview_animation) {
+                        if (ImGui::Button(" || ", ImVec2(40, 30))) {
+                            play_preview_animation = false;
+                        }
+                    } else {
+                        if (ImGui::Button(" -> ", ImVec2(40, 30))) {
+                            play_preview_animation = true;
+                        }
+                    }
+
+                    ImGui::SameLine();
+
+                    ImGui::BeginDisabled(!play_preview_animation);
+
+                    if (ImGui::Button(" XX ", ImVec2(40, 30))) {
+                        play_preview_animation = false;
+                    }
+
+                    ImGui::EndDisabled();
+
+                    ImGui::SameLine();
+
+                    if (ImGui::Button(" >> ", ImVec2(40, 30))) {
+
+                        play_preview_animation = false;
+
+                        currentFrame = std::min(
+                            animation_tick_frame_length - 1,
+                            currentFrame + 1
+                        );
 
                     }
 
                     ImGui::SameLine();
 
-                    if (ImGui::Button("⏯", ImVec2(40, 30))) {
+                    if (ImGui::Button(" >| ", ImVec2(40, 30))) {
 
+                        play_preview_animation = false;
+                        currentFrame = FindNextKeyframe(currentFrame);
+                        
                     }
 
+                    ImGui::SameLine();
+
+                    // @@@
+
+                    ImGui::SetNextItemWidth(85.0f);
+
+                    ImGui::DragInt("ms per tick", &animations[anim_selected].ms_per_tick_frame, 1.0f, 1, 128);
+
+
+
+                    ImGui::PopStyleColor(3);
 
 
 
                     ImGui::EndChild();
                 
                 
-                
-                
+                    ImGui::PopStyleColor();
+            
                 }
+
+                
+
+                ImGui::EndChild();
 
 
                 
@@ -2225,6 +2390,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         if (ImGui::BeginTabItem("Frame")) {
 
                             editing_anim_w_interpolation = false;
+                            play_preview_animation = false;
 
                             if (jointselected!=-1) {
                             
@@ -2530,11 +2696,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 IM_COL32(22,22,22,255)
                             );
 
-                            int animation_tick_frame_length = 0;
-
-                            for (const KeyAnimFrame& kframe : animations[anim_selected].frames) {
-                                animation_tick_frame_length += kframe.time_to_next + 1;
-                            }
+                            
 
                             dl->AddRectFilled(
                                 ImVec2(p0.x, 
@@ -2600,6 +2762,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             bool endReached = false;
                             int lastFrame = 0;
 
+                            totalFrames = std::clamp(totalFrames, 1, animation_tick_frame_length - 1);
+
                             for (int frame = 0; frame <= totalFrames - 1; frame++) {
 
                                 float y =
@@ -2621,7 +2785,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                     continue;
                                 }
 
-                                if (frame > animation_tick_frame_length) {
+                                if (frame > animation_tick_frame_length - 1) {
                                     continue;
                                 }
 
@@ -2647,37 +2811,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 }
                             }
 
-                            // ============================================================
-                            // EXAMPLE FLAGS
-                            // ============================================================
 
                             bool isSomeFlagHovered = false;
-
-                            struct TimelineFlag {
-                                int frame;
-                                ImU32 color;
-                                int keyframe_index;
-                            };
-
-                            std::vector<TimelineFlag> flags;
-
-                            int i = 0;
-                            int scrub_fr = 0;
-
-                            for (auto& fr : animations[anim_selected].frames) {
-
-                                flags.push_back({
-                                    scrub_fr,
-                                    IM_COL32(
-                                        ((255 + (i * 50)) % 255),
-                                        ((120 + (i * 50)) % 255),
-                                        ((180 + (i * 50)) % 255), 255), 
-                                    i});
-
-                                scrub_fr += fr.time_to_next + 1;
-
-                                i++;
-                            }
 
                             for (const auto& flag : flags) {
 
@@ -2815,12 +2950,12 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 int tick_frame_acc = 0;
                                 int keyframe_idx = 0;
 
-                                for (KeyAnimFrame kframe : animations[anim_selected].frames) {
+                                for (const KeyAnimFrame& kframe : animations[anim_selected].frames) {
 
                                     tick_frame_acc += kframe.time_to_next + 1;
 
                                     if (currentFrame < tick_frame_acc) {
-                                        keyframe_idx;
+                                        
                                         scrubberOnKeyframe = true;
                                         break;
                                     }
@@ -2897,6 +3032,177 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                 }
 
+                ImVec2 saveAvatarModalSize = {
+                    std::max(620.0f, GetScreenWidth() * 0.72f),
+                    std::max(420.0f, GetScreenHeight() * 0.76f)
+                };
+
+                if (saveAvrPopup) {
+                    ImGui::OpenPopup("Save Avatar");
+
+                    
+                }
+
+                if (leaveAvrEditorPopup) {
+                    ImGui::OpenPopup("Leave Avatar Editor");
+                }
+
+                // Start the Save Avatar .avr file popup
+
+                
+
+
+                ImGui::GetStyle().WindowPadding = ImVec2(8,8);
+                ImGui::SetNextWindowSize(saveAvatarModalSize, ImGuiCond_Appearing);
+
+                if (ImGui::BeginPopupModal("Save Avatar", NULL, ImGuiWindowFlags_NoCollapse)) {
+
+                    static int sel_avr_index = -1;
+                    static bool init_avr_window = false;
+                    static std::string sel_avr_filename = "";
+                    static char avrBuffer[128];
+                    static bool filename_exists = false;
+
+                    ImGui::Text("To what file would you like to save this Avtar?");
+
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+
+                    ImGui::Text("Warning! This filename already exists and saving will overrite data.");
+                    ImGui::Text("(ignore if you are updating a .avr file)");
+
+
+                    ImGui::PopStyleColor();
+
+                    // --------------------->
+
+                    std::vector<std::string> avrpaths = assets.GetFilepathsInDirectory(AVATARDIR, "avr");
+                    std::vector<std::string> avrnames = assets.GetFilenamesInDirectory(AVATARDIR, "avr");
+
+                    if (!init_avr_window) {
+                        filename_exists = false;
+                        for (int i = 0; i < avrnames.size(); i++) {
+                            if (avrnames[i] == (*avatar_selected).name) {
+                                sel_avr_index = i;
+                                sel_avr_filename = avrnames[i];
+                                filename_exists = true;
+                                break;
+                            }
+                        }
+
+                        if (!filename_exists) {
+                            sel_avr_filename = avrBuffer;
+                        }
+                    }
+
+                    ImGui::BeginChild("SaveAvrList", ImVec2(0, saveAvatarModalSize.y * 0.28f), true, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+
+
+                    for (int i = 0; i < (int)avrpaths.size(); i++) {
+                        if (ImGui::Selectable(avrpaths[i].c_str(), sel_avr_index == i, ImGuiSelectableFlags_DontClosePopups)) {
+                            sel_avr_index = i;
+                            sel_avr_filename = strip_ext(avrnames[i]);
+                        }
+                    }
+
+
+
+                    ImGui::EndChild();
+
+                    
+                    std::snprintf(avrBuffer, sizeof(avrBuffer), "%s", (*avatar_selected).name.c_str());
+
+                    if (ImGui::InputText("Avatar Name", avrBuffer, sizeof(avrBuffer))) {
+                        (*avatar_selected).name = avrBuffer;
+                        sel_avr_index = -1;
+
+                        filename_exists = false;
+
+                        for (int i = 0; i < avrnames.size(); i++) {
+                            if (avrnames[i] == (*avatar_selected).name) {
+                                sel_avr_index = i;
+                                sel_avr_filename = avrnames[i];
+                                filename_exists = true;
+                                break;
+                            }
+                        }
+
+                        if (!filename_exists) {
+                            sel_avr_filename = avrBuffer;
+                        }
+                    }
+
+                    if (ImGui::Button("Save Avatar", ImVec2(40, 24))) {
+
+                        (*avatar_selected).SaveAvrFile(sel_avr_filename, AVATARDIR);
+
+                        saveAvrPopup = false;
+                        init_avr_window = false;
+
+                        ImGui::CloseCurrentPopup();
+                    
+                    }
+
+                    ImGui::SameLine();
+
+                    if (ImGui::Button("Cancel", ImVec2(40, 24))) {
+
+                        saveAvrPopup = false;
+                        init_avr_window = false;
+
+                        ImGui::CloseCurrentPopup();
+                    
+                    }
+
+                    ImGui::EndPopup();
+
+                }
+
+
+                if (ImGui::BeginPopupModal("Leave Avatar Editor", NULL, ImGuiWindowFlags_NoCollapse)) {
+
+                    ImGui::Text("Are you sure you want to leave the Avatar Editor?");
+
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+
+                    ImGui::Text("Any unsaved changes will be lost when syncing main menu with");
+                    ImGui::Text("file data on the disk.");
+
+                    ImGui::PopStyleColor();
+
+                    ImGui::Separator();
+
+                    if (ImGui::Button("Confirm Exit Editor", ImVec2(40, 10))) {
+
+                        SyncAndReloadAvatars(AVATARDIR);
+                        SyncAndReloadAnimations(ANIMATIONDIR);
+
+                        // Reset static constroller variables so there is no problem with accessing things
+                        avatar_selected_idx = -1;
+                        avatar_selected = nullptr;
+                        anim_selected = -1;
+                        selected_anim_frame = -1;
+                        timings_preview_frame = -1;
+                        play_preview_animation = false;
+                        preview_anim_accumulated_ms = 0;
+
+                        avatarMenu = AvatarCreatorMenu::AVATAR_SELECTION;
+
+                        ImGui::CloseCurrentPopup();
+
+                    }
+
+                    ImGui::SameLine();
+
+                    if (ImGui::Button("Cancel", ImVec2(40, 10))) {
+                        ImGui::CloseCurrentPopup();
+                    }
+
+                    ImGui::EndPopup();
+
+                }
+                
+
+                
             }
 
         };
@@ -3274,15 +3580,18 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem("New")) {}
-            if (ImGui::MenuItem("Open")) {
+            if (ImGui::MenuItem("New Scene")) {}
+            if (ImGui::MenuItem("Open Scene")) {
                 openSceneSelectedIndex = -1;
                 triggerOpenScenePopup = true;
             }
-            if (ImGui::MenuItem("Save")) {
+            if (ImGui::MenuItem("Save Scene")) {
                 saveSceneInitialized = false;
                 triggerSaveScenePopup = true;
             }
+            ImGui::Separator();
+
+
             ImGui::Separator();
             if (ImGui::MenuItem("Exit")) {
                 CloseWindow();
@@ -3333,10 +3642,6 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
     std::filesystem::create_directories(SCENEDIR);
 
     // Save modal or wtv
-    auto strip_ext = [](const std::string& s) {
-        size_t pos = s.find_last_of('.');
-        return (pos == std::string::npos) ? s : s.substr(0, pos);
-    };
 
     ImVec2 saveSceneModalSize = {
         std::max(620.0f, GetScreenWidth() * 0.72f),

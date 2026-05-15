@@ -25,6 +25,7 @@ src\Engine\Platform\Input\InputManager.cpp ^
 src\Engine\ECS\EntityManager.cpp ^
 src\Engine\ECS\Registry.cpp ^
 src\Gamefiles\Elements\Avatar\Avatar.cpp ^
+src\Gamefiles\Elements\Avatar\Animation.cpp ^
 src\Gamefiles\Assets\AssetManager.cpp ^
 src\Gamefiles\Systems\CameraSystem.cpp ^
 src\Gamefiles\Systems\RenderSystem.cpp ^

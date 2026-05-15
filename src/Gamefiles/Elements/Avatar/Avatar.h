@@ -90,6 +90,10 @@ struct AvatarJoint {
         return true;
     }
 
+    AvatarJoint () {
+        name = "UNTITLED_AVATARJOINT_DEFAULT_CONSTRUCTOR";
+    }
+
     
     AvatarJoint (const std::string & _name) {
         this->name = _name;
@@ -107,12 +111,17 @@ struct AvatarJoint {
 struct AvatarTextureRig {
     std::vector<AvatarJoint> joints;
 
+    void clear () {
+        joints.clear();
+    }
 
 
 };
 
 struct KeyFrame {
     std::vector<JointFramePosition> joints;
+
+    
 
     KeyFrame () {
         joints.clear();
@@ -123,10 +132,44 @@ struct KeyFrame {
             joints.push_back({});
         }
     }
+
+
 };
 
 
 class Animation;
+class Avatar;
+
+struct KeyAnimFrame {
+
+    enum class TransitionMode {
+        Linear = 0,
+        Instant = 1,
+        EaseInOut = 2
+    };
+
+    std::vector<AnimJointAdjustmentFrame> joints;
+
+    int sequence_id = 0;
+    int time_to_next = 8;
+
+    int start_tick_frame = 0;
+   
+    TransitionMode transition_mode = TransitionMode::Linear;
+
+    
+    void clear () {
+        joints.clear();
+    }
+
+    KeyAnimFrame () {
+        joints.clear();
+    }
+
+    // Constructor to build key anim frame from Avatar (ex. into animation list) by making same # joints per key frame for an avatar
+    KeyAnimFrame (const Avatar& _avatar);
+
+};
 
 
 class Avatar {
@@ -142,14 +185,19 @@ class Avatar {
 
         // The active texturing options that are chosen
         AvatarTextureRig active_texturing;
-        KeyFrame active_frame;
+        KeyAnimFrame active_frame;
 
         Avatar (std::string _name) {
             this->name = _name;
+            active_texturing.clear();
+            active_frame.clear();
         }
 
         Avatar () {
+            name = "UNTITLED_AVATAR_DEFAULT_CONSTRUCTOR";
             position = {0.0f, 0.0f};
+            active_texturing.clear();
+            active_frame.clear();
         }
 
 
@@ -178,11 +226,14 @@ class Avatar {
         // --> More common use of frames in my code is in reference to KEY FRAMES which happen at
         // arbitrary user defined times, but always occur on some tick
 
-        void IM_DrawAvatar (Vec2 position, float scale, const Animation& animation, int tick_ms);
 
-        void DrawAvatar (Vec2 position, float scale, const Animation& animation, int tick_ms);
+        void DrawAvatar (Vec2 position, float scale, const Animation& animation, int tick);
 
 
+        
+        bool SaveAvrFile (const std::string& filename, const std::string& path);
+
+        bool LoadAvrFile (const std::string& filename, const std::string& path);
 
 
     private:
@@ -193,170 +244,8 @@ class Avatar {
 
 
 
-struct KeyAnimFrame {
-
-    enum class TransitionMode {
-        Linear = 0,
-        Instant = 1,
-        EaseInOut = 2
-    };
-
-    std::vector<AnimJointAdjustmentFrame> joints;
-
-    int sequence_id = 0;
-    int time_to_next = 8;
-   
-    TransitionMode transition_mode = TransitionMode::Linear;
-
-    // Constructor to build key anim frame from Avatar (ex. into animation list) by making same # joints per key frame for an avatar
-    KeyAnimFrame (const Avatar& _avatar) {
-
-        for (int i = 0; i < _avatar.default_frame.joints.size(); i++) {
-
-            int jidx = 0;
-            while (jidx != _avatar.default_frame.joints[i].unique_id || jidx > _avatar.default_frame.joints.size()) {
-                jidx++;
-            }
-
-            // assert the joint id we found is valid within the avatar bounds
-            assert (jidx < _avatar.default_frame.joints.size());
-
-            // Default draw order should for a key animation frame
-            joints.push_back(AnimJointAdjustmentFrame({0.0f, 0.0f}, 0.0f, jidx));
-        }
-
-    }
-
-    
 
 
-};
-
-
-
-struct Animation {
-
-    std::string name;
-    int joints_defined = 0; // Joints per frame
-    std::vector<KeyAnimFrame> frames;
-
-
-    Animation (std::string _name) {
-        name = _name;
-        joints_defined = 0;
-        frames.clear();
-    }
-
-    void sync_frame_order_seq_id () {
-
-        int i = 0;
-        for (KeyAnimFrame & frame : frames) {
-            frame.sequence_id = i;
-            i++;
-        }
-    }
-
-    void new_frame (const Avatar& _avatar) {
-
-	    KeyAnimFrame frame = KeyAnimFrame(_avatar);
-
-        // Copy Unique IDs so that these will be consistent across joints
-        // across the animation and can be used as reference points for sorting
-        // where a joint with existing ID should be drawn given an animation frame
-        // and a new draw order
-        // ---------------------------------------
-        for (int i = 0; i < frame.joints.size(); i++) {
-            frame.joints[i].unique_id = _avatar.default_frame.joints[i].unique_id;
-        }
-
-        
-        if (frames.size() > 0)
-            assert(joints_defined == frame.joints.size());
-        else
-            joints_defined = frame.joints.size();
-
-        frames.push_back(frame);
-
-        if (frames.size() > 0)
-            frames[frames.size() - 1].sequence_id =  frames.size() - 1;
-
-        sync_frame_order_seq_id();
-    }
-
-
-    // Overload takes a keyframe as an input to... copy it I guess...
-    // --> For copying prevoius frames
-    void new_frame (const Avatar& _avatar, const KeyAnimFrame & _frame) {
-
-        // Assert compatability between avatar joints and the frame we want to add's joints
-        // (in this case, usually a previous frame of the animation that wants to be copied)
-        assert(_avatar.default_frame.joints.size() == _frame.joints.size());
-
-        // Remember constructor by default assigns draw order depending on unique id of avatar joints;
-        // if we want to copy we have to manually assign 
-	    KeyAnimFrame copy = _frame;
-
-        // This draw order should be drawn from the previous frame,
-        // but it should be compatible with the original avatar
-        // ---------------------------------------
-        for (int i = 0; i < copy.joints.size(); i++) {
-            copy.joints[i].unique_id = _frame.joints[i].unique_id;
-        }
-        
-        if (frames.size() > 0)
-            assert(joints_defined == copy.joints.size());
-        else
-            joints_defined = copy.joints.size();
-
-        frames.push_back(copy);
-
-        if (frames.size() > 0)
-            frames[frames.size() - 1].sequence_id =  frames.size() - 1;
-
-        sync_frame_order_seq_id();
-    }
-
-    // ============== DANGER CODE ==========================================
-    // This code is scary bc i dont remember waht it does...
-    // I dont think it does anything, so I think I need to delete it and rework the idea it was getting at
-
-    void resize_joints_defined (const Avatar & _avatar) {
-
-        // If new size is a clipping of all joints there in the past,
-        if (_avatar.default_frame.joints.size() < joints_defined) {
-
-            for (int c = 0; c < frames.size(); c++) {
-
-                for (int i = 0; i < _avatar.default_frame.joints.size(); i++) {
-
-                    int to_delete = _avatar.default_frame.joints.size() - joints_defined;
-
-                    for (int j = 0; j < frames[c].joints.size(); j++) {
-                        if (to_delete > 0) {
-                            frames.erase(frames.begin() + j);
-                            to_delete--;
-                        }
-                    }
-                }
-
-                
-            }
-
-            joints_defined = _avatar.default_frame.joints.size();
-
-            
-        } else {
-
-            // Otherwise is new size is just an expansion, add the additional joints to each frame
-
-        }
-    }
-
-};
-
-// =============================================================
-// Avatar Interpolation Drawing Definitions:
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 #endif

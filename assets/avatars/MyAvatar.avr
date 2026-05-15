@@ -1,0 +1,17 @@
+~AVATAR_FILE
+VERSION_1
+~AVATAR_NAME
+MyAvatar
+~DEFAULT_TEXTURING
+3
+foot
+assets/sprites/characters\test2\test2_leftfoot.png 0 0 1 1 0 0 0 1 1
+body
+assets/sprites/characters\test2\test2_body.png 0 0 1 1 0 0 0 1 1
+head
+assets/sprites/characters\test2\test2_head.png 0 0 1 1 0 0 0 1 1
+~ANCHOR_FRAME
+0 37 -11.3333 32 0
+1 36.3333 -42 32 0
+2 35.6667 -75.3333 32 0
+~END_OF_FILE
