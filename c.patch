@@ -1,194 +1,132 @@
  (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
-diff --git a/src/Gamefiles/Systems/EditorUISystem.cpp b/src/Gamefiles/Systems/EditorUISystem.cpp
-index 2f9ab0fa97297f3996cdcb8fcfe1b481f63a6ea5..df081da8ad67ee335ea105c4b46796e9829e4078 100644
---- a/src/Gamefiles/Systems/EditorUISystem.cpp
-+++ b/src/Gamefiles/Systems/EditorUISystem.cpp
-@@ -1345,59 +1345,80 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
-                                 }
+diff --git a/src/Gamefiles/Systems/EditorUISystem.h b/src/Gamefiles/Systems/EditorUISystem.h
+index 7264d3da4a54de64b209725ff1d7e6c0fc18060f..4e72883d0a8cf725b80cc059140b2710b220e9f6 100644
+--- a/src/Gamefiles/Systems/EditorUISystem.h
++++ b/src/Gamefiles/Systems/EditorUISystem.h
+@@ -1,46 +1,47 @@
+ // EditorUISystem.h
  
-                             }
-                         }
+ #ifndef EDITORUISYSTEM_H
+ #define EDITORUISYSTEM_H
  
-                         
+ // Get System
+ #include "../../Engine/ECS/System.h"
  
-                     }
+ // Get Entity
+ #include "../../Engine/ECS/Entity.h"
+ 
+ // Get Specific Components
+ #include "../Components/Components.h"
+ 
+ #include "../../../external/rlimgui/rlImGui.h"
+ #include "../../../external/imgui/imgui.h"
+ #include "../Elements/Avatar/Avatar.h"
+ #include "../Elements/Avatar/Animation.h"
+ 
+ #include <vector>
+ #include <string>
++#include <filesystem>
  
  
-                     // --> Third, NORMAL FRAME: DRAW
-                     // --------------------
-                     // (Actual draw, no more onion layers)
+ #include <random>
  
-                     const int joint_count = (*avatar_selected).default_texturing.joints.size();
  
-                     // Allocate an array of the indicies to draw on the heap
-                     int* jidx_draw_order = new int[joint_count];
  
-                     // :: Step 1
-                     // ---------------------
-                     // Sort Code:
-                     // ..................................
-                     // Initialize the allocated memory to hold the correct joint draw order according to the frame
  
-+                    int draw_frame_idx = selected_anim_frame;
-+
-+                    // In timing/interpolation mode, the canvas preview should follow scrubber position,
-+                    // not whichever frame is selected for manual editing in the frame list.
-+                    if (editing_anim_w_interpolation) {
-+                        int tick_cursor = 0;
-+                        draw_frame_idx = 0;
-+                        for (int k = 0; k < (int)animations[anim_selected].frames.size(); k++) {
-+                            int segment_len = std::max(1, animations[anim_selected].frames[k].time_to_next);
-+                            int segment_end = tick_cursor + segment_len;
-+                            if (currentFrame >= tick_cursor && currentFrame < segment_end) {
-+                                draw_frame_idx = k;
-+                                break;
-+                            }
-+                            tick_cursor = segment_end;
-+                            draw_frame_idx = k;
-+                        }
-+                    }
-+
-+                    draw_frame_idx = std::clamp(draw_frame_idx, 0, (int)animations[anim_selected].frames.size() - 1);
-+
-                     for (int i = 0; i < joint_count; i++) {
+ class Scene;
  
-                         int jidx = 0;
+ class Renderer;
  
-                         for (int j = 0; j < joint_count; j++) {
--                            if (i == animations[anim_selected].frames[selected_anim_frame].joints[j].draw_order || j >= animations[anim_selected].frames[selected_anim_frame].joints.size()) {
-+                            if (i == animations[anim_selected].frames[draw_frame_idx].joints[j].draw_order || j >= animations[anim_selected].frames[draw_frame_idx].joints.size()) {
-                                 // The second case is a failsafe, but we should never be able to count past
-                                 // the joints in an animation otherwise theres a mismatch
--                                assert(j < animations[anim_selected].frames[selected_anim_frame].joints.size() );
-+                                assert(j < animations[anim_selected].frames[draw_frame_idx].joints.size() );
-                                 jidx = j;
-                                 break;
-                             }
-                         }
-                         
-                         jidx_draw_order[i] = jidx;
-                     }
+ class AssetManager;
  
-                     // :: Step 2
-                     // ---------------------
-                     // Draw Code:
+ struct EditorAssets;
  
-                     // -------------- 
-                     // Case Branch:
-                     // ---> If we are in the FRAME editing tab OR we are in the TIMING editing tab with added stipulation
-                     //      that If we CANNOT be in Playback/Preview Animation mode AND the scrubber must be on a KEY FRAME
-                     //      >>  THEN and only then in TIMING MODE (or unambiguously in FRAME EDITING MODE) should we draw
-                     //          according to a single keyframe
-                     // ---> OTHERWISE, we must be in the Timing Editing tab and the scrubber must NOT be on a key frame
-                     //      but rather between key frames (otherwise interpolation doesn't really work or make sense)
-                     //      --> Playback mode may have its own beast to handle
+ class Window;
  
-                     bool scrubberOnKeyframe = false;
-                     int tick_frame_begin = 0;
  
-@@ -2671,101 +2692,95 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
-                                 mouse.x <= p0.x + avail.x &&
-                                 mouse.y >= scrubY - 12.0f &&
-                                 mouse.y <= scrubY + 12.0f;
+ enum class AvatarCreatorMenu {
+     AVATAR_SELECTION = 0,
+     KEYFRAME_EDITOR
+ };
  
-                             static bool draggingScrubber = false;
  
-                             if (hoverScrubber && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-                                 draggingScrubber = true;
-                             }
  
-                             if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
-                                 draggingScrubber = false;
-                             }
+@@ -66,71 +67,71 @@ class EditorUISystem : public System {
+         const std::string TILESETDIR = "assets/sprites/tilesets/";
+         const std::string BACKGROUNDIMAGEDIR = "assets/sprites/backgrounds/";
+         const std::string AVATARDIR = "assets/avatars/";
+         const std::string ANIMATIONDIR = "assets/animations/";
  
-                             if (draggingScrubber) {
+         // saved info to be serialized
+         std::vector<Avatar> avatars;
+         std::vector<Animation> animations;
  
-                                 // Scroll scrubber when dragging
-                                 float local = mouse.y - p0.y + timelineScroll;
-                                 currentFrame = (int)round(local / pixelsPerFrame);
-                                 currentFrame = std::clamp(currentFrame, 0, totalFrames);
+         // Packaged info
+         Avatar * avatar_to_edit = nullptr;
  
-                                 if (currentFrame > animation_tick_frame_length) {
-                                     currentFrame = animation_tick_frame_length;
-                                 }
+         // Permanent Texturing info
+     
+         int randInt(int num1, int num2) {
+             static std::mt19937 rng(std::random_device{}());
+             static std::uniform_int_distribution<int> dist(num1, num2);
+             return dist(rng);
+         }
  
--                                // When dragging the scrubber, click the selected frame into the most relevant one
--                                selected_anim_frame = getLastKFrameFromTick(currentFrame);
-+                                // Keep selected frame stable while scrubbing; scrubber drives preview independently.
  
-                                 if (endReached && currentFrame > (lastFrame - 4)) {
-                                     timelineScroll += pixelsPerFrame;
-                                 }
+         void SyncAndReloadAvatars(const std::string& path) {
  
-                                 // Auto-scroll up when dragging near the top of timeline view.
-                                 const float auto_scroll_top_zone = p0.y + 18.0f;
-                                 if (mouse.y <= auto_scroll_top_zone) {
-                                     timelineScroll = std::max(-80.0f, timelineScroll - (pixelsPerFrame * 0.75f));
-                                 }
-                             }
+             avatars.clear();
  
-                             // scrubber line
-                             dl->AddLine(
-                                 ImVec2(p0.x, scrubY),
-                                 ImVec2(p0.x + avail.x, scrubY),
-                                 IM_COL32(255,40,40,255),
-                                 3.0f
-                             );
+-            std::vector<std::string> avrpaths = assets.GetFilepathsInDirectory(AVATARDIR, "avr");
+             std::vector<std::string> avrnames = assets.GetFilenamesInDirectory(AVATARDIR, "avr");
  
-                             // scrubber triangle
-                             dl->AddTriangleFilled(
-                                 ImVec2(railX - 18.0f, scrubY),
-                                 ImVec2(railX - 2.0f, scrubY - 10.0f),
-                                 ImVec2(railX - 2.0f, scrubY + 10.0f),
-                                 IM_COL32(255,50,50,255)
-                             );
+             for (const std::string& fname : avrnames) {
  
-                             // current frame label
-                             dl->AddText(
-                                 ImVec2(p0.x + 140.0f, scrubY - 10.0f),
-                                 IM_COL32(255,80,80,255),
-                                 std::string("FRAME " + std::to_string(currentFrame)).c_str()
-                             );
- 
-                             ImGui::InvisibleButton( "timeline_capture", avail);
- 
-                             if (!isSomeFlagHovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-                                 // Left mouse button double-click detected
- 
-                                 float local = mouse.y - p0.y + timelineScroll;
-                                 currentFrame = (int)round(local / pixelsPerFrame);
-                                 currentFrame = std::clamp(currentFrame, 0, totalFrames);
- 
--                                if (!(ImGui::GetIO().KeyShift)) {
--                                    // When dragging the scrubber, click the selected frame into the most relevant one
--                                    selected_anim_frame = getLastKFrameFromTick(currentFrame);
--                                }
--
-                             }
- 
-                             ImGui::EndTabItem();
-                         }
- 
-                         ImGui::EndTabBar();
- 
-                         
- 
-                     }
- 
-                     ImGui::EndChild();
-                     ImGui::GetStyle().WindowPadding = orig;
- 
-                     
- 
-                 }
- 
+                 Avatar copy;
+-                bool success = copy.LoadAvrFile(fname, AVATARDIR);
++                const std::string avatarBaseName = std::filesystem::path(fname).stem().string();
++                bool success = copy.LoadAvrFile(avatarBaseName, AVATARDIR);
+                 // assert(success);
+                 avatars.push_back(copy);
+                 
+                 
              }
  
-         };
- 
+         }
          
+         
+         void SyncAndReloadAnimations(const std::string& path) {
+            
  
-         ImGui::End();
+         }
+        
+ 
+     public:
+ 
+         EditorUISystem (Renderer & _renderer, Scene & _scene, AssetManager & _assets, EditorAssets & _editorAssets, Window & _window) : renderer(_renderer), scene(_scene), assets(_assets), editorAssets(_editorAssets), window(_window) {
+ 
+             ImGuiIO& io = ImGui::GetIO();
+             io.IniFilename = "../../../cache/imgui/EMain_imgui.ini";
+ 
+             SyncAndReloadAvatars(AVATARDIR);
+             SyncAndReloadAnimations(ANIMATIONDIR);
+          
+         }
+         
+     
+         void update (Registry & registry, float deltatime) override;
+ 
+ 
+ 
+     
+ 
+ 
+ };
+ 
+ 
+-#endif
+\ No newline at end of file
++#endif
  
 EOF
 )

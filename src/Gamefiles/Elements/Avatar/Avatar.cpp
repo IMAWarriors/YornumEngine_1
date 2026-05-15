@@ -151,7 +151,7 @@ bool Avatar::LoadAvrFile (const std::string& filename, const std::string& path) 
     std::ifstream file(fullpath);
 
     if (!file.is_open())
-        // return false;
+        return false;
 
     assert(file.is_open());
 
@@ -164,7 +164,7 @@ bool Avatar::LoadAvrFile (const std::string& filename, const std::string& path) 
     file >> token;
 
     if (token != "~AVATAR_FILE")
-        // return false;
+        return false;
 
     assert(token == "~AVATAR_FILE");
 
@@ -172,7 +172,7 @@ bool Avatar::LoadAvrFile (const std::string& filename, const std::string& path) 
     file >> version;
 
     if (version != "VERSION_1")
-        // return false;
+        return false;
 
     assert(version == "VERSION_1");
 
@@ -199,7 +199,7 @@ bool Avatar::LoadAvrFile (const std::string& filename, const std::string& path) 
     file >> token;
 
     if (token != "~DEFAULT_TEXTURING")
-        // return false;
+        return false;
 
     assert(token == "~DEFAULT_TEXTURING");
 

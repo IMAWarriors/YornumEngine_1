@@ -19,7 +19,7 @@
 
 #include <vector>
 #include <string>
-
+#include <filesystem>
 
 #include <random>
 
@@ -88,14 +88,17 @@ class EditorUISystem : public System {
 
             avatars.clear();
 
-            std::vector<std::string> avrpaths = assets.GetFilepathsInDirectory(AVATARDIR, "avr");
             std::vector<std::string> avrnames = assets.GetFilenamesInDirectory(AVATARDIR, "avr");
 
             for (const std::string& fname : avrnames) {
 
                 Avatar copy;
-                bool success = copy.LoadAvrFile(fname, AVATARDIR);
+
+                const std::string avatarBaseName = std::filesystem::path(fname).stem().string();
+                bool success = copy.LoadAvrFile(avatarBaseName, AVATARDIR);
+
                 // assert(success);
+                
                 avatars.push_back(copy);
                 
                 
