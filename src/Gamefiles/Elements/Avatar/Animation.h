@@ -97,9 +97,9 @@ struct Animation {
 
 
 
-    bool SaveAnimFile (const std::string& filename);
+    bool SaveAnimFile (const std::string& filename, const std::string& path);
 
-    bool LoadAnimFile (const std::string& filename);
+    bool LoadAnimFile (const std::string& filename, const std::string& path);
 
 };
 
