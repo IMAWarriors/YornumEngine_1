@@ -84,6 +84,11 @@ struct AvatarJoint {
     }
     
     bool load_texture_from_path (AssetManager & assets, const std::string & path) {
+
+        if (path == "") {
+            return false;
+        }
+
         if (joint_has_texture()) { unload_texture(assets); }
         texture = &assets.LoadTextureAsset(path);
         texturePath = path; 
@@ -218,6 +223,12 @@ class Avatar {
             // animation application should only worry about this as well
 
 
+        }
+
+        void LoadInternalJointTextures (AssetManager& assets) {
+            for (AvatarJoint& joint : default_texturing.joints) {
+                joint.load_texture_from_path(assets, joint.texturePath);
+            }
         }
 
 

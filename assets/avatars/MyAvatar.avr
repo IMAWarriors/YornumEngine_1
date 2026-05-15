@@ -1,17 +1,32 @@
 ~AVATAR_FILE
-VERSION_1
+VERSION_2
 ~AVATAR_NAME
 MyAvatar
 ~DEFAULT_TEXTURING
-3
+6
 foot
-assets/sprites/characters\test2\test2_leftfoot.png 0 0 1 1 0 0 0 1 1
+assets/sprites/characters\test2\test2_leftfoot.png
+0 0 1 1 0 0 0 1 1
 body
-assets/sprites/characters\test2\test2_body.png 0 0 1 1 0 0 0 1 1
+assets/sprites/characters\test2\test2_body.png
+0 0 1 1 0 0 0 1 1
 head
-assets/sprites/characters\test2\test2_head.png 0 0 1 1 0 0 0 1 1
+assets/sprites/characters\test2\test2_head.png
+0 0 1 1 0 0 0 1 1
+limb1
+assets/sprites/characters\player\base_limb.png
+0 0 1 1 0 0 0 1 1
+limb2
+assets/sprites/characters\player\base_limb.png
+0 0 1 1 0 0 0 1 1
+limb3
+assets/sprites/characters\player\base_limb.png
+0 0 1 1 0 0 0 1 1
 ~ANCHOR_FRAME
-0 37 -11.3333 32 0
-1 36.3333 -42 32 0
-2 35.6667 -75.3333 32 0
+0 36.3333 -9.99997 58.6667 -9.33333
+1 37 -36.6667 40 28
+2 53 -65.3333 32 0
+3 18.3333 -53.3333 -6 24
+4 -3.6667 -42.6667 17.3333 14.6667
+5 -12.3334 -16.6667 25.3333 1.33333
 ~END_OF_FILE

@@ -429,6 +429,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         const std::string avString = std::string("Edit " + animations[anim_selected].name +  " w/ --> " + (*avatar_selected).name);
 
                         if (ImGui::Button(avString.c_str(), ImVec2(-1, 28))) {
+
+                            (*avatar_selected).LoadInternalJointTextures(assets);
+
                             avatarMenu = AvatarCreatorMenu::KEYFRAME_EDITOR;
                         }
 
