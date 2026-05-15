@@ -98,7 +98,6 @@ class EditorUISystem : public System {
                 bool success = copy.LoadAvrFile(avatarBaseName, AVATARDIR);
 
                 // assert(success);
-                
                 avatars.push_back(copy);
                 
                 
@@ -109,6 +108,22 @@ class EditorUISystem : public System {
         
         void SyncAndReloadAnimations(const std::string& path) {
            
+            animations.clear();
+
+            std::vector<std::string> animnames = assets.GetFilenamesInDirectory(ANIMATIONDIR, "anim");
+
+            for (const std::string& fname : animnames) {
+
+                Animation copy;
+
+                const std::string animationBaseName = std::filesystem::path(fname).stem().string();
+                bool success = copy.LoadAnimFile(animationBaseName, ANIMATIONDIR);
+
+                // assert(success);
+                animations.push_back(copy);
+                
+                
+            }
 
         }
        

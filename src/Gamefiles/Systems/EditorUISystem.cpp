@@ -401,16 +401,15 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     if (anim_selected != -1 && avatar_selected_idx != -1 && avatar_selected != nullptr) {
 
                         // >>> Rename the Edited Animation
+                        static int lastAnimSelected = -1;
+                        static char animNameBuffer[128] = "Untitled Animation 1";
 
                         if (avatar_selected_idx != -1) {
 
                             ImGui::Separator();
 
                             ImGui::Text("Rename:");
-
-                            static int lastAnimSelected = anim_selected;
-                            static char animNameBuffer[128] = "Untitled Animation 1";
-
+                            
                             if (anim_selected != lastAnimSelected) {
                                 // Update animNameBuffer to contain the field with the avatar name change
                                 memset(animNameBuffer, 0, sizeof(animNameBuffer));
@@ -430,8 +429,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                         if (ImGui::Button(avString.c_str(), ImVec2(-1, 28))) {
 
+                            lastAnimSelected = -1;
                             (*avatar_selected).LoadInternalJointTextures(assets);
-
                             avatarMenu = AvatarCreatorMenu::KEYFRAME_EDITOR;
                         }
 
@@ -446,6 +445,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
             } else if (avatarMenu == AvatarCreatorMenu::KEYFRAME_EDITOR) {
 
                 bool saveAvrPopup = false;
+                bool saveAnimPopup = false;
                 bool leaveAvrEditorPopup = false;
 
                 const std::string editKind = std::string((*avatar_selected).name + ": " + animations[anim_selected].name);
@@ -458,34 +458,31 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                 ImGui::SameLine();
 
+                ImGui::Text(editKind.c_str());
 
-                // @@@@
+                ImGui::SameLine();
 
-                
-
-                if (ImGui::Button("&&")) {
-                
+                if (ImGui::Button("Save Avatar (.avr)")) {
                     if (avatar_selected != nullptr) {
-
                         saveAvrPopup = true;
-                    
                     }
-
                 }
 
                 ImGui::SameLine();
 
-                ImGui::Text(editKind.c_str());
+                if (ImGui::Button("Save Animation (.anim)")) {
+                    if (anim_selected != -1) {
+                        saveAnimPopup = true;
+                    }
+                }
+
 
                 static int lastJointSelected = jointselected;
                 static char jointnamebuffer[128] = "Untitled joint";
 
-                
-
                 if (avatar_selected_idx != -1) 
                     avatar_selected = &avatars[avatar_selected_idx];
 
-                
 
                 // BEGINNING OF PANE
 
@@ -570,7 +567,6 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 //                       so that the Canvas can read interpolations between frames and such
                 // ============================================================
 
-                static int totalFrames = 300;
 
                 static int currentFrame = 0;
 
@@ -596,6 +592,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             currentFrame = 0;
                         }
                     }
+                } else {
+                    preview_anim_accumulated_ms = 0;
                 }
                 
 
@@ -732,6 +730,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     selected_anim_frame = temp_query_selected_anim_frame;
                     manual_anim_frame_switch = false;
                 }
+
+                ImGui::Text(std::to_string(selected_anim_frame).c_str());
 
                 ImGui::Separator();
 
@@ -2378,7 +2378,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 // JOINT INSPECTOR PALLET
                 
 
-                if (jointselected != -1 || selected_anim_frame != -1) {
+                if (selected_anim_frame != -1) {
 
                     ImGui::SameLine();
 
@@ -2765,9 +2765,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             bool endReached = false;
                             int lastFrame = 0;
 
-                            totalFrames = std::clamp(totalFrames, 1, animation_tick_frame_length - 1);
-
-                            for (int frame = 0; frame <= totalFrames - 1; frame++) {
+                            for (int frame = 0; frame <= animation_tick_frame_length - 1; frame++) {
 
                                 float y =
                                     p0.y +
@@ -2842,6 +2840,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                     // dont change current frame of scrubber not there
                                     if (!(ImGui::GetIO().KeyShift)) {
                                         currentFrame = flag.frame;
+                                        selected_anim_frame = flag.keyframe_index;
                                     } else {
                                         selected_anim_frame = flag.keyframe_index;
                                     }
@@ -2942,31 +2941,11 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 // Scroll scrubber when dragging
                                 float local = mouse.y - p0.y + timelineScroll;
                                 currentFrame = (int)round(local / pixelsPerFrame);
-                                currentFrame = std::clamp(currentFrame, 0, totalFrames);
 
                                 if (currentFrame > animation_tick_frame_length - 1) {
                                     currentFrame = animation_tick_frame_length - 1;
                                 }
 
-                                
-                                bool scrubberOnKeyframe = false;
-                                int tick_frame_acc = 0;
-                                int keyframe_idx = 0;
-
-                                for (const KeyAnimFrame& kframe : animations[anim_selected].frames) {
-
-                                    tick_frame_acc += kframe.time_to_next + 1;
-
-                                    if (currentFrame < tick_frame_acc) {
-                                        
-                                        scrubberOnKeyframe = true;
-                                        break;
-                                    }
-                                    
-                                    keyframe_idx++;
-                                }
-
-                                selected_anim_frame = keyframe_idx;
 
                                 // Keep selected frame stable while scrubbing; scrubber drives preview independently.
 
@@ -2977,7 +2956,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 
 
                                 // Auto-scroll up when dragging near the top of timeline view.
-                                const float auto_scroll_top_zone = p0.y + 18.0f;
+                                const float auto_scroll_top_zone = p0.y + 8.0f;
                                 if (mouse.y <= auto_scroll_top_zone) {
                                     timelineScroll = std::max(-80.0f, timelineScroll - (pixelsPerFrame * 0.75f));
                                 }
@@ -3015,7 +2994,10 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                                 float local = mouse.y - p0.y + timelineScroll;
                                 currentFrame = (int)round(local / pixelsPerFrame);
-                                currentFrame = std::clamp(currentFrame, 0, totalFrames);
+                                
+                                if (currentFrame > animation_tick_frame_length - 1) {
+                                    currentFrame = animation_tick_frame_length - 1;
+                                }
 
                             }
 
@@ -3023,17 +3005,14 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         }
 
                         ImGui::EndTabBar();
-
-                        
-
                     }
 
                     ImGui::EndChild();
                     ImGui::GetStyle().WindowPadding = orig;
 
-                    
-
                 }
+
+
 
                 ImVec2 saveAvatarModalSize = {
                     std::max(620.0f, GetScreenWidth() * 0.72f),
@@ -3042,8 +3021,10 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                 if (saveAvrPopup) {
                     ImGui::OpenPopup("Save Avatar");
+                }
 
-                    
+                if (saveAnimPopup) {
+                    ImGui::OpenPopup("Save Animation");
                 }
 
                 if (leaveAvrEditorPopup) {
@@ -3066,7 +3047,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     static char avrBuffer[128];
                     static bool filename_exists = false;
 
-                    ImGui::Text("To what file would you like to save this Avtar?");
+                    ImGui::Text("To what file would you like to save this Avatar?");
 
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
 
@@ -3161,6 +3142,111 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 }
 
 
+                if (ImGui::BeginPopupModal("Save Animation", NULL, ImGuiWindowFlags_NoCollapse)) {
+
+                    static int sel_anim_index = -1;
+                    static bool init_anim_window = false;
+                    static std::string sel_anim_filename = "";
+                    static char animBuffer[128];
+                    static bool filename_exists = false;
+
+                    ImGui::Text("To what file would you like to save this Animation?");
+
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+
+                    ImGui::Text("Warning! This filename already exists and saving will overrite data.");
+                    ImGui::Text("(ignore if you are updating a .anim file)");
+
+
+                    ImGui::PopStyleColor();
+
+                    // --------------------->
+
+                    std::vector<std::string> animpaths = assets.GetFilepathsInDirectory(ANIMATIONDIR, "anim");
+                    std::vector<std::string> animnames = assets.GetFilenamesInDirectory(ANIMATIONDIR, "anim");
+
+                    if (!init_anim_window) {
+                        filename_exists = false;
+                        for (int i = 0; i < animnames.size(); i++) {
+                            if (animnames[i] == animations[anim_selected].name) {
+                                sel_anim_index = i;
+                                sel_anim_filename = animnames[i];
+                                filename_exists = true;
+                                break;
+                            }
+                        }
+
+                        if (!filename_exists) {
+                            sel_anim_filename = animBuffer;
+                        }
+                    }
+
+                    ImGui::BeginChild("SaveAnimList", ImVec2(0, saveAvatarModalSize.y * 0.28f), true, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+
+
+                    for (int i = 0; i < (int)animpaths.size(); i++) {
+                        if (ImGui::Selectable(animpaths[i].c_str(), sel_anim_index == i, ImGuiSelectableFlags_DontClosePopups)) {
+                            sel_anim_index = i;
+                            sel_anim_filename = strip_ext(animnames[i]);
+                        }
+                    }
+
+
+
+                    ImGui::EndChild();
+
+                    
+                    std::snprintf(animBuffer, sizeof(animBuffer), "%s", animations[anim_selected].name.c_str());
+
+                    if (ImGui::InputText("Animation Name", animBuffer, sizeof(animBuffer))) {
+                        animations[anim_selected].name = animBuffer;
+                        sel_anim_index = -1;
+
+                        filename_exists = false;
+
+                        for (int i = 0; i < animnames.size(); i++) {
+                            if (animnames[i] == animations[anim_selected].name) {
+                                sel_anim_index = i;
+                                sel_anim_filename = animnames[i];
+                                filename_exists = true;
+                                break;
+                            }
+                        }
+
+                        if (!filename_exists) {
+                            sel_anim_filename = animBuffer;
+                        }
+
+                    }
+
+                    
+                    if (ImGui::Button("Save Animation", ImVec2(100, 35))) {
+
+                        animations[anim_selected].SaveAnimFile(sel_anim_filename, ANIMATIONDIR);
+
+                        saveAnimPopup = false;
+                        init_anim_window = false;
+
+                        ImGui::CloseCurrentPopup();
+                    
+                    }
+
+                    ImGui::SameLine();
+
+                    if (ImGui::Button("Cancel", ImVec2(70, 35))) {
+
+                        saveAnimPopup = false;
+                        init_anim_window = false;
+
+                        ImGui::CloseCurrentPopup();
+                    
+                    }
+
+                    ImGui::EndPopup();
+
+                }
+
+
                 if (ImGui::BeginPopupModal("Leave Avatar Editor", NULL, ImGuiWindowFlags_NoCollapse)) {
 
                     ImGui::Text("Are you sure you want to leave the Avatar Editor?");
@@ -3199,6 +3285,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     if (ImGui::Button("Cancel", ImVec2(50, 30))) {
                         ImGui::CloseCurrentPopup();
                     }
+
 
                     ImGui::EndPopup();
 

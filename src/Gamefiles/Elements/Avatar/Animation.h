@@ -14,6 +14,12 @@ struct Animation {
 
     std::vector<KeyAnimFrame> frames;
 
+    Animation () {
+        name = "UNTITLED_ANIMATION_DEFAULT_CONSTRUCTOR";
+        joints_defined = 0;
+        frames.clear();
+    }
+
 
     Animation (std::string _name) {
         name = _name;
