@@ -3134,7 +3134,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         }
                     }
 
-                    if (ImGui::Button("Save Avatar", ImVec2(40, 24))) {
+                    if (ImGui::Button("Save Avatar", ImVec2(70, 35))) {
 
                         (*avatar_selected).SaveAvrFile(sel_avr_filename, AVATARDIR);
 
@@ -3147,7 +3147,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                     ImGui::SameLine();
 
-                    if (ImGui::Button("Cancel", ImVec2(40, 24))) {
+                    if (ImGui::Button("Cancel", ImVec2(70, 35))) {
 
                         saveAvrPopup = false;
                         init_avr_window = false;
@@ -3174,7 +3174,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                     ImGui::Separator();
 
-                    if (ImGui::Button("Confirm Exit Editor", ImVec2(40, 10))) {
+                    if (ImGui::Button("Confirm Exit Editor", ImVec2(70, 30))) {
 
                         SyncAndReloadAvatars(AVATARDIR);
                         SyncAndReloadAnimations(ANIMATIONDIR);
@@ -3196,7 +3196,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                     ImGui::SameLine();
 
-                    if (ImGui::Button("Cancel", ImVec2(40, 10))) {
+                    if (ImGui::Button("Cancel", ImVec2(50, 30))) {
                         ImGui::CloseCurrentPopup();
                     }
 

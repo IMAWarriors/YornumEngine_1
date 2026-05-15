@@ -82,7 +82,7 @@ bool Avatar::SaveAvrFile (const std::string& filename, const std::string& path) 
     // --------------------------->
 
 
-    const std::string version = "VERSION_2";
+    const std::string version = "VERSION_1";
 
     file << "~AVATAR_FILE" << '\n';
     file << version << '\n';
@@ -118,6 +118,7 @@ bool Avatar::SaveAvrFile (const std::string& filename, const std::string& path) 
         file << jname << '\n';
         
         file << jpath << '\n';
+
         file << joffset_x << " " << joffset_y << " " << jscale_x << " " << jscale_y << " " << jrotation << " " << jcmin_x << " " << jcmin_y << " " << jcmax_x  << " " << jcmax_y << '\n';
 
 
@@ -158,8 +159,6 @@ bool Avatar::LoadAvrFile (const std::string& filename, const std::string& path) 
     if (!file.is_open())
         return false;
 
-    assert(file.is_open());
-
     std::string token;
 
     // =========================================================================================
@@ -171,15 +170,12 @@ bool Avatar::LoadAvrFile (const std::string& filename, const std::string& path) 
     if (token != "~AVATAR_FILE")
         return false;
 
-    assert(token == "~AVATAR_FILE");
-
     std::string version;
     file >> version;
 
     const bool version_1 = (version == "VERSION_1");
-    const bool version_2 = (version == "VERSION_2");
 
-    if (!version_1 && !version_2)
+    if (!version_1)
         return false;
 
     // =========================================================================================
@@ -189,9 +185,8 @@ bool Avatar::LoadAvrFile (const std::string& filename, const std::string& path) 
     file >> token;
 
     if (token != "~AVATAR_NAME")
-        // return false;
+        return false;
 
-    assert(token == "~AVATAR_NAME");
 
     file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     std::getline(file, token, '\n');
@@ -207,7 +202,6 @@ bool Avatar::LoadAvrFile (const std::string& filename, const std::string& path) 
     if (token != "~DEFAULT_TEXTURING")
         return false;
 
-    assert(token == "~DEFAULT_TEXTURING");
 
     int number_of_joints = 0;
 
@@ -222,60 +216,19 @@ bool Avatar::LoadAvrFile (const std::string& filename, const std::string& path) 
 
         std::getline(file, joint.name, '\n');
 
-        if (version_2) {
-            std::getline(file, joint.texturePath, '\n');
-            file >> joint.offset.x
-                 >> joint.offset.y
-                 >> joint.scale.x
-                 >> joint.scale.y
-                 >> joint.rotation
-                 >> joint.crop_min.x
-                 >> joint.crop_min.y
-                 >> joint.crop_max.x
-                 >> joint.crop_max.y;
-            file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-        } else {
-
-            std::string packedJointLine;
-            std::getline(file, packedJointLine, '\n');
-            if (packedJointLine.empty()) {
-                std::getline(file, packedJointLine, '\n');
-            }
-
-            std::istringstream lineStream(packedJointLine);
-            std::vector<std::string> tokens;
-            std::string piece;
-            while (lineStream >> piece) {
-                tokens.push_back(piece);
-            }
-
-            if (tokens.size() != 9 && tokens.size() != 10)
-                return false;
-
-            size_t numericStart = 0;
-            if (tokens.size() == 10) {
-                joint.texturePath = tokens[0];
-                numericStart = 1;
-            } else {
-                joint.texturePath = "";
-                numericStart = 0;
-            }
-
-            joint.offset.x = std::stof(tokens[numericStart + 0]);
-            joint.offset.y = std::stof(tokens[numericStart + 1]);
-            joint.scale.x = std::stof(tokens[numericStart + 2]);
-            joint.scale.y = std::stof(tokens[numericStart + 3]);
-            joint.rotation = std::stof(tokens[numericStart + 4]);
-            joint.crop_min.x = std::stof(tokens[numericStart + 5]);
-            joint.crop_min.y = std::stof(tokens[numericStart + 6]);
-            joint.crop_max.x = std::stof(tokens[numericStart + 7]);
-            joint.crop_max.y = std::stof(tokens[numericStart + 8]);
-        }
-
-        
+        std::getline(file, joint.texturePath, '\n');
+        file >> joint.offset.x
+                >> joint.offset.y
+                >> joint.scale.x
+                >> joint.scale.y
+                >> joint.rotation
+                >> joint.crop_min.x
+                >> joint.crop_min.y
+                >> joint.crop_max.x
+                >> joint.crop_max.y;
+        file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
         default_texturing.joints.push_back(joint);
-
     }
 
     // =========================================================================================
