@@ -272,38 +272,92 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
         static float preview_anim_accumulated_ms = 0;
 
         if (ImGui::Begin("Create Avatar...", nullptr, flags)) {
+            //@@@@
 
             if (avatarMenu == AvatarCreatorMenu::AVATAR_SELECTION) {
 
+
+                float availHeaderWidth = ImGui::GetContentRegionAvail().x - 3.0f;
+
+                // LEFT HEADER
+                ImGui::BeginChild("LeftHeader", ImVec2((availHeaderWidth/2.0f)-3.0f, 28), true);
+                ImGui::Text("Select an Avatar anchor base to open the editor with");
+                ImGui::EndChild();
+
+
+                ImGui::SameLine();
+
+                // RIGHT HEADER
+                ImGui::BeginChild("RightHeader", ImVec2((availHeaderWidth/2.0f)-3.0f, 28), true);
+
+                if (avatar_selected_idx != -1) {
+                    ImGui::Text("Select an Animation to open Avatar/Animation editor with");
+                }
+
+                ImGui::EndChild();
+
+
+
+
+
+                float availChildWidth = ImGui::GetContentRegionAvail().x;
+                int children = 4; // Number of children
+                float childWidth = (availChildWidth / (float)children) - 6.0f;
+
+                // CHILD 1:
+                // ==========
+                // Select Avatar Pane
+
+
+                int SAP_buttonCount = 5; // Number of buttons
+                float SAP_buttonWidth = (childWidth / (float)SAP_buttonCount) - 8.5f;
+
+                ImGui::BeginChild("SelectAvatarPane", ImVec2(childWidth, ImGui::GetContentRegionAvail().y), true);
             
-                if (ImGui::Button("New Avatar", ImVec2(-1, 28))) {
+                if (ImGui::Button("New", ImVec2(SAP_buttonWidth, 28))) {
                     avatars.push_back(Avatar("Untitled Avatar"));
                 }
 
-		ImGui::SameLine();
-                if (ImGui::Button("Copy Avatar", ImVec2(-1, 28)) && avatar_selected_idx >= 0 && avatar_selected_idx < (int)avatars.size()) {
+                ImGui::SameLine();
+                
+                if (ImGui::Button("Copy", ImVec2(SAP_buttonWidth, 28)) && avatar_selected_idx >= 0 && avatar_selected_idx < (int)avatars.size()) {
                     Avatar copied = avatars[avatar_selected_idx];
                     copied.name += " Copy";
                     avatars.push_back(copied);
                     avatar_selected_idx = (int)avatars.size() - 1;
                     avatar_selected = &avatars[avatar_selected_idx];
                 }
-                if (ImGui::Button("Delete Avatar", ImVec2(-1, 28)) && avatar_selected_idx >= 0 && avatar_selected_idx < (int)avatars.size()) {
+
+                ImGui::SameLine();
+
+                if (ImGui::Button("Delete", ImVec2(SAP_buttonWidth, 28)) && avatar_selected_idx >= 0 && avatar_selected_idx < (int)avatars.size()) {
                     avatars.erase(avatars.begin() + avatar_selected_idx);
                     avatar_selected_idx = -1;
                     avatar_selected = nullptr;
                     anim_selected = -1;
                 }
-                if (ImGui::Button("Move Avatar Up", ImVec2(-1, 28)) && avatar_selected_idx > 0 && avatar_selected_idx < (int)avatars.size()) {
+
+                ImGui::SameLine();
+
+                if (ImGui::Button("Move ^", ImVec2(SAP_buttonWidth, 28)) && avatar_selected_idx > 0 && avatar_selected_idx < (int)avatars.size()) {
                     std::swap(avatars[avatar_selected_idx], avatars[avatar_selected_idx - 1]);
                     avatar_selected_idx--;
                     avatar_selected = &avatars[avatar_selected_idx];
                 }
-                if (ImGui::Button("Move Avatar Down", ImVec2(-1, 28)) && avatar_selected_idx >= 0 && avatar_selected_idx < (int)avatars.size() - 1) {
+
+                ImGui::SameLine();
+
+                if (ImGui::Button("Move v", ImVec2(SAP_buttonWidth, 28)) && avatar_selected_idx >= 0 && avatar_selected_idx < (int)avatars.size() - 1) {
                     std::swap(avatars[avatar_selected_idx], avatars[avatar_selected_idx + 1]);
                     avatar_selected_idx++;
                     avatar_selected = &avatars[avatar_selected_idx];
                 }
+
+                ImGui::Separator();
+
+                ImGui::Text("General Avatar Files:");
+
+                ImGui::Separator();
 
                 for (int i = 0; i < avatars.size(); i++) {
                     ImGui::PushID(i);
@@ -317,14 +371,30 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     ImGui::PopID();
                 }
 
-                
+
+
+
+                ImGui::EndChild();
+
+
+
+                // CHILD 2:
+                // ==========
+                // Avatar Information Overview 
+
+               
+
                 // >>> Rename the Edited Avatar
 
                 if (avatar_selected_idx != -1) {
 
-                    ImGui::Separator();
+                    ImGui::SameLine();
+                    ImGui::BeginChild("AvatarInfoOverview", ImVec2(childWidth, ImGui::GetContentRegionAvail().y), true);
 
-                    ImGui::Text("Rename:");
+                
+                    ImGui::Text("Rename Selected Avatar File:");
+
+                    ImGui::Separator();
 
                     static int lastAvatarSelected = -1;
                     static char avatarNameBuffer[128] = "Untitled Avatar";
@@ -340,14 +410,34 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                     ImGui::InputText("##rename", avatarNameBuffer, IM_ARRAYSIZE(avatarNameBuffer));
                     avatars[avatar_selected_idx].name = std::string(avatarNameBuffer);
+
+                    ImGui::Separator();
+
+                    ImGui::Text("Avatar Info Preview:");
+
+                    ImGui::Separator();
+
+                    ImGui::EndChild();
+                    
                     
                 } else {
                     
                 }
 
-                ImGui::Separator();
+                
+                
+
+
+                // CHILD 3:
+                // ==========
+                // Select Animation Pane
+
+                
 
                 if (avatar_selected_idx != -1) {
+
+                    ImGui::SameLine();
+                    ImGui::BeginChild("SelectAnimationPane", ImVec2(childWidth, ImGui::GetContentRegionAvail().y), true);
 
                     
                     if (animations.size() > 0) {
@@ -386,6 +476,17 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     ImGui::Separator();
 
                     for (int i = 0; i < animations.size(); i++) {
+
+                        bool anim_compatible = true;
+
+                        if (animations.at(i).frames.size() > 0) {
+                            if (animations.at(i).frames[0].joints.size() != (*avatar_selected).default_frame.joints.size()) {
+                                anim_compatible = false;
+                            }
+                        }
+
+                        ImGui::BeginDisabled(!anim_compatible);
+
                         ImGui::PushID(i+999);
                         bool sel = (i == anim_selected);
                         if (ImGui::Selectable(animations.at(i).name.c_str(), sel)) {
@@ -393,12 +494,33 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                         }
                         ImGui::PopID();
+
+                        ImGui::EndDisabled();
+
+
                     }
 
                     ImGui::Separator();
 
+                    ImGui::EndChild();
+
+
+                }
+
+                
+
+                // CHILD 4:
+                // ==========
+                // Animation Overview Pane (should show compatibility with selected Avatar)
+
+                
+
+                if (avatar_selected_idx != -1) {
 
                     if (anim_selected != -1 && avatar_selected_idx != -1 && avatar_selected != nullptr) {
+
+                        ImGui::SameLine();
+                        ImGui::BeginChild("AnimationOverviewPane", ImVec2(childWidth, ImGui::GetContentRegionAvail().y), true);
 
                         // >>> Rename the Edited Animation
                         static int lastAnimSelected = -1;
@@ -406,9 +528,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                         if (avatar_selected_idx != -1) {
 
-                            ImGui::Separator();
+                            ImGui::Text("Rename Selected Animation:");
 
-                            ImGui::Text("Rename:");
+                            ImGui::Separator();
                             
                             if (anim_selected != lastAnimSelected) {
                                 // Update animNameBuffer to contain the field with the avatar name change
@@ -434,13 +556,11 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             avatarMenu = AvatarCreatorMenu::KEYFRAME_EDITOR;
                         }
 
+                        ImGui::EndChild();
                     }
-
-                    
+                }
 
                 
-
-                }
             
             } else if (avatarMenu == AvatarCreatorMenu::KEYFRAME_EDITOR) {
 
@@ -689,6 +809,60 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                 ImGui::Separator();
 
+                //$$$
+                if (selected_anim_frame == -1) {
+
+                    float bwidth = (ImGui::GetContentRegionAvail().x / 2.0) - 5.0f;
+
+
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.1f,0.1f,0.1f,0.8f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.2f,0.2f,0.2f,0.8f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f,0.3f,0.3f,0.8f));
+
+                    if (ImGui::Button("Open Animation Editor", ImVec2(bwidth, 24))) {
+
+                        selected_anim_frame = 0;
+                        currentFrame = 0;
+                        play_preview_animation = false;
+
+                    }
+                    
+                    ImGui::PopStyleColor(3);
+
+                    ImGui::SameLine();
+
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f,0.3f,0.3f,0.8f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f,0.6f,0.6f,0.8f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5f,0.1f,0.1f,0.8f));
+                    
+                    if (ImGui::Button("Play Animation", ImVec2(bwidth, 24))) {
+
+                        selected_anim_frame = 0;
+                        currentFrame = 0;
+                        play_preview_animation = true;
+                    
+                    }
+
+                    ImGui::PopStyleColor(3);
+
+                    ImGui::Separator();
+
+                } else {
+
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.5f, 0.2f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.15f, 0.45f, 0.15f, 1.0f)); // Slightly darker green on hover
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.05f, 0.3f, 0.05f, 1.0f));  // Even darker green on active
+                    if (ImGui::Button("Return to Anchor Frame")) {
+
+                        selected_anim_frame = -1;
+                        currentFrame = 0;
+                        play_preview_animation = false;
+                        
+                    }
+                    ImGui::PopStyleColor(3);
+
+                }
+
                 if (anim_selected != -1) {
 
                     // Push the background color style for the selectable item
@@ -696,14 +870,29 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.15f, 0.45f, 0.15f, 1.0f)); // Slightly darker green on hover
                     ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.05f, 0.3f, 0.05f, 1.0f));  // Even darker green on active
 
+                    if (selected_anim_frame != -1) {
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 0.6f));
+                    }
+
                     // Draw the "Anchor Frame" selectable as the first item
                     if (ImGui::Selectable("Anchor Frame", (selected_anim_frame == -1))) {
                         temp_query_selected_anim_frame = -1;
                         manual_anim_frame_switch = true;
+                        play_preview_animation = false;
                     }
+
+                    if (selected_anim_frame != -1) {
+                        ImGui::PopStyleColor();
+                    }
+
+                    // --------------->
 
                     // Pop the style colors to revert back to default for the rest of the list
                     ImGui::PopStyleColor(3);
+
+                    if (selected_anim_frame == -1) {
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 0.6f));
+                    }
 
                     // Draw the rest of the animation frames
                     for (int i = 0; i < animations[anim_selected].frames.size(); i++) {
@@ -719,6 +908,11 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                         ImGui::PopID();
                     }
+
+                    if (selected_anim_frame == -1) {
+                        ImGui::PopStyleColor();
+                    }
+
                 }
 
                 ImGui::Separator();
@@ -731,7 +925,13 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     manual_anim_frame_switch = false;
                 }
 
-                ImGui::Text(std::to_string(selected_anim_frame).c_str());
+                if (selected_anim_frame == -1) {
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.1f, 0.6f, 0.1f, 1.0f));
+                    ImGui::Text("Selected Anim Frame Index: -1 (Avatar Anchor)");
+                    ImGui::PopStyleColor();
+                } else {
+                    ImGui::Text(std::string("Selected Anim Frame Index: " + std::to_string(selected_anim_frame)).c_str());
+                }
 
                 ImGui::Separator();
 
@@ -765,6 +965,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                     if (ImGui::Button("Delete Joint", ImVec2(-1, 28))) {
                         if (avatar_selected != nullptr) {
+                            
                             if (jointselected >= 0 && jointselected < (*avatar_selected).default_texturing.joints.size()) {
                                 (*avatar_selected).default_texturing.joints.erase((*avatar_selected).default_texturing.joints.begin() + jointselected);
                             }
@@ -872,8 +1073,11 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 // List of joints
                 for (int i = 0; i < (*avatar_selected).default_texturing.joints.size(); i++) {
                     ImGui::PushID(i);
+
+                    std::string disp = std::string((*avatar_selected).default_texturing.joints.at(get_idx_from_jlayer_id((*avatar_selected), i)).name + " | Unique JID: " + std::to_string((*avatar_selected).default_frame.joints.at(get_idx_from_jlayer_id((*avatar_selected), i)).unique_id));
+
                     bool sel = (i == jointselected);
-                    if (ImGui::Selectable( (*avatar_selected).default_texturing.joints.at(get_idx_from_jlayer_id((*avatar_selected), i)).name.c_str(), sel )) {
+                    if (ImGui::Selectable( disp.c_str(), sel )) {
                         jointselected = (sel) ? -1 : get_idx_from_jlayer_id((*avatar_selected), i);
                     }
                     ImGui::PopID();
@@ -901,7 +1105,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                 float factor = 1.0f;
 
-                if (jointselected!=-1) {
+                if (jointselected != -1 || selected_anim_frame != -1) {
                     factor = 0.75f;
                 }
 
@@ -2378,7 +2582,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 // JOINT INSPECTOR PALLET
                 
 
-                if (selected_anim_frame != -1) {
+                if (jointselected != -1 || selected_anim_frame != -1) {
 
                     ImGui::SameLine();
 
@@ -2390,618 +2594,664 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                     if (ImGui::BeginTabBar("animtypetabs")) {
 
-                        if (ImGui::BeginTabItem("Frame")) {
+                        if (jointselected != -1 || selected_anim_frame == -1) {
 
-                            editing_anim_w_interpolation = false;
-                            play_preview_animation = false;
+                            if (ImGui::BeginTabItem("Frame")) {
 
-                            if (jointselected!=-1) {
-                            
+                                editing_anim_w_interpolation = false;
+                                play_preview_animation = false;
 
-                                // TODO @IMAWarriors
-                                // --> please make sure to add a tab system between
-                                // FRAMES 
-                                //
-                                //
-                                //
-                                //
-                                // TIMING
-                                //
-                                //
-                                //
-                                //
-
+                                if (jointselected!=-1) {
                                 
 
-                                
+                                    // ANCHOR FRAME EDITOR: This if branch handles if a joint is selected
+                                    // for the joint inspector but we are on the default frame, so original
+                                    // character data SHOULD be altered; this should be VICE VESA for
+                                    // the INDIVIDUAL FRAME EDITOR
+                                    if (selected_anim_frame == -1) {
 
-                                // ANCHOR FRAME EDITOR: This if branch handles if a joint is selected
-                                // for the joint inspector but we are on the default frame, so original
-                                // character data SHOULD be altered; this should be VICE VESA for
-                                // the INDIVIDUAL FRAME EDITOR
-                                if (selected_anim_frame == -1) {
+                                        auto& joint = (*avatar_selected).default_frame.joints[jointselected];
+                                        auto& joint_text = (*avatar_selected).default_texturing.joints[jointselected];
 
-                                    auto& joint = (*avatar_selected).default_frame.joints[jointselected];
-                                    auto& joint_text = (*avatar_selected).default_texturing.joints[jointselected];
+                                        // ONLY update buffer when selection changes
+                                        if (lastJointSelected != jointselected) {
+                                            lastJointSelected = jointselected;
 
-                                    // ONLY update buffer when selection changes
-                                    if (lastJointSelected != jointselected) {
-                                        lastJointSelected = jointselected;
+                                            strncpy(jointnamebuffer, joint_text.name.c_str(), sizeof(jointnamebuffer));
+                                            jointnamebuffer[sizeof(jointnamebuffer) - 1] = '\0'; // safety null terminator
+                                        }
 
-                                        strncpy(jointnamebuffer, joint_text.name.c_str(), sizeof(jointnamebuffer));
-                                        jointnamebuffer[sizeof(jointnamebuffer) - 1] = '\0'; // safety null terminator
+                                        ImGui::TextUnformatted(joint_text.name.c_str());
+
+                                        ImGui::Separator();
+
+                                        if (ImGui::BeginTable("JointInspector", 2, ImGuiTableFlags_SizingStretchProp)) {
+                                            ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+                                            ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+
+                                            std::function<void(const char*, std::function<void()>)> Row =
+                                            [&](const char* label, std::function<void()> func)
+                                            {
+                                                ImGui::TableNextRow();
+                                                ImGui::TableSetColumnIndex(0);
+                                                ImGui::TextUnformatted(label);
+
+                                                ImGui::TableSetColumnIndex(1);
+                                                func();
+                                            };
+
+                                            Row("Name", [&]() {
+                                                ImGui::InputText("##name", jointnamebuffer, IM_ARRAYSIZE(jointnamebuffer));
+                                                joint_text.name = jointnamebuffer;
+                                            });
+
+                                            Row("oX", [&]() { ImGui::DragFloat("##ox", &joint.origin.x, 0.1f); });
+                                            Row("oY", [&]() { ImGui::DragFloat("##oy", &joint.origin.y, 0.1f); });
+
+                                            Row("dX", [&]() { ImGui::DragFloat("##dx", &joint.direction.x, 0.1f); });
+                                            Row("dY", [&]() { ImGui::DragFloat("##dy", &joint.direction.y, 0.1f); });
+
+                                            if (joint_text.joint_has_texture()) {
+                                                ImGui::Separator();
+                                                ImGui::Text("Image Settings");
+
+                                                Row("Offset X", [&]() { ImGui::DragFloat("##offx", &joint_text.offset.x, 0.1f); });
+                                                Row("Offset Y", [&]() { ImGui::DragFloat("##offy", &joint_text.offset.y, 0.1f); });
+
+                                                Row("Scale X", [&]() { ImGui::DragFloat("##scalex", &joint_text.scale.x, 0.01f); });
+                                                Row("Scale Y", [&]() { ImGui::DragFloat("##scaley", &joint_text.scale.y, 0.01f); });
+
+                                                Row("Crop Min X", [&]() { ImGui::DragFloat("##cminx", &joint_text.crop_min.x, 0.1f); });
+                                                Row("Crop Min Y", [&]() { ImGui::DragFloat("##cminy", &joint_text.crop_min.y, 0.1f); });
+
+                                                Row("Crop Max X", [&]() { ImGui::DragFloat("##cmaxx", &joint_text.crop_max.x, 0.1f); });
+                                                Row("Crop Max Y", [&]() { ImGui::DragFloat("##cmaxy", &joint_text.crop_max.y, 0.1f); });
+
+                                                float deg = joint_text.rotation * 180.0f / 3.14159265f;
+                                                Row("Rotation", [&]() { if (ImGui::DragFloat("##rot", &deg, 1.0f)) {joint_text.rotation = deg * 3.14159265f / 180.0f;} });
+                                            }
+
+                                            ImGui::EndTable();
+                                        }
+
+                                        static std::vector<std::string> characterFiles;
+                                        static bool filesLoaded = false;
+
+                                        if (!filesLoaded) {
+                                            characterFiles.clear();
+
+                                            std::string root = "assets/sprites/characters";
+
+                                            for (const auto& entry : std::filesystem::recursive_directory_iterator(root)) {
+                                                if (!entry.is_directory()) {
+                                                    std::string path = entry.path().string();
+
+                                                    if (entry.path().extension() == ".png") {
+                                                        characterFiles.push_back(path);
+                                                    }
+                                                }
+                                            }
+
+                                            filesLoaded = true;
+                                        }
+
+                                        static int selectedFileIndex = -1;
+
+                                        ImGui::Separator();
+                                        ImGui::Text("Character Sprites:");
+
+                                        ImGui::BeginChild("SpriteList", ImVec2(0, 150), true);
+
+                                        for (int i = 0; i < characterFiles.size(); i++) {
+                                            const std::string& fullPath = characterFiles[i];
+
+                                            // Optional: show only filename instead of full path
+                                            std::string displayName = std::filesystem::path(fullPath).filename().string();
+
+                                            if (ImGui::Selectable(displayName.c_str(), selectedFileIndex == i)) {
+                                                selectedFileIndex = i;
+                                            }
+                                        }
+
+                                        ImGui::EndChild();
+
+                                        if (ImGui::Button("Set Image")) {
+                                            if (selectedFileIndex != -1) {
+                                                joint_text.load_texture_from_path(assets, characterFiles[selectedFileIndex]);
+                                            }
+                                        }
+
+
+                                    } else {
+
+                                        // INDIVIDUAL FRAME EDITOR: 
+                                        // if (selected_anim_frame == 0, 1, 2, ... etc. ) {
+                                        auto& joint = animations[anim_selected].frames[selected_anim_frame].joints[jointselected];
+                                        const auto& joint_text = (*avatar_selected).default_texturing.joints[jointselected];
+
+                                        // ONLY update buffer when selection changes
+                                        if (lastJointSelected != jointselected) {
+                                            lastJointSelected = jointselected;
+
+                                            strncpy(jointnamebuffer, joint_text.name.c_str(), sizeof(jointnamebuffer));
+                                            jointnamebuffer[sizeof(jointnamebuffer) - 1] = '\0'; // safety null terminator
+                                        }
+
+                                        ImGui::TextUnformatted(joint_text.name.c_str());
+                                        ImGui::Separator();
+
+                                        // TODO
+                                        ImGui::Text("Animation Frame Editor");
+                                        ImGui::Text(std::string(" >> Selected Frame: " + std::to_string(selected_anim_frame)).c_str());
+
+                                        if (ImGui::BeginTable("JointInspector", 2, ImGuiTableFlags_SizingStretchProp)) {
+
+                                            ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+                                            ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+
+                                            std::function<void(const char*, std::function<void()>)> Row =
+                                            [&](const char* label, std::function<void()> func)
+                                            {
+                                                ImGui::TableNextRow();
+                                                ImGui::TableSetColumnIndex(0);
+                                                ImGui::TextUnformatted(label);
+
+                                                ImGui::TableSetColumnIndex(1);
+                                                func();
+                                            };
+
+                                            Row("Name", [&]() {
+                                                ImGui::Text(jointnamebuffer);
+                                            });
+
+                                            Row(">> X", [&]() { ImGui::DragFloat("##ox", &joint.origin.x, 0.1f); });
+                                            Row(">> Y", [&]() { ImGui::DragFloat("##oy", &joint.origin.y, 0.1f); });
+
+                                            Row(">> Rot.", [&]() { ImGui::DragFloat("##dr", &joint.rotation, 0.1f); });
+                                            Row(">> Shortest Angle Rot.", [&]() { ImGui::Checkbox("", &joint.normal_rotation); });
+
+                                            Row("Draw Order: ", [&]() { ImGui::Text(std::to_string(joint.draw_order).c_str()); });
+
+                                            ImGui::EndTable();
+
+                                            ImGui::Separator();
+
+                                            ImGui::BeginChild(
+                                                "dorder",
+                                                ImVec2(ImGui::GetContentRegionAvail().x, 110),
+                                                true
+                                            );
+
+                                            std::vector<std::string> nameDO;
+                                            std::vector<int> unid;
+
+                                            // Um this is extremely unoptimized code im pretty sure...
+                                            // like really bad... but i couldnt think of a better way off the top of my head
+                                            // so fuck you
+
+                                            for (int i = 0; i < animations[anim_selected].frames[selected_anim_frame].joints.size(); i++) {
+
+                                                int ujid = -1;
+
+                                                for (AnimJointAdjustmentFrame j : animations[anim_selected].frames[selected_anim_frame].joints) {
+
+                                                    // Optimization?
+                                                    if (j.draw_order < i) {
+                                                        continue;
+                                                    }
+
+                                                    if (j.draw_order == i) {
+                                                        unid.push_back(j.unique_id);
+                                                        ujid = j.unique_id;
+                                                        break;
+                                                    }
+                                                }
+
+                                                for (int j = 0; j < (*avatar_selected).default_texturing.joints.size(); j++ ) {
+                                                    const auto& position = (*avatar_selected).default_frame.joints[j];
+                                                    const auto& texture = (*avatar_selected).default_texturing.joints[j];
+
+                                                    if (position.unique_id == ujid) {
+                                                        nameDO.push_back(texture.name);
+                                                        break;
+                                                    }
+                                                }
+                                            }
+
+                                            assert(nameDO.size() == unid.size());
+
+
+                                            // Display draw order
+                                            for (int i = 0; i < nameDO.size(); i++) {
+
+                                                std::string disp = std::string(nameDO[i] + " > Unique JID: " + std::to_string(unid[i]));
+                                                ImGui::Text(disp.c_str());
+
+                                            }
+
+                                            ImGui::EndChild();
+
+                                            ImGui::Separator();
+
+                                            
+
+
+                                        }
+
+                                        
+
                                     }
 
-                                    ImGui::TextUnformatted(joint_text.name.c_str());
 
                                     ImGui::Separator();
 
-                                    if (ImGui::BeginTable("JointInspector", 2, ImGuiTableFlags_SizingStretchProp)) {
-                                        ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, 80.0f);
-                                        ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+                                    // Onion the previous frame,
+                                    // Onion the anchor frame,
 
-                                        std::function<void(const char*, std::function<void()>)> Row =
-                                        [&](const char* label, std::function<void()> func)
-                                        {
-                                            ImGui::TableNextRow();
-                                            ImGui::TableSetColumnIndex(0);
-                                            ImGui::TextUnformatted(label);
+                                    ImGui::Checkbox("Anchor Frame Ref", &onion_frame_anch);
 
-                                            ImGui::TableSetColumnIndex(1);
-                                            func();
-                                        };
 
-                                        Row("Name", [&]() {
-                                            ImGui::InputText("##name", jointnamebuffer, IM_ARRAYSIZE(jointnamebuffer));
-                                            joint_text.name = jointnamebuffer;
-                                        });
+                                    ImGui::Checkbox("Previous Frame Ref", &onion_frame_prev);
 
-                                        Row("oX", [&]() { ImGui::DragFloat("##ox", &joint.origin.x, 0.1f); });
-                                        Row("oY", [&]() { ImGui::DragFloat("##oy", &joint.origin.y, 0.1f); });
+                                    ImGui::Separator();
 
-                                        Row("dX", [&]() { ImGui::DragFloat("##dx", &joint.direction.x, 0.1f); });
-                                        Row("dY", [&]() { ImGui::DragFloat("##dy", &joint.direction.y, 0.1f); });
+                                    if (selected_anim_frame != -1) {
 
-                                        if (joint_text.joint_has_texture()) {
-                                            ImGui::Separator();
-                                            ImGui::Text("Image Settings");
+                                        if (ImGui::Button("^^ Draw Order")) {
 
-                                            Row("Offset X", [&]() { ImGui::DragFloat("##offx", &joint_text.offset.x, 0.1f); });
-                                            Row("Offset Y", [&]() { ImGui::DragFloat("##offy", &joint_text.offset.y, 0.1f); });
+                                            if (avatar_selected != nullptr  && avatar_selected_idx != -1 && anim_selected != -1) {
 
-                                            Row("Scale X", [&]() { ImGui::DragFloat("##scalex", &joint_text.scale.x, 0.01f); });
-                                            Row("Scale Y", [&]() { ImGui::DragFloat("##scaley", &joint_text.scale.y, 0.01f); });
+                                                if (jointselected != -1 && (*avatar_selected).default_texturing.joints.size() >= 2 && jointselected >= 0 && jointselected < (*avatar_selected).default_texturing.joints.size()) {
+                                                    auto& frame_joints = animations[anim_selected].frames[selected_anim_frame].joints;
+                                                    int sel_draw_order = frame_joints[jointselected].draw_order;
+                                                    int swap_idx = -1;
 
-                                            Row("Crop Min X", [&]() { ImGui::DragFloat("##cminx", &joint_text.crop_min.x, 0.1f); });
-                                            Row("Crop Min Y", [&]() { ImGui::DragFloat("##cminy", &joint_text.crop_min.y, 0.1f); });
+                                                    for (int i = 0; i < frame_joints.size(); i++) {
+                                                        if (i != jointselected && frame_joints[i].draw_order == sel_draw_order - 1) {
+                                                            swap_idx = i;
+                                                            break;
+                                                        }
+                                                    }
 
-                                            Row("Crop Max X", [&]() { ImGui::DragFloat("##cmaxx", &joint_text.crop_max.x, 0.1f); });
-                                            Row("Crop Max Y", [&]() { ImGui::DragFloat("##cmaxy", &joint_text.crop_max.y, 0.1f); });
+                                                    if (swap_idx != -1) {
+                                                        frame_joints[jointselected].draw_order = frame_joints[swap_idx].draw_order;
+                                                        frame_joints[swap_idx].draw_order = sel_draw_order;
+                                                    }
+                                                }
+                                            }
 
-                                            float deg = joint_text.rotation * 180.0f / 3.14159265f;
-                                            Row("Rotation", [&]() { if (ImGui::DragFloat("##rot", &deg, 1.0f)) {joint_text.rotation = deg * 3.14159265f / 180.0f;} });
+                                            
                                         }
 
-                                        ImGui::EndTable();
-                                    }
+                                        if (ImGui::Button("vv Draw Order")) {
 
-                                    static std::vector<std::string> characterFiles;
-                                    static bool filesLoaded = false;
+                                            if (avatar_selected != nullptr && avatar_selected_idx != -1) {
 
-                                    if (!filesLoaded) {
-                                        characterFiles.clear();
+                                                if (jointselected != -1 && (*avatar_selected).default_texturing.joints.size() >= 2 && jointselected >= 0 && jointselected < (*avatar_selected).default_texturing.joints.size()) {
+                                                    auto& frame_joints = animations[anim_selected].frames[selected_anim_frame].joints;
+                                                    int sel_draw_order = frame_joints[jointselected].draw_order;
+                                                    int swap_idx = -1;
 
-                                        std::string root = "assets/sprites/characters";
+                                                    for (int i = 0; i < frame_joints.size(); i++) {
+                                                        if (i != jointselected && frame_joints[i].draw_order == sel_draw_order + 1) {
+                                                            swap_idx = i;
+                                                            break;
+                                                        }
+                                                    }
 
-                                        for (const auto& entry : std::filesystem::recursive_directory_iterator(root)) {
-                                            if (!entry.is_directory()) {
-                                                std::string path = entry.path().string();
+                                                    if (swap_idx != -1) {
+                                                        frame_joints[jointselected].draw_order = frame_joints[swap_idx].draw_order;
+                                                        frame_joints[swap_idx].draw_order = sel_draw_order;
+                                                    }
 
-                                                if (entry.path().extension() == ".png") {
-                                                    characterFiles.push_back(path);
                                                 }
                                             }
                                         }
 
-                                        filesLoaded = true;
                                     }
 
-                                    static int selectedFileIndex = -1;
-
-                                    ImGui::Separator();
-                                    ImGui::Text("Character Sprites:");
-
-                                    ImGui::BeginChild("SpriteList", ImVec2(0, 150), true);
-
-                                    for (int i = 0; i < characterFiles.size(); i++) {
-                                        const std::string& fullPath = characterFiles[i];
-
-                                        // Optional: show only filename instead of full path
-                                        std::string displayName = std::filesystem::path(fullPath).filename().string();
-
-                                        if (ImGui::Selectable(displayName.c_str(), selectedFileIndex == i)) {
-                                            selectedFileIndex = i;
-                                        }
-                                    }
-
-                                    ImGui::EndChild();
-
-                                    if (ImGui::Button("Set Image")) {
-                                        if (selectedFileIndex != -1) {
-                                            joint_text.load_texture_from_path(assets, characterFiles[selectedFileIndex]);
-                                        }
-                                    }
-
-
-                                } else {
-                                    // INDIVIDUAL FRAME EDITOR: 
-                                    // if (selected_anim_frame == 0, 1, 2, ... etc. ) {
-                            
-
-
-                                    auto& joint = animations[anim_selected].frames[selected_anim_frame].joints[jointselected];
-                                    const auto& joint_text = (*avatar_selected).default_texturing.joints[jointselected];
-
-                                    // ONLY update buffer when selection changes
-                                    if (lastJointSelected != jointselected) {
-                                        lastJointSelected = jointselected;
-
-                                        strncpy(jointnamebuffer, joint_text.name.c_str(), sizeof(jointnamebuffer));
-                                        jointnamebuffer[sizeof(jointnamebuffer) - 1] = '\0'; // safety null terminator
-                                    }
-
-                                    ImGui::TextUnformatted(joint_text.name.c_str());
-
-                                    ImGui::Separator();
-
-                                    // TODO
-
-
-
-                                    ImGui::Text("Animation Frame Editor");
-                                    ImGui::Text(std::string(" >> Selected Frame: " + std::to_string(selected_anim_frame)).c_str());
-
-                                    if (ImGui::BeginTable("JointInspector", 2, ImGuiTableFlags_SizingStretchProp)) {
-
-                                        ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, 80.0f);
-                                        ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
-
-                                        std::function<void(const char*, std::function<void()>)> Row =
-                                        [&](const char* label, std::function<void()> func)
-                                        {
-                                            ImGui::TableNextRow();
-                                            ImGui::TableSetColumnIndex(0);
-                                            ImGui::TextUnformatted(label);
-
-                                            ImGui::TableSetColumnIndex(1);
-                                            func();
-                                        };
-
-                                        Row("Name", [&]() {
-                                            ImGui::Text(jointnamebuffer);
-                                        });
-
-                                        Row(">> X", [&]() { ImGui::DragFloat("##ox", &joint.origin.x, 0.1f); });
-                                        Row(">> Y", [&]() { ImGui::DragFloat("##oy", &joint.origin.y, 0.1f); });
-
-                                        Row(">> Rot.", [&]() { ImGui::DragFloat("##dr", &joint.rotation, 0.1f); });
-                                        
-
-                                        Row("Draw Order: ", [&]() { ImGui::Text(std::to_string(joint.draw_order).c_str()); });
-
-                                        ImGui::EndTable();
-
-                                        ImGui::Separator();
-
-                                        ImGui::Checkbox("Normal Interpolation", &joint.normal_rotation);
-
-
-                                    }
-
+                                
+                                
                                     
 
                                 }
 
-
-                                ImGui::Separator();
-
-                                // Onion the previous frame,
-                                // Onion the anchor frame,
-
-                                ImGui::Checkbox("Anchor Frame Ref", &onion_frame_anch);
-
-
-                                ImGui::Checkbox("Previous Frame Ref", &onion_frame_prev);
-
-                                ImGui::Separator();
-
-                                if (selected_anim_frame != -1) {
-
-                                    if (ImGui::Button("^^ Draw Order")) {
-
-                                        if (avatar_selected != nullptr  && avatar_selected_idx != -1 && anim_selected != -1) {
-
-                                            if (jointselected != -1 && (*avatar_selected).default_texturing.joints.size() >= 2 && jointselected >= 0 && jointselected < (*avatar_selected).default_texturing.joints.size()) {
-                                                auto& frame_joints = animations[anim_selected].frames[selected_anim_frame].joints;
-                                                int sel_draw_order = frame_joints[jointselected].draw_order;
-                                                int swap_idx = -1;
-
-                                                for (int i = 0; i < frame_joints.size(); i++) {
-                                                    if (i != jointselected && frame_joints[i].draw_order == sel_draw_order - 1) {
-                                                        swap_idx = i;
-                                                        break;
-                                                    }
-                                                }
-
-                                                if (swap_idx != -1) {
-                                                    frame_joints[jointselected].draw_order = frame_joints[swap_idx].draw_order;
-                                                    frame_joints[swap_idx].draw_order = sel_draw_order;
-                                                }
-                                            }
-                                        }
-
-                                        
-                                    }
-
-                                    if (ImGui::Button("vv Draw Order")) {
-
-                                        if (avatar_selected != nullptr && avatar_selected_idx != -1) {
-
-                                            if (jointselected != -1 && (*avatar_selected).default_texturing.joints.size() >= 2 && jointselected >= 0 && jointselected < (*avatar_selected).default_texturing.joints.size()) {
-                                                auto& frame_joints = animations[anim_selected].frames[selected_anim_frame].joints;
-                                                int sel_draw_order = frame_joints[jointselected].draw_order;
-                                                int swap_idx = -1;
-
-                                                for (int i = 0; i < frame_joints.size(); i++) {
-                                                    if (i != jointselected && frame_joints[i].draw_order == sel_draw_order + 1) {
-                                                        swap_idx = i;
-                                                        break;
-                                                    }
-                                                }
-
-                                                if (swap_idx != -1) {
-                                                    frame_joints[jointselected].draw_order = frame_joints[swap_idx].draw_order;
-                                                    frame_joints[swap_idx].draw_order = sel_draw_order;
-                                                }
-
-                                            }
-                                        }
-                                    }
-
-                                }
-
-                            
-                            
-                                
-
+                                ImGui::EndTabItem();
                             }
 
-                            ImGui::EndTabItem();
                         }
 
-                        if (ImGui::BeginTabItem("Timing")) {
+                        if (selected_anim_frame != -1) {
 
-                            // ----- set the main static variable controller this shit to true: ------
-                            editing_anim_w_interpolation = true;
+                            if (ImGui::BeginTabItem("Timing")) {
 
-                            // ============================================================
-                            // TIMELINE PANEL SPACE
-                            // ============================================================
+                                // ----- set the main static variable controller this shit to true: ------
+                                editing_anim_w_interpolation = true;
 
-                            ImVec2 p0 = ImGui::GetCursorScreenPos();
-                            ImVec2 avail = ImGui::GetContentRegionAvail();
+                                // ============================================================
+                                // TIMELINE PANEL SPACE
+                                // ============================================================
 
-                            ImDrawList* dl = ImGui::GetWindowDrawList();
+                                ImVec2 p0 = ImGui::GetCursorScreenPos();
+                                ImVec2 avail = ImGui::GetContentRegionAvail();
 
-                            dl->AddRectFilled(
-                                p0,
-                                ImVec2(p0.x + avail.x, p0.y + avail.y),
-                                IM_COL32(22,22,22,255)
-                            );
-
-                            
-
-                            dl->AddRectFilled(
-                                ImVec2(p0.x, 
-                                    p0.y + ((0 * pixelsPerFrame) - timelineScroll)),
-                                ImVec2(p0.x + avail.x, 
-                                    p0.y + (((animation_tick_frame_length - 1) * pixelsPerFrame) - timelineScroll)),
-                                IM_COL32(34,34,34,255)
-                            );
-
-                            
-
-                           
-
-                            // ============================================================
-                            // SCROLL + ZOOM
-                            // ============================================================
-
-                            ImVec2 mouse = ImGui::GetIO().MousePos;
-
-                            bool hovered =
-                                mouse.x >= p0.x &&
-                                mouse.x <= p0.x + avail.x &&
-                                mouse.y >= p0.y &&
-                                mouse.y <= p0.y + avail.y;
-
-                            if (hovered) {
-                                if (ImGui::GetIO().KeyCtrl) {
-
-                                    pixelsPerFrame += ImGui::GetIO().MouseWheel * 2.0f;
-
-                                    pixelsPerFrame = std::clamp(
-                                        pixelsPerFrame,
-                                        6.0f,
-                                        60.0f
-                                    );
-
-                                } else {
-
-                                    timelineScroll -= ImGui::GetIO().MouseWheel * 60.0f;
-
-                                    if (timelineScroll < -80.0f)
-                                        timelineScroll = -80.0f;
-                                }
-                            }
-
-                            // ============================================================
-                            // RAIL
-                            // ============================================================
-
-                            float railX = p0.x + 70.0f;
-
-                            dl->AddLine(
-                                ImVec2(railX, p0.y),
-                                ImVec2(railX, p0.y + avail.y),
-                                IM_COL32(90,90,90,255),
-                                3.0f
-                            );
-
-                            // ============================================================
-                            // DRAW FRAMES
-                            // ============================================================
-
-                            bool endReached = false;
-                            int lastFrame = 0;
-
-                            for (int frame = 0; frame <= animation_tick_frame_length - 1; frame++) {
-
-                                float y =
-                                    p0.y +
-                                    (frame * pixelsPerFrame) -
-                                    timelineScroll;
-
-                                // cull invisible frames BEFORE visible region
-                                if (y < p0.y - 40.0f)
-                                    continue;
-
-                                // cull invisible frames AFTER visible region
-                                if (y > p0.y + avail.y + 40.0f) {
-
-                                    if (!endReached)
-                                        lastFrame = frame;
-
-                                    endReached = true;
-                                    continue;
-                                }
-
-                                if (frame > animation_tick_frame_length - 1) {
-                                    continue;
-                                }
-
-                                bool major = (frame % 10 == 0);
-
-                                float tick =
-                                    major ? 26.0f : 14.0f;
-
-                                dl->AddLine(
-                                    ImVec2(railX - tick * 0.5f, y),
-                                    ImVec2(railX + tick * 0.5f, y),
-                                    IM_COL32(170,170,170,255),
-                                    major ? 2.0f : 1.0f
-                                );
-
-                                if (major) {
-
-                                    dl->AddText(
-                                        ImVec2(p0.x + 10.0f, y - 8.0f),
-                                        IM_COL32(220,220,220,255),
-                                        std::to_string(frame).c_str()
-                                    );
-                                }
-                            }
-
-
-                            bool isSomeFlagHovered = false;
-
-                            for (const auto& flag : flags) {
-
-                                float y =
-                                    p0.y +
-                                    (flag.frame * pixelsPerFrame) -
-                                    timelineScroll;
-
-                                if (y < p0.y - 20.0f)
-                                    continue;
-
-                                if (y > p0.y + avail.y + 20.0f)
-                                    continue;
-
-                                bool this_flag_hovered =
-                                    hovered &&
-                                    mouse.y > y - 10.0f &&
-                                    mouse.y < y + 10.0f &&
-                                    mouse.x > railX - 10.0f &&
-                                    mouse.x < railX + 140.0f;
-
-                                if (this_flag_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-
-                                    // dont change current frame of scrubber not there
-                                    if (!(ImGui::GetIO().KeyShift)) {
-                                        currentFrame = flag.frame;
-                                        selected_anim_frame = flag.keyframe_index;
-                                    } else {
-                                        selected_anim_frame = flag.keyframe_index;
-                                    }
-                                }
-
-                                ImU32 drawColor = flag.color;
-
-                                if (this_flag_hovered || selected_anim_frame == flag.keyframe_index) {
-                                    if (selected_anim_frame != flag.keyframe_index) {
-                                        drawColor = IM_COL32(120,120,150,255);
-                                    } else {
-                                        if (!this_flag_hovered) {
-                                            drawColor = IM_COL32(200,200,200,255);
-                                        } else {
-                                            drawColor = IM_COL32(255,255,255,255);
-                                        }
-                                    }
-                                }
-
-                                dl->AddLine(
-                                    ImVec2(railX, y),
-                                    ImVec2(railX + 14.0f, y),
-                                    drawColor,
-                                    2.0f
-                                );
+                                ImDrawList* dl = ImGui::GetWindowDrawList();
 
                                 dl->AddRectFilled(
-                                    ImVec2(railX + 14.0f, y - 5.0f),
-                                    ImVec2(railX + 34.0f, y + 5.0f),
-                                    drawColor,
-                                    2.0f
+                                    p0,
+                                    ImVec2(p0.x + avail.x, p0.y + avail.y),
+                                    IM_COL32(22,22,22,255)
                                 );
 
-                                dl->AddText(
-                                    ImVec2(railX + 45.0f, y - 7.0f),
-                                    IM_COL32(190,190,190,255),
-                                    std::to_string(flag.keyframe_index).c_str()
+                                
+
+                                dl->AddRectFilled(
+                                    ImVec2(p0.x, 
+                                        p0.y + ((0 * pixelsPerFrame) - timelineScroll)),
+                                    ImVec2(p0.x + avail.x, 
+                                        p0.y + (((animation_tick_frame_length - 1) * pixelsPerFrame) - timelineScroll)),
+                                    IM_COL32(34,34,34,255)
                                 );
 
-                                if (this_flag_hovered)
-                                    isSomeFlagHovered = true;
+                                
 
-                            }
+                            
 
+                                // ============================================================
+                                // SCROLL + ZOOM
+                                // ============================================================
 
-                            // =====================
+                                ImVec2 mouse = ImGui::GetIO().MousePos;
 
-                            // Given some random millisecond frame in the timeline, find what the last
-                            // Key Frame defined was and return its index basically
+                                bool hovered =
+                                    mouse.x >= p0.x &&
+                                    mouse.x <= p0.x + avail.x &&
+                                    mouse.y >= p0.y &&
+                                    mouse.y <= p0.y + avail.y;
 
-                            auto getLastKFrameFromTick = [&](int tick_frame) -> int {
+                                if (hovered) {
+                                    if (ImGui::GetIO().KeyCtrl) {
 
-                                if (animations[anim_selected].frames.size() == flags.size()) {
-                                    int i = 0;
-                                    for (const KeyAnimFrame& kframe : animations[anim_selected].frames) {
-                                        const TimelineFlag flag = flags[i];
-                                        if (tick_frame >= flag.frame && tick_frame < flag.frame + kframe.time_to_next + 1  ) {
-                                            return i;
-                                        }
+                                        pixelsPerFrame += ImGui::GetIO().MouseWheel * 2.0f;
 
-                                        i++;
+                                        pixelsPerFrame = std::clamp(
+                                            pixelsPerFrame,
+                                            6.0f,
+                                            60.0f
+                                        );
+
+                                    } else {
+
+                                        timelineScroll -= ImGui::GetIO().MouseWheel * 60.0f;
+
+                                        if (timelineScroll < -80.0f)
+                                            timelineScroll = -80.0f;
                                     }
                                 }
 
-                                // Failsafe I guess?
-                                return 0;
-                            };
+                                // ============================================================
+                                // RAIL
+                                // ============================================================
 
+                                float railX = p0.x + 70.0f;
 
+                                dl->AddLine(
+                                    ImVec2(railX, p0.y),
+                                    ImVec2(railX, p0.y + avail.y),
+                                    IM_COL32(90,90,90,255),
+                                    3.0f
+                                );
 
-                            // ============================================================
-                            // SCRUBBER
-                            // ============================================================
+                                // ============================================================
+                                // DRAW FRAMES
+                                // ============================================================
 
-                            float scrubY =
-                                p0.y +
-                                (currentFrame * pixelsPerFrame) -
-                                timelineScroll;
+                                bool endReached = false;
+                                int lastFrame = 0;
 
-                            bool hoverScrubber =
-                                mouse.x >= p0.x &&
-                                mouse.x <= p0.x + avail.x &&
-                                mouse.y >= scrubY - 12.0f &&
-                                mouse.y <= scrubY + 12.0f;
+                                for (int frame = 0; frame <= animation_tick_frame_length - 1; frame++) {
 
-                            static bool draggingScrubber = false;
+                                    float y =
+                                        p0.y +
+                                        (frame * pixelsPerFrame) -
+                                        timelineScroll;
 
-                            if (hoverScrubber && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !(ImGui::GetIO().KeyShift)) {
-                                draggingScrubber = true;
-                            }
+                                    // cull invisible frames BEFORE visible region
+                                    if (y < p0.y - 40.0f)
+                                        continue;
 
-                            if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
-                                draggingScrubber = false;
-                            }
+                                    // cull invisible frames AFTER visible region
+                                    if (y > p0.y + avail.y + 40.0f) {
 
-                            if (draggingScrubber) {
+                                        if (!endReached)
+                                            lastFrame = frame;
 
-                                // Scroll scrubber when dragging
-                                float local = mouse.y - p0.y + timelineScroll;
-                                currentFrame = (int)round(local / pixelsPerFrame);
+                                        endReached = true;
+                                        continue;
+                                    }
 
-                                if (currentFrame > animation_tick_frame_length - 1) {
-                                    currentFrame = animation_tick_frame_length - 1;
+                                    if (frame > animation_tick_frame_length - 1) {
+                                        continue;
+                                    }
+
+                                    bool major = (frame % 10 == 0);
+
+                                    float tick =
+                                        major ? 26.0f : 14.0f;
+
+                                    dl->AddLine(
+                                        ImVec2(railX - tick * 0.5f, y),
+                                        ImVec2(railX + tick * 0.5f, y),
+                                        IM_COL32(170,170,170,255),
+                                        major ? 2.0f : 1.0f
+                                    );
+
+                                    if (major) {
+
+                                        dl->AddText(
+                                            ImVec2(p0.x + 10.0f, y - 8.0f),
+                                            IM_COL32(220,220,220,255),
+                                            std::to_string(frame).c_str()
+                                        );
+                                    }
                                 }
 
 
-                                // Keep selected frame stable while scrubbing; scrubber drives preview independently.
+                                bool isSomeFlagHovered = false;
 
-                                if (endReached && currentFrame > (lastFrame - 4)) {
-                                    timelineScroll += pixelsPerFrame;
+                                for (const auto& flag : flags) {
+
+                                    float y =
+                                        p0.y +
+                                        (flag.frame * pixelsPerFrame) -
+                                        timelineScroll;
+
+                                    if (y < p0.y - 20.0f)
+                                        continue;
+
+                                    if (y > p0.y + avail.y + 20.0f)
+                                        continue;
+
+                                    bool this_flag_hovered =
+                                        hovered &&
+                                        mouse.y > y - 10.0f &&
+                                        mouse.y < y + 10.0f &&
+                                        mouse.x > railX - 10.0f &&
+                                        mouse.x < railX + 140.0f;
+
+                                    if (this_flag_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+
+                                        // dont change current frame of scrubber not there
+                                        if (!(ImGui::GetIO().KeyShift)) {
+                                            currentFrame = flag.frame;
+                                            selected_anim_frame = flag.keyframe_index;
+                                        } else {
+                                            selected_anim_frame = flag.keyframe_index;
+                                        }
+                                    }
+
+                                    ImU32 drawColor = flag.color;
+
+                                    if (this_flag_hovered || selected_anim_frame == flag.keyframe_index) {
+                                        if (selected_anim_frame != flag.keyframe_index) {
+                                            drawColor = IM_COL32(120,120,150,255);
+                                        } else {
+                                            if (!this_flag_hovered) {
+                                                drawColor = IM_COL32(200,200,200,255);
+                                            } else {
+                                                drawColor = IM_COL32(255,255,255,255);
+                                            }
+                                        }
+                                    }
+
+                                    dl->AddLine(
+                                        ImVec2(railX, y),
+                                        ImVec2(railX + 14.0f, y),
+                                        drawColor,
+                                        2.0f
+                                    );
+
+                                    dl->AddRectFilled(
+                                        ImVec2(railX + 14.0f, y - 5.0f),
+                                        ImVec2(railX + 34.0f, y + 5.0f),
+                                        drawColor,
+                                        2.0f
+                                    );
+
+                                    dl->AddText(
+                                        ImVec2(railX + 45.0f, y - 7.0f),
+                                        IM_COL32(190,190,190,255),
+                                        std::to_string(flag.keyframe_index).c_str()
+                                    );
+
+                                    if (this_flag_hovered)
+                                        isSomeFlagHovered = true;
+
                                 }
 
-                                
 
-                                // Auto-scroll up when dragging near the top of timeline view.
-                                const float auto_scroll_top_zone = p0.y + 8.0f;
-                                if (mouse.y <= auto_scroll_top_zone) {
-                                    timelineScroll = std::max(-80.0f, timelineScroll - (pixelsPerFrame * 0.75f));
+                                // =====================
+
+                                // Given some random millisecond frame in the timeline, find what the last
+                                // Key Frame defined was and return its index basically
+
+                                auto getLastKFrameFromTick = [&](int tick_frame) -> int {
+
+                                    if (animations[anim_selected].frames.size() == flags.size()) {
+                                        int i = 0;
+                                        for (const KeyAnimFrame& kframe : animations[anim_selected].frames) {
+                                            const TimelineFlag flag = flags[i];
+                                            if (tick_frame >= flag.frame && tick_frame < flag.frame + kframe.time_to_next + 1  ) {
+                                                return i;
+                                            }
+
+                                            i++;
+                                        }
+                                    }
+
+                                    // Failsafe I guess?
+                                    return 0;
+                                };
+
+
+
+                                // ============================================================
+                                // SCRUBBER
+                                // ============================================================
+
+                                float scrubY =
+                                    p0.y +
+                                    (currentFrame * pixelsPerFrame) -
+                                    timelineScroll;
+
+                                bool hoverScrubber =
+                                    mouse.x >= p0.x &&
+                                    mouse.x <= p0.x + avail.x &&
+                                    mouse.y >= scrubY - 12.0f &&
+                                    mouse.y <= scrubY + 12.0f;
+
+                                static bool draggingScrubber = false;
+
+                                if (hoverScrubber && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !(ImGui::GetIO().KeyShift)) {
+                                    draggingScrubber = true;
                                 }
 
-                                
+                                if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+                                    draggingScrubber = false;
+                                }
+
+                                if (draggingScrubber) {
+
+                                    // Scroll scrubber when dragging
+                                    float local = mouse.y - p0.y + timelineScroll;
+                                    currentFrame = (int)round(local / pixelsPerFrame);
+
+                                    if (currentFrame > animation_tick_frame_length - 1) {
+                                        currentFrame = animation_tick_frame_length - 1;
+                                    }
+
+                                    if (currentFrame < 0) {
+                                        currentFrame = 0;
+                                    }
+
+
+                                    // Keep selected frame stable while scrubbing; scrubber drives preview independently.
+
+                                    if (endReached && currentFrame > (lastFrame - 4)) {
+                                        timelineScroll += pixelsPerFrame;
+                                    }
+
+                                    
+
+                                    // Auto-scroll up when dragging near the top of timeline view.
+                                    const float auto_scroll_top_zone = p0.y + 8.0f;
+                                    if (mouse.y <= auto_scroll_top_zone) {
+                                        timelineScroll = std::max(-80.0f, timelineScroll - (pixelsPerFrame * 0.75f));
+                                    }
+
+                                    
+                                }
+
+                                // scrubber line
+                                dl->AddLine(
+                                    ImVec2(p0.x, scrubY),
+                                    ImVec2(p0.x + avail.x, scrubY),
+                                    IM_COL32(255,40,40,255),
+                                    3.0f
+                                );
+
+                                // scrubber triangle
+                                dl->AddTriangleFilled(
+                                    ImVec2(railX - 18.0f, scrubY),
+                                    ImVec2(railX - 2.0f, scrubY - 10.0f),
+                                    ImVec2(railX - 2.0f, scrubY + 10.0f),
+                                    IM_COL32(255,50,50,255)
+                                );
+
+                                // current frame label
+                                dl->AddText(
+                                    ImVec2(p0.x + 140.0f, scrubY - 10.0f),
+                                    IM_COL32(255,80,80,255),
+                                    std::string("FRAME " + std::to_string(currentFrame)).c_str()
+                                );
+
+                                ImGui::InvisibleButton( "timeline_capture", avail);
+
+                                if (!isSomeFlagHovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                                    // Left mouse button double-click detected
+
+                                    float local = mouse.y - p0.y + timelineScroll;
+                                    currentFrame = (int)round(local / pixelsPerFrame);
+                                    
+                                    if (currentFrame > animation_tick_frame_length - 1) {
+                                        currentFrame = animation_tick_frame_length - 1;
+                                    }
+
+                                }
+
+                                ImGui::EndTabItem();
                             }
 
-                            // scrubber line
-                            dl->AddLine(
-                                ImVec2(p0.x, scrubY),
-                                ImVec2(p0.x + avail.x, scrubY),
-                                IM_COL32(255,40,40,255),
-                                3.0f
-                            );
-
-                            // scrubber triangle
-                            dl->AddTriangleFilled(
-                                ImVec2(railX - 18.0f, scrubY),
-                                ImVec2(railX - 2.0f, scrubY - 10.0f),
-                                ImVec2(railX - 2.0f, scrubY + 10.0f),
-                                IM_COL32(255,50,50,255)
-                            );
-
-                            // current frame label
-                            dl->AddText(
-                                ImVec2(p0.x + 140.0f, scrubY - 10.0f),
-                                IM_COL32(255,80,80,255),
-                                std::string("FRAME " + std::to_string(currentFrame)).c_str()
-                            );
-
-                            ImGui::InvisibleButton( "timeline_capture", avail);
-
-                            if (!isSomeFlagHovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-                                // Left mouse button double-click detected
-
-                                float local = mouse.y - p0.y + timelineScroll;
-                                currentFrame = (int)round(local / pixelsPerFrame);
-                                
-                                if (currentFrame > animation_tick_frame_length - 1) {
-                                    currentFrame = animation_tick_frame_length - 1;
-                                }
-
-                            }
-
-                            ImGui::EndTabItem();
                         }
 
                         ImGui::EndTabBar();
@@ -3010,6 +3260,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     ImGui::EndChild();
                     ImGui::GetStyle().WindowPadding = orig;
 
+                } else {
+                    editing_anim_w_interpolation = false;
                 }
 
 
@@ -3260,7 +3512,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                     ImGui::Separator();
 
-                    if (ImGui::Button("Confirm Exit Editor", ImVec2(70, 30))) {
+                    if (ImGui::Button("Confirm Exit Editor", ImVec2(210, 30))) {
 
                         SyncAndReloadAvatars(AVATARDIR);
                         SyncAndReloadAnimations(ANIMATIONDIR);

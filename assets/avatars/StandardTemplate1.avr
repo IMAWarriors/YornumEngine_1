@@ -1,0 +1,56 @@
+~AVATAR_FILE
+VERSION_1
+~AVATAR_NAME
+StandardTemplate1
+~DEFAULT_TEXTURING
+12
+rleg
+assets/sprites/characters\test2\test2_rightleg.png
+0 0 0.68 0.69 -4.66003 0 0 1 1
+lleg
+assets/sprites/characters\test2\test2_rightleg.png
+0 0 0.68 0.69 -4.66003 0 0 1 1
+rthigh
+assets/sprites/characters\test2\test2_rightleg.png
+0.6 18.8 0.68 0.82 -1.58825 0 0 1 1
+lthigh
+assets/sprites/characters\test2\test2_rightleg.png
+-0.1 13 0.68 0.82 -1.55334 0 0 1 1
+righthand
+assets/sprites/characters\test2\test2_lefthand.png
+0 0 0.76 0.7 -1.50098 0 0 1 1
+rightfore
+assets/sprites/characters\test2\test2_rightfore.png
+0 20.6 0.71 1.05 -1.6057 0 0 1 1
+rightarm
+assets/sprites/characters\test2\test2_leftarm.png
+-3.1 9.7 0.76 1 -1.8326 0 0 1 1
+body
+assets/sprites/characters\test2\test2_body.png
+0 0 1 1 0 0 0 1 1
+head
+assets/sprites/characters\test2\test2_head.png
+0 0 1 1 0 0 0 1 1
+leftarm
+assets/sprites/characters\test2\test2_leftarm.png
+-3.1 9.7 0.76 1 -1.95477 0 0 1 1
+leftfore
+assets/sprites/characters\test2\test2_rightfore.png
+0 13.2 0.71 1 -1.6057 0 0 1 1
+lefthand
+assets/sprites/characters\test2\test2_lefthand.png
+0 0 0.76 0.7 -1.50098 0 0 1 1
+~ANCHOR_FRAME
+0 32.3523 -14.3238 2.87623 26.9905
+1 14.0571 -14.6286 0.457144 29.1429
+2 27.0571 -64.6857 5.6 46.9714
+3 16.8 -57.8286 -2.28571 43.2
+4 43.0857 -52.4571 20.6857 34.9714
+5 30.5237 -87.981 10.5904 36.3048
+6 35.3714 -96.2 0.114287 49.0286
+7 21.6476 -83.0858 41.3333 -0.666668
+8 21.6476 -118.019 31.3334 2.00003
+9 7.97146 -97.4285 -24.1143 55.3333
+10 0.828539 -78.1524 -0.0190806 49.2381
+11 2.86663 -49.5619 14.1143 40.8381
+~END_OF_FILE
