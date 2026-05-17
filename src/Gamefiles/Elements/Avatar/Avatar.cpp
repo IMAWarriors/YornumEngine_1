@@ -8,21 +8,13 @@
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 KeyAnimFrame::KeyAnimFrame (const Avatar& _avatar) {
-
     for (int i = 0; i < _avatar.default_frame.joints.size(); i++) {
-
-        int jidx = 0;
-        while (jidx != _avatar.default_frame.joints[i].unique_id || jidx > _avatar.default_frame.joints.size()) {
-            jidx++;
-        }
-
-        // assert the joint id we found is valid within the avatar bounds
-        assert (jidx < _avatar.default_frame.joints.size());
-
         // Default draw order should for a key animation frame
-        joints.push_back(AnimJointAdjustmentFrame({0.0f, 0.0f}, 0.0f, jidx));
-    }
+        // match the anchor-frame joint order for consistency.
+        joints.push_back(AnimJointAdjustmentFrame({0.0f, 0.0f}, 0.0f, i));
+        joints.back().unique_id = i;
 
+    }
 }
 
 
@@ -30,6 +22,8 @@ void Avatar::DrawAvatar(Vec2 position, float scale, const Animation& animation, 
 
     
 
+
+    
 
 }
 

@@ -333,7 +333,15 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 ImGui::SameLine();
 
                 if (ImGui::Button("Delete", ImVec2(SAP_buttonWidth, 28)) && avatar_selected_idx >= 0 && avatar_selected_idx < (int)avatars.size()) {
-                    confirm_delete_avatar_popup = true;
+                    const std::string filepath = AVATARDIR + avatars[avatar_selected_idx].name + ".avr";
+                    if (std::filesystem::exists(filepath)) {
+                        confirm_delete_avatar_popup = true;
+                    } else {
+                        avatars.erase(avatars.begin() + avatar_selected_idx);
+                        avatar_selected_idx = -1;
+                        avatar_selected = nullptr;
+                        anim_selected = -1;
+                    }
                 }
 
                 ImGui::SameLine();
@@ -460,7 +468,15 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         anim_selected = (int)animations.size() - 1;
                     }
                     if (ImGui::Button("Delete Animation", ImVec2(-1, 28)) && anim_selected >= 0 && anim_selected < (int)animations.size()) {
-                        confirm_delete_animation_popup = true;
+                        const std::string filepath = ANIMATIONDIR + animations[anim_selected].name + ".anim";
+                        if (std::filesystem::exists(filepath)) {
+                            confirm_delete_animation_popup = true;
+                        } else {
+                            animations.erase(animations.begin() + anim_selected);
+                            anim_selected = -1;
+                            selected_anim_frame = -1;
+                            play_preview_animation = false;
+                        }
                     }
                     if (ImGui::Button("Move Animation Up", ImVec2(-1, 28)) && anim_selected > 0 && anim_selected < (int)animations.size()) {
                         std::swap(animations[anim_selected], animations[anim_selected - 1]);
@@ -561,6 +577,33 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 if (confirm_delete_avatar_popup) {
                     ImGui::OpenPopup("Confirm Delete Avatar");
                     confirm_delete_avatar_popup = false;
+                }
+
+                if (confirm_delete_animation_popup) {
+                    ImGui::OpenPopup("Confirm Delete Animation");
+                    confirm_delete_animation_popup = false;
+                }
+
+                if (ImGui::BeginPopupModal("Confirm Delete Avatar", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+                    ImGui::Text("Delete selected avatar and saved .avr file (if it exists)?");
+                    if (ImGui::Button("Delete Avatar", ImVec2(130, 0))) {
+                        if (avatar_selected_idx >= 0 && avatar_selected_idx < (int)avatars.size()) {
+                            const std::string filepath = AVATARDIR + avatars[avatar_selected_idx].name + ".avr";
+                            if (std::filesystem::exists(filepath)) {
+                                std::filesystem::remove(filepath);
+                            }
+                            avatars.erase(avatars.begin() + avatar_selected_idx);
+                            avatar_selected_idx = -1;
+                            avatar_selected = nullptr;
+                            anim_selected = -1;
+                        }
+                        ImGui::CloseCurrentPopup();
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("Cancel", ImVec2(100, 0))) {
+                        ImGui::CloseCurrentPopup();
+                    }
+                    ImGui::EndPopup();
                 }
 
                 if (ImGui::BeginPopupModal("Confirm Delete Animation", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
@@ -971,6 +1014,20 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 // ANCHOR FRAME
 
                 if (selected_anim_frame == -1) {
+                    auto syncAvatarJointTopology = [&](Avatar& avatar) {
+                        avatar.assign_unique_anchor_ids();
+                        const int joint_count = (int)avatar.default_frame.joints.size();
+                        for (auto& animation : animations) {
+                            for (auto& frame : animation.frames) {
+                                frame.joints.resize(joint_count);
+                                for (int i = 0; i < joint_count; i++) {
+                                    frame.joints[i].unique_id = i;
+                                    frame.joints[i].draw_order = i;
+                                }
+                            }
+                            animation.joints_defined = animation.frames.empty() ? 0 : joint_count;
+                        }
+                    };
 
                     ImGui::Text("Default Frame Joints");
 
@@ -991,6 +1048,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             JointFramePosition new_pos({(float)num1, (float)num2}, {(float)num3, (float)num4});
                             new_pos.unique_id = next_joint_unique_id++;
                             avatars[avatar_selected_idx].default_frame.joints.push_back(new_pos);
+                            syncAvatarJointTopology(avatars[avatar_selected_idx]);
                         }
 
                     }
@@ -999,24 +1057,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         if (avatar_selected != nullptr) {
                             
                             if (jointselected >= 0 && jointselected < (*avatar_selected).default_texturing.joints.size()) {
-                                const int removed_unique_id = (*avatar_selected).default_frame.joints[jointselected].unique_id;
                                 (*avatar_selected).default_texturing.joints.erase((*avatar_selected).default_texturing.joints.begin() + jointselected);
                                 (*avatar_selected).default_frame.joints.erase((*avatar_selected).default_frame.joints.begin() + jointselected);
-
-                                for (auto& animation : animations) {
-                                    for (auto& frame : animation.frames) {
-                                        frame.joints.erase(
-                                            std::remove_if(frame.joints.begin(), frame.joints.end(), [&](const AnimJointAdjustmentFrame& j) {
-                                                return j.unique_id == removed_unique_id;
-                                            }),
-                                            frame.joints.end()
-                                        );
-                                        for (int i = 0; i < (int)frame.joints.size(); i++) {
-                                            frame.joints[i].draw_order = i;
-                                        }
-                                    }
-                                    animation.joints_defined = animation.frames.empty() ? 0 : (int)animation.frames[0].joints.size();
-                                }
+                                syncAvatarJointTopology(*avatar_selected);
                             }
                             jointselected = -1;
                             lastJointSelected = -1;
@@ -1039,6 +1082,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 JointFramePosition copied_pos({dupePos.origin.x + 20.0f, dupePos.origin.y + 20.0f}, {dupePos.direction.x, dupePos.direction.y});
                                 copied_pos.unique_id = next_joint_unique_id++;
                                 (*avatar_selected).default_frame.joints.push_back(copied_pos);
+                                syncAvatarJointTopology(*avatar_selected);
 
                                 jointselected = (*avatar_selected).default_texturing.joints.size()-1;
 
@@ -3340,35 +3384,6 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     ImGui::OpenPopup("Leave Avatar Editor");
                 }
                 
-                if (confirm_delete_animation_popup) {
-                    ImGui::OpenPopup("Confirm Delete Animation");
-                    confirm_delete_animation_popup = false;
-                }
-
-                if (ImGui::BeginPopupModal("Confirm Delete Avatar", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
-                    ImGui::Text("Delete selected avatar and saved .avr file (if it exists)?");
-                    if (ImGui::Button("Delete Avatar", ImVec2(130, 0))) {
-                        if (avatar_selected_idx >= 0 && avatar_selected_idx < (int)avatars.size()) {
-                            const std::string filepath = AVATARDIR + avatars[avatar_selected_idx].name + ".avr";
-                            if (std::filesystem::exists(filepath)) {
-                                std::filesystem::remove(filepath);
-                            }
-                            avatars.erase(avatars.begin() + avatar_selected_idx);
-                            avatar_selected_idx = -1;
-                            avatar_selected = nullptr;
-                            anim_selected = -1;
-                        }
-                        ImGui::CloseCurrentPopup();
-                    }
-                    ImGui::SameLine();
-                    if (ImGui::Button("Cancel", ImVec2(100, 0))) {
-                        ImGui::CloseCurrentPopup();
-                    }
-                    ImGui::EndPopup();
-                }
-
-                
-
                 // Start the Save Avatar .avr file popup
                 ImGui::GetStyle().WindowPadding = ImVec2(8,8);
                 ImGui::SetNextWindowSize(saveAvatarModalSize, ImGuiCond_Appearing);
