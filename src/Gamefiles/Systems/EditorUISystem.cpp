@@ -1122,7 +1122,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                                 jointselected = idx2;
                                 
-                                jointnamebuffer[0] = '\n';
+                                jointnamebuffer[0] = '\0';
                             }
                         }
 

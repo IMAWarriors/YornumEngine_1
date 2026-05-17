@@ -42,6 +42,13 @@ struct AnimJointAdjustmentFrame {
 
     bool normal_rotation = true;
 
+    AnimJointAdjustmentFrame () {
+        unique_id = 0;
+        origin = {0.0f, 0.0f};
+        rotation = 0.0f;
+        draw_order = 0;
+    }
+
     AnimJointAdjustmentFrame (Vec2 orig_offset, float rot_offset, int d_order) {
         origin = orig_offset;
         rotation = rot_offset;
