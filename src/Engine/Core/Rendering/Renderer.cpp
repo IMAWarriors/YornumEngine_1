@@ -145,3 +145,11 @@ void Renderer::rdraw_sprite (Texture2D _texture, Rectangle _crop, Rectangle _pas
 void Renderer::rdraw_sprite_col (Texture2D _texture, Rectangle _crop, Rectangle _paste, Color _color) {
     DrawTexturePro(_texture, _crop, _paste, {0.0f, 0.0f}, 0.0f, _color);
 }
+
+
+
+void Renderer::rdraw_sprite_ext (Texture2D _texture, Rectangle _crop, Rectangle _paste, Color _color) {
+
+    
+    
+}

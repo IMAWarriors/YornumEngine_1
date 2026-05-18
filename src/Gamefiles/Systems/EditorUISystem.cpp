@@ -800,6 +800,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 // ----------------------------------------------------------------
 
                 static bool manual_anim_frame_switch = false;
+                static bool force_open_timing_tab = false;
 
                 ImGui::BeginDisabled(frame_control_disabled);
                 
@@ -886,40 +887,60 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 //$$$
                 if (selected_anim_frame == -1) {
 
-                    float bwidth = (ImGui::GetContentRegionAvail().x / 2.0) - 5.0f;
+                    if (!frame_control_disabled) {
 
+                        float bwidth = (ImGui::GetContentRegionAvail().x / 2.0) - 5.0f;
 
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.1f,0.1f,0.1f,0.8f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.2f,0.2f,0.2f,0.8f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f,0.3f,0.3f,0.8f));
+                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.1f,0.1f,0.1f,0.8f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.2f,0.2f,0.2f,0.8f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f,0.3f,0.3f,0.8f));
 
-                    if (ImGui::Button("Open Animation Editor", ImVec2(bwidth, 24))) {
+                        if (ImGui::Button("Open Editor", ImVec2(bwidth, 24))) {
 
-                        selected_anim_frame = 0;
-                        currentFrame = 0;
-                        play_preview_animation = false;
+                            if (!frame_control_disabled && !animations[anim_selected].frames.empty()) {
+                                selected_anim_frame = 0;
+                                currentFrame = 0;
+                                play_preview_animation = false;
+                                force_open_timing_tab = (jointselected == -1);
+                            }
+
+                        }
+                        
+                        ImGui::PopStyleColor(3);
+
+                        ImGui::SameLine();
+
+                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f,0.3f,0.3f,0.8f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f,0.6f,0.6f,0.8f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5f,0.1f,0.1f,0.8f));
+                        
+                        if (ImGui::Button("Play Anim", ImVec2(bwidth, 24))) {
+
+                            if (!frame_control_disabled && !animations[anim_selected].frames.empty()) {
+                                selected_anim_frame = 0;
+                                currentFrame = 0;
+                                play_preview_animation = true;
+                                jointselected = -1;
+                                force_open_timing_tab = (jointselected == -1);
+                                
+                            }
+                        
+                        }
+
+                        ImGui::PopStyleColor(3);
+
+                        ImGui::Separator();
+
+                        if (frame_control_disabled) {
+                            
+                            ImGui::TextColored(ImVec4(1.0f, 0.35f, 0.35f, 1.0f), "Animation editor unavailable:");
+                            ImGui::TextColored(ImVec4(1.0f, 0.35f, 0.35f, 1.0f), "selected avatar anchor");
+                            ImGui::TextColored(ImVec4(1.0f, 0.35f, 0.35f, 1.0f), "joints are incompatible with");
+                            ImGui::TextColored(ImVec4(1.0f, 0.35f, 0.35f, 1.0f), "this animation.");
+
+                        }
 
                     }
-                    
-                    ImGui::PopStyleColor(3);
-
-                    ImGui::SameLine();
-
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f,0.3f,0.3f,0.8f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f,0.6f,0.6f,0.8f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5f,0.1f,0.1f,0.8f));
-                    
-                    if (ImGui::Button("Play Animation", ImVec2(bwidth, 24))) {
-
-                        selected_anim_frame = 0;
-                        currentFrame = 0;
-                        play_preview_animation = true;
-                    
-                    }
-
-                    ImGui::PopStyleColor(3);
-
-                    ImGui::Separator();
 
                 } else {
 
@@ -973,12 +994,16 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         ImGui::PushID(i);
                         bool sel = (i == selected_anim_frame);
 
+                        ImGui::BeginDisabled(frame_control_disabled);
+
                         const std::string framename = std::string("Fr. #") + std::to_string(i);
 
                         if (ImGui::Selectable(framename.c_str(), sel)) {
                             temp_query_selected_anim_frame = i;
                             manual_anim_frame_switch = true;
                         }
+
+                        ImGui::EndDisabled();
 
                         ImGui::PopID();
                     }
@@ -1014,19 +1039,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 // ANCHOR FRAME
 
                 if (selected_anim_frame == -1) {
-                    auto syncAvatarJointTopology = [&](Avatar& avatar) {
+                    auto syncAvatarJointIdsAndLayering = [&](Avatar& avatar) {
                         avatar.assign_unique_anchor_ids();
-                        const int joint_count = (int)avatar.default_frame.joints.size();
-                        for (auto& animation : animations) {
-                            for (auto& frame : animation.frames) {
-                                frame.joints.resize(joint_count);
-                                for (int i = 0; i < joint_count; i++) {
-                                    frame.joints[i].unique_id = i;
-                                    frame.joints[i].draw_order = i;
-                                }
-                            }
-                            animation.joints_defined = animation.frames.empty() ? 0 : joint_count;
-                        }
+                        next_joint_unique_id = (int)avatar.default_frame.joints.size();
                     };
 
                     ImGui::Text("Default Frame Joints");
@@ -1048,7 +1063,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             JointFramePosition new_pos({(float)num1, (float)num2}, {(float)num3, (float)num4});
                             new_pos.unique_id = next_joint_unique_id++;
                             avatars[avatar_selected_idx].default_frame.joints.push_back(new_pos);
-                            syncAvatarJointTopology(avatars[avatar_selected_idx]);
+                            syncAvatarJointIdsAndLayering(avatars[avatar_selected_idx]);
                         }
 
                     }
@@ -1059,7 +1074,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             if (jointselected >= 0 && jointselected < (*avatar_selected).default_texturing.joints.size()) {
                                 (*avatar_selected).default_texturing.joints.erase((*avatar_selected).default_texturing.joints.begin() + jointselected);
                                 (*avatar_selected).default_frame.joints.erase((*avatar_selected).default_frame.joints.begin() + jointselected);
-                                syncAvatarJointTopology(*avatar_selected);
+                                syncAvatarJointIdsAndLayering(*avatar_selected);
                             }
                             jointselected = -1;
                             lastJointSelected = -1;
@@ -1082,7 +1097,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 JointFramePosition copied_pos({dupePos.origin.x + 20.0f, dupePos.origin.y + 20.0f}, {dupePos.direction.x, dupePos.direction.y});
                                 copied_pos.unique_id = next_joint_unique_id++;
                                 (*avatar_selected).default_frame.joints.push_back(copied_pos);
-                                syncAvatarJointTopology(*avatar_selected);
+                                syncAvatarJointIdsAndLayering(*avatar_selected);
 
                                 jointselected = (*avatar_selected).default_texturing.joints.size()-1;
 
@@ -1121,6 +1136,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 (*avatar_selected).default_frame.joints[idx2] = tempPos;
 
                                 jointselected = idx2;
+                                syncAvatarJointIdsAndLayering(*avatar_selected);
                                 
                                 jointnamebuffer[0] = '\0';
                             }
@@ -1148,6 +1164,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 (*avatar_selected).default_frame.joints[idx2] = tempPos;
 
                                 jointselected = idx2;
+                                syncAvatarJointIdsAndLayering(*avatar_selected);
                             }
                         }
                     }
@@ -2684,6 +2701,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             true
                         );
 
+
                     if (ImGui::BeginTabBar("animtypetabs")) {
 
                         if (jointselected != -1 || selected_anim_frame == -1) {
@@ -3015,7 +3033,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                         if (selected_anim_frame != -1 && !frame_control_disabled) {
 
-                            if (ImGui::BeginTabItem("Timing")) {
+                            ImGuiTabItemFlags timing_tab_flags = force_open_timing_tab ? ImGuiTabItemFlags_SetSelected : ImGuiTabItemFlags_None;
+                            if (ImGui::BeginTabItem("Timing", nullptr, timing_tab_flags)) {
+                                force_open_timing_tab = false;
 
                                 // ----- set the main static variable controller this shit to true: ------
                                 editing_anim_w_interpolation = true;
@@ -3347,7 +3367,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         }
                         if (selected_anim_frame != -1 && frame_control_disabled) {
                             ImGui::BeginDisabled();
-                            if (ImGui::BeginTabItem("Timing")) {
+                            ImGuiTabItemFlags timing_tab_flags = force_open_timing_tab ? ImGuiTabItemFlags_SetSelected : ImGuiTabItemFlags_None;
+                            if (ImGui::BeginTabItem("Timing", nullptr, timing_tab_flags)) {
+                                force_open_timing_tab = false;
                                 ImGui::TextColored(ImVec4(1.0f, 0.45f, 0.45f, 1.0f), "Timing editor disabled: avatar and animation joint counts do not match.");
                                 ImGui::Text("Restore matching joint count/IDs before editing timing.");
                                 ImGui::EndTabItem();

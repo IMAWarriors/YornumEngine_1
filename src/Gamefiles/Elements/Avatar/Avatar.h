@@ -244,9 +244,9 @@ class Avatar {
         // --> More common use of frames in my code is in reference to KEY FRAMES which happen at
         // arbitrary user defined times, but always occur on some tick
 
+        void Avatar::DrawAvatar (Vec2 position, float rotation, Vec2 scale, const Animation& animation, int tick_frame);
 
-        void DrawAvatar (Vec2 position, float scale, const Animation& animation, int tick);
-
+        void Avatar::DrawAvatarBlend (Vec2 position, float rotation, Vec2 scale, const Animation& anim1, int anim1_tick_frame, const Animation& anim2, int anim2_tick_frame, int tick_frame, int total_blend_tick_frames);
 
         
         bool SaveAvrFile (const std::string& filename, const std::string& path);

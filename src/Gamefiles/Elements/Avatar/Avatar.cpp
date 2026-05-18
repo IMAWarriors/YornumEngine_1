@@ -1,4 +1,6 @@
+
 #include "Avatar.h"
+// #include "Animation.h"
 
 #include <fstream>
 #include <sstream>
@@ -7,6 +9,7 @@
 // Avatar Interpolation Drawing Definitions:
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+//
 KeyAnimFrame::KeyAnimFrame (const Avatar& _avatar) {
     for (int i = 0; i < _avatar.default_frame.joints.size(); i++) {
         // Default draw order should for a key animation frame
@@ -18,15 +21,25 @@ KeyAnimFrame::KeyAnimFrame (const Avatar& _avatar) {
 }
 
 
-void Avatar::DrawAvatar(Vec2 position, float scale, const Animation& animation, int tick) {
+// Draw regular avatar according to some frame and calculate the interpolated joint positions
+// for which to draw the avatar---should essentially draw the exact same way the editor build
+// EditorUISystem.cpp draws the avatar according to animation except with Raylib instead of
+// ImGUI
+void Avatar::DrawAvatar (Vec2 position, float rotation, Vec2 scale, const Animation& animation, int tick_frame) {
 
-    
 
-
-    
 
 }
 
+// Draw avatar blend transition between Tick Frame [anim1_tick_frame] of Animation [anim1]
+// and [anim2_tick_frame] of Animation [anim2], choosing the point in the transition frame
+// to draw the blend based on the progresss of blend animation [tick_frame] according to
+// the total frames of the blend between animations [total_blend_tick_frames]
+void Avatar::DrawAvatarBlend (Vec2 position, float rotation, Vec2 scale, const Animation& anim1, int anim1_tick_frame, const Animation& anim2, int anim2_tick_frame, int tick_frame, int total_blend_tick_frames) {
+
+
+
+}
 
 
 bool Avatar::SaveAvrFile (const std::string& filename, const std::string& path) {

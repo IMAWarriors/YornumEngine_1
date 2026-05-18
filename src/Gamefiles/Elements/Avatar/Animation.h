@@ -12,6 +12,9 @@ struct Animation {
     int joints_defined = 0; // Joints per frame
     int ms_per_tick_frame = 18;
 
+    float total_tick_frames = -1; // uninitialized
+    float last_blend_frame_idx = -1; // uninitialized
+
     std::vector<KeyAnimFrame> frames;
 
     Animation () {
@@ -101,6 +104,50 @@ struct Animation {
         sync_frame_order_seq_id();
     }
 
+    //  This function gives the SIZE of the total number of tick frames
+    //  as if it were a list--keep in mind size is not intervalic;
+    //  Index of last valid tick frame for animation is total_tick_frame_count() - 1
+    int total_tick_frame_count () {
+        if (total_tick_frames == -1) {
+            // Get the proper length of the animation in ticks
+            int animation_tick_frame_length = 0;
+
+            for (const KeyAnimFrame& kframe : frames) {
+                animation_tick_frame_length += kframe.time_to_next + 1;
+            }
+
+            total_tick_frames = animation_tick_frame_length;
+            return total_tick_frames;
+        } else {
+            return total_tick_frames;
+        }
+    }
+
+    // Function should be used to blend queued animations by getting
+    // the last tick frame index of the last key animation frame of a queued animation
+    int last_blend_frame_tick () {
+
+        if (last_blend_frame_idx == -1) {
+            // Get the proper length of the animation in ticks
+            int len = 0;
+            int idx = 0;
+
+            for (const KeyAnimFrame& kframe : frames) {
+                // Dont add time to next if we are on the last frame,
+                // then preserve that index to get the last frames start index
+                if (idx != frames.size()-1) {
+                    len += kframe.time_to_next + 1;
+                }
+
+                idx++;
+            }
+
+            last_blend_frame_idx = len;
+            return last_blend_frame_idx;
+        } else {
+            return last_blend_frame_idx;
+        }
+    }
 
 
     bool SaveAnimFile (const std::string& filename, const std::string& path);
