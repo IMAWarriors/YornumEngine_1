@@ -1,9 +1,38 @@
 
 #include "Avatar.h"
-// #include "Animation.h"
+#include "Animation.h"
 
 #include <fstream>
 #include <sstream>
+#include <algorithm>
+#include <cmath>
+
+namespace {
+    // constexpr float PI = 3.14159265358979323846f;
+
+    float WrapDeg180(float angle) {
+        float wrapped = fmodf(angle, 360.0f);
+        if (wrapped > 180.0f) wrapped -= 360.0f;
+        if (wrapped <= -180.0f) wrapped += 360.0f;
+        return wrapped;
+    }
+
+    Vec2 RotNewDirectionVec(Vec2 input_direction, float rotation_deg) {
+        float rotation_rad = rotation_deg * PI / 180.0f;
+        float cos_theta = cosf(rotation_rad);
+        float sin_theta = sinf(rotation_rad);
+        return Vec2{
+            input_direction.x * cos_theta - input_direction.y * sin_theta,
+            input_direction.x * sin_theta + input_direction.y * cos_theta
+        };
+    }
+
+    int TotalTickFrames(const Animation& anim) {
+        int total = 0;
+        for (const KeyAnimFrame& k : anim.frames) total += (k.time_to_next + 1);
+        return std::max(1, total);
+    }
+}
 
 // =============================================================
 // Avatar Interpolation Drawing Definitions:
@@ -25,20 +54,124 @@ KeyAnimFrame::KeyAnimFrame (const Avatar& _avatar) {
 // for which to draw the avatar---should essentially draw the exact same way the editor build
 // EditorUISystem.cpp draws the avatar according to animation except with Raylib instead of
 // ImGUI
-void Avatar::DrawAvatar (Vec2 position, float rotation, Vec2 scale, const Animation& animation, int tick_frame) {
+void Avatar::DrawAvatar (Renderer& renderer, Vec2 position, float rotation, Vec2 scale, const Animation& animation, int tick_frame) {
+    if (animation.frames.empty()) return;
+    if (default_frame.joints.empty() || default_texturing.joints.empty()) return;
 
+    int total_ticks = TotalTickFrames(animation);
+    int wrapped_tick = ((tick_frame % total_ticks) + total_ticks) % total_ticks;
 
+    int key_idx = 0;
+    int key_start_tick = 0;
+    int tick_cursor = 0;
+    for (int k = 0; k < (int)animation.frames.size(); k++) {
+        int segment_end = tick_cursor + animation.frames[k].time_to_next + 1;
+        if (wrapped_tick >= tick_cursor && wrapped_tick < segment_end) {
+            key_idx = k;
+            key_start_tick = tick_cursor;
+            break;
+        }
+        tick_cursor = segment_end;
+    }
 
+    int next_idx = (key_idx + 1) % (int)animation.frames.size();
+    const KeyAnimFrame& frame_a = animation.frames[key_idx];
+    const KeyAnimFrame& frame_b = animation.frames[next_idx];
+    int segment_len = std::max(1, frame_a.time_to_next + 1);
+    float t = std::clamp((float)(wrapped_tick - key_start_tick) / (float)segment_len, 0.0f, 1.0f);
+
+    DrawAvatarBlend(renderer, position, rotation, scale, animation, wrapped_tick, animation, wrapped_tick + 1, (int)(t * 1000.0f), 1000);
 }
 
 // Draw avatar blend transition between Tick Frame [anim1_tick_frame] of Animation [anim1]
 // and [anim2_tick_frame] of Animation [anim2], choosing the point in the transition frame
 // to draw the blend based on the progresss of blend animation [tick_frame] according to
 // the total frames of the blend between animations [total_blend_tick_frames]
-void Avatar::DrawAvatarBlend (Vec2 position, float rotation, Vec2 scale, const Animation& anim1, int anim1_tick_frame, const Animation& anim2, int anim2_tick_frame, int tick_frame, int total_blend_tick_frames) {
+void Avatar::DrawAvatarBlend (Renderer& renderer, Vec2 position, float rotation, Vec2 scale, const Animation& anim1, int anim1_tick_frame, const Animation& anim2, int anim2_tick_frame, int tick_frame, int total_blend_tick_frames) {
+    if (default_frame.joints.empty() || default_texturing.joints.empty()) return;
+    if (anim1.frames.empty() || anim2.frames.empty()) return;
 
+    auto sampleAnim = [](const Animation& anim, int tick) -> std::vector<AnimJointAdjustmentFrame> {
+        int total_ticks = TotalTickFrames(anim);
+        int wrapped_tick = ((tick % total_ticks) + total_ticks) % total_ticks;
+        int key_idx = 0;
+        int key_start_tick = 0;
+        int tick_cursor = 0;
+        for (int k = 0; k < (int)anim.frames.size(); k++) {
+            int segment_end = tick_cursor + anim.frames[k].time_to_next + 1;
+            if (wrapped_tick >= tick_cursor && wrapped_tick < segment_end) {
+                key_idx = k;
+                key_start_tick = tick_cursor;
+                break;
+            }
+            tick_cursor = segment_end;
+        }
+        int next_idx = (key_idx + 1) % (int)anim.frames.size();
+        const KeyAnimFrame& frame_a = anim.frames[key_idx];
+        const KeyAnimFrame& frame_b = anim.frames[next_idx];
+        int seg_len = std::max(1, frame_a.time_to_next + 1);
+        float t = std::clamp((float)(wrapped_tick - key_start_tick) / (float)seg_len, 0.0f, 1.0f);
+        std::vector<AnimJointAdjustmentFrame> out = frame_a.joints;
+        for (size_t i = 0; i < out.size() && i < frame_b.joints.size(); i++) {
+            const AnimJointAdjustmentFrame& a = frame_a.joints[i];
+            const AnimJointAdjustmentFrame& b = frame_b.joints[i];
+            out[i].origin.x = a.origin.x + (b.origin.x - a.origin.x) * t;
+            out[i].origin.y = a.origin.y + (b.origin.y - a.origin.y) * t;
+            float shortest_delta = WrapDeg180(b.rotation - a.rotation);
+            float rot_delta = a.normal_rotation ? shortest_delta : ((shortest_delta >= 0.0f) ? shortest_delta - 360.0f : shortest_delta + 360.0f);
+            out[i].rotation = a.rotation + rot_delta * t;
+        }
+        return out;
+    };
 
+    std::vector<AnimJointAdjustmentFrame> pose_a = sampleAnim(anim1, anim1_tick_frame);
+    std::vector<AnimJointAdjustmentFrame> pose_b = sampleAnim(anim2, anim2_tick_frame);
 
+    float blend_t = (total_blend_tick_frames <= 0) ? 1.0f : std::clamp((float)tick_frame / (float)total_blend_tick_frames, 0.0f, 1.0f);
+
+    int joint_count = std::min({(int)default_frame.joints.size(), (int)default_texturing.joints.size(), (int)pose_a.size(), (int)pose_b.size()});
+    std::vector<int> draw_order(joint_count);
+    for (int i = 0; i < joint_count; i++) draw_order[i] = i;
+    std::sort(draw_order.begin(), draw_order.end(), [&](int l, int r) {
+        int dl = (int)(pose_a[l].draw_order + (pose_b[l].draw_order - pose_a[l].draw_order) * blend_t);
+        int dr = (int)(pose_a[r].draw_order + (pose_b[r].draw_order - pose_a[r].draw_order) * blend_t);
+        return dl < dr;
+    });
+
+    float root_rad = rotation * PI / 180.0f;
+    float c = cosf(root_rad), s = sinf(root_rad);
+    for (int idx : draw_order) {
+        const JointFramePosition& anchor = default_frame.joints[idx];
+        const AvatarJoint& texture_joint = default_texturing.joints[idx];
+        if (texture_joint.texture == nullptr) continue;
+
+        AnimJointAdjustmentFrame j = pose_a[idx];
+        j.origin.x += (pose_b[idx].origin.x - pose_a[idx].origin.x) * blend_t;
+        j.origin.y += (pose_b[idx].origin.y - pose_a[idx].origin.y) * blend_t;
+        float d = WrapDeg180(pose_b[idx].rotation - pose_a[idx].rotation);
+        j.rotation += d * blend_t;
+
+        Vec2 base_joint_pos = {anchor.origin.x + j.origin.x, anchor.origin.y + j.origin.y};
+        Vec2 scaled = {base_joint_pos.x * scale.x, base_joint_pos.y * scale.y};
+        Vec2 rotated = {scaled.x * c - scaled.y * s, scaled.x * s + scaled.y * c};
+        Vec2 world_anchor = {position.x + rotated.x, position.y + rotated.y};
+
+        float final_rotation = rotation + j.rotation + texture_joint.rotation;
+        Vec2 final_scale = {scale.x * texture_joint.scale.x, scale.y * texture_joint.scale.y};
+        Vec2 offset = {texture_joint.offset.x * final_scale.x, texture_joint.offset.y * final_scale.y};
+        Vec2 o_rot = {offset.x * c - offset.y * s, offset.x * s + offset.y * c};
+        world_anchor = {world_anchor.x + o_rot.x, world_anchor.y + o_rot.y};
+
+        float crop_w = (texture_joint.crop_max.x - texture_joint.crop_min.x) * texture_joint.texture->width;
+        float crop_h = (texture_joint.crop_max.y - texture_joint.crop_min.y) * texture_joint.texture->height;
+        Rectangle crop = {
+            texture_joint.crop_min.x * texture_joint.texture->width,
+            texture_joint.crop_min.y * texture_joint.texture->height,
+            crop_w,
+            crop_h
+        };
+        renderer.rdraw_sprite_world_ext(*texture_joint.texture, crop, world_anchor, {crop_w * 0.5f, crop_h * 0.5f}, final_rotation, final_scale, WHITE);
+    }
 }
 
 

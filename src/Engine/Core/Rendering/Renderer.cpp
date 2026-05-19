@@ -148,8 +148,11 @@ void Renderer::rdraw_sprite_col (Texture2D _texture, Rectangle _crop, Rectangle 
 
 
 
-void Renderer::rdraw_sprite_ext (Texture2D _texture, Rectangle _crop, Rectangle _paste, Color _color) {
-
-    
-    
+void Renderer::rdraw_sprite_world_ext(Texture2D _texture, Rectangle _crop, Vec2 _world_pos, Vec2 _origin, float _rotation_deg, Vec2 _scale, Color _color) {
+    Vec2 screen_pos = world_camera_transform(_world_pos);
+    float draw_w = _crop.width * _scale.x * camera_zoom;
+    float draw_h = _crop.height * _scale.y * camera_zoom;
+    Rectangle dest = {screen_pos.x, screen_pos.y, draw_w, draw_h};
+    Vector2 origin = {_origin.x * camera_zoom, _origin.y * camera_zoom};
+    DrawTexturePro(_texture, _crop, dest, origin, _rotation_deg, _color);
 }

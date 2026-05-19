@@ -12,6 +12,9 @@
 
 #include "raylib.h"
 
+#include "../Elements/Avatar/Avatar.h"
+#include "../Elements/Avatar/Animation.h"
+
 
 
 class AssetManager {
@@ -26,11 +29,18 @@ class AssetManager {
 
         std::vector<LoadedTextureAsset> loaded_textures;
 
+        std::vector<Avatar> loaded_avatars;
+        std::vector<Animation> loaded_animations;
+
         std::string NormalizePath(const std::string & _path) const;
 
         int FindTextureIndexByPath(const std::string & _path) const;
 
         int FindTextureIndexByPointer(const Texture2D * _texture_ptr) const;
+
+
+
+
     
 
 

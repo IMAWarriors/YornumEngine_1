@@ -70,6 +70,18 @@ struct AvatarRenderer {
 
     std::deque<AnimQueue> animation_queue;
 
+    // Default constructor
+    AvatarRenderer () {
+        
+    }
+
+    // Constructor
+    AvatarRenderer (Avatar& avatar, Animation& animation) {
+        avatar_to_render = &avatar;
+        base_animation = &animation;
+        playing_animation = true;
+    }
+
     // Get total number of queue animations
     int GetQueueCount () {
         return animation_queue.size();
