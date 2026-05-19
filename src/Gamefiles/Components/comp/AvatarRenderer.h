@@ -94,7 +94,7 @@ struct AvatarRenderer {
 
     // Start animation playing if an animation to play is on
     void PlayAnimation () {
-        if (animation_to_play != nullptr) {
+        if (animation_to_play == nullptr) {
             playing_animation = false;
             return;
         }
@@ -126,11 +126,10 @@ struct AvatarRenderer {
         if (base_anim != nullptr) {
             base_animation = base_anim;
         }
+        animation_to_play = base_animation;
 
         ResetCurrentAnimation();
-        animation_to_play = base_animation;
-        
-
+        PlayAnimation();
     }
 
     // Set the current animation tick frame to a different frame of the animation
@@ -153,13 +152,13 @@ struct AvatarRenderer {
     // Progress animation according to deltatime and either go forward a tick, loop, or blend accordingly
     void TickAnimation(float deltatime) {
 
-        if (!playing_animation)
+        if (!playing_animation || animation_to_play == nullptr)
             return;
 
         // Tick
         accumulated_ms += (int)(deltatime * 1000.0f * animation_speed);
 
-        if (accumulated_ms > animation_to_play->ms_per_tick_frame) {
+        if (accumulated_ms >= animation_to_play->ms_per_tick_frame) {
 
             // Get rid of overflow and progress
             accumulated_ms -= animation_to_play->ms_per_tick_frame;
