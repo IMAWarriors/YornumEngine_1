@@ -4,12 +4,13 @@
 #define AVATAR_H
 
 #include "../../../Engine/Core/Overhead/GameTypes.h"
-#include "../../Assets/AssetManager.h"
 #include "../../../Engine/Core/Rendering/Renderer.h"
 
 #include <string>
 #include <vector>
 #include <cassert>
+
+
 
 // The actual position and rotation of a joint for a frame
 
@@ -68,6 +69,8 @@ struct AnimJointAdjustmentFrame {
 // The texturing info for a specific body part
 // --> Armor, Shirts, Expressions on their faces, etc.
 
+class AssetManager;
+
 struct AvatarJoint {
 
     // Name of joint
@@ -85,23 +88,9 @@ struct AvatarJoint {
     // Loading functions
     bool joint_has_texture () { return (texture != nullptr);    }
 
-    bool unload_texture (AssetManager & assets) {
-        assets.UnloadTextureAsset(texture);
-        texture = nullptr;
-        return true;
-    }
-    
-    bool load_texture_from_path (AssetManager & assets, const std::string & path) {
+    bool unload_texture (AssetManager & assets);
 
-        if (path == "") {
-            return false;
-        }
-
-        if (joint_has_texture()) { unload_texture(assets); }
-        texture = &assets.LoadTextureAsset(path);
-        texturePath = path; 
-        return true;
-    }
+    bool load_texture_from_path (AssetManager & assets, const std::string & path);
 
     AvatarJoint () {
         name = "UNTITLED_AVATARJOINT_DEFAULT_CONSTRUCTOR";
@@ -152,6 +141,7 @@ struct KeyFrame {
 
 class Animation;
 class Avatar;
+
 
 struct KeyAnimFrame {
 
@@ -233,11 +223,7 @@ class Avatar {
 
         }
 
-        void LoadInternalJointTextures (AssetManager& assets) {
-            for (AvatarJoint& joint : default_texturing.joints) {
-                joint.load_texture_from_path(assets, joint.texturePath);
-            }
-        }
+        void LoadInternalJointTextures (AssetManager& assets);
 
 
         // A tick is what could often be called a frame of animation,
@@ -245,9 +231,9 @@ class Avatar {
         // --> More common use of frames in my code is in reference to KEY FRAMES which happen at
         // arbitrary user defined times, but always occur on some tick
 
-        void Avatar::DrawAvatar (Renderer& renderer, Vec2 position, float rotation, Vec2 scale, const Animation& animation, int tick_frame);
+        void DrawAvatar (Renderer& renderer, Vec2 position, float rotation, Vec2 scale, const Animation& animation, int tick_frame);
 
-        void Avatar::DrawAvatarBlend (Renderer& renderer, Vec2 position, float rotation, Vec2 scale, const Animation& anim1, int anim1_tick_frame, const Animation& anim2, int anim2_tick_frame, int tick_frame, int total_blend_tick_frames);
+        void DrawAvatarBlend (Renderer& renderer, Vec2 position, float rotation, Vec2 scale, const Animation& anim1, int anim1_tick_frame, const Animation& anim2, int anim2_tick_frame, int tick_frame, int total_blend_tick_frames);
 
         
         bool SaveAvrFile (const std::string& filename, const std::string& path);

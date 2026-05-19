@@ -16,6 +16,7 @@
 #include "../../../external/imgui/imgui.h"
 #include "../Elements/Avatar/Avatar.h"
 #include "../Elements/Avatar/Animation.h"
+#include "../../Gamefiles/Assets/AssetManager.h"
 
 #include <vector>
 #include <string>
@@ -30,7 +31,7 @@ class Scene;
 
 class Renderer;
 
-class AssetManager;
+// class AssetManager;
 
 struct EditorAssets;
 

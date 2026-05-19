@@ -9,7 +9,6 @@
 #include "../../Gamefiles/World/Scene.h"
 #include "../../Gamefiles/World/Tile.h"
 #include "../../Gamefiles/World/Overhead/Gwconst.h"
-#include "../../Gamefiles/Assets/AssetManager.h"
 #include "../../Gamefiles/Assets/EditorAssets.h"
 
 

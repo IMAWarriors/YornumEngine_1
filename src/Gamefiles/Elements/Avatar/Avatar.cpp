@@ -3,6 +3,8 @@
 #include "Avatar.h"
 #include "Animation.h"
 
+#include "../../Assets/AssetManager.h"
+
 #include <fstream>
 #include <sstream>
 #include <algorithm>
@@ -32,6 +34,32 @@ namespace {
         int total = 0;
         for (const KeyAnimFrame& k : anim.frames) total += (k.time_to_next + 1);
         return std::max(1, total);
+    }
+}
+
+bool AvatarJoint::unload_texture (AssetManager & assets) {
+    assets.UnloadTextureAsset(texture);
+    texture = nullptr;
+    return true;
+}
+
+bool AvatarJoint::load_texture_from_path (AssetManager & assets, const std::string & path) {
+    if (path.empty()) {
+        return false;
+    }
+
+    if (joint_has_texture()) {
+        unload_texture(assets);
+    }
+
+    texture = &assets.LoadTextureAsset(path);
+    texturePath = path;
+    return true;
+}
+
+void Avatar::LoadInternalJointTextures (AssetManager& assets) {
+    for (AvatarJoint& joint : default_texturing.joints) {
+        joint.load_texture_from_path(assets, joint.texturePath);
     }
 }
 
