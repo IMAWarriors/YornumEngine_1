@@ -185,10 +185,17 @@ void Avatar::DrawAvatarBlend (Renderer& renderer, Vec2 position, float rotation,
         Vec2 rotated = {scaled.x * c - scaled.y * s, scaled.x * s + scaled.y * c};
         Vec2 world_anchor = {position.x + rotated.x, position.y + rotated.y};
 
-        float final_rotation = rotation + j.rotation + texture_joint.rotation;
+        Vec2 anim_dir = RotNewDirectionVec(anchor.direction, j.rotation);
+        float base_angle_rad = atan2f(anim_dir.y, anim_dir.x);
+        float final_rotation_rad = root_rad + base_angle_rad + texture_joint.rotation;
+        float final_rotation = final_rotation_rad * 180.0f / PI;
+
         Vec2 final_scale = {scale.x * texture_joint.scale.x, scale.y * texture_joint.scale.y};
-        Vec2 offset = {texture_joint.offset.x * final_scale.x, texture_joint.offset.y * final_scale.y};
-        Vec2 o_rot = {offset.x * c - offset.y * s, offset.x * s + offset.y * c};
+
+        Vec2 offset = {texture_joint.offset.x * scale.x, texture_joint.offset.y * scale.y};
+        float co = cosf(final_rotation_rad), so = sinf(final_rotation_rad);
+        Vec2 o_rot = {offset.x * co - offset.y * so, offset.x * so + offset.y * co};
+        
         world_anchor = {world_anchor.x + o_rot.x, world_anchor.y + o_rot.y};
 
         float crop_w = (texture_joint.crop_max.x - texture_joint.crop_min.x) * texture_joint.texture->width;
@@ -199,6 +206,7 @@ void Avatar::DrawAvatarBlend (Renderer& renderer, Vec2 position, float rotation,
             crop_w,
             crop_h
         };
+        
         renderer.rdraw_sprite_world_ext(*texture_joint.texture, crop, world_anchor, {crop_w * 0.5f, crop_h * 0.5f}, final_rotation, final_scale, WHITE);
     }
 }
