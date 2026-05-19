@@ -1,5 +1,7 @@
 // AssetManager.cpp
 
+#include <iostream>
+
 #include "AssetManager.h"
 
 
@@ -49,6 +51,24 @@ int AssetManager::FindTextureIndexByPointer(const Texture2D * _texture_ptr) cons
         }
     }
 
+    return -1;
+}
+
+int AssetManager::FindAvatarIndexByPath(const std::string & _path) const {
+    for (size_t i = 0; i < loaded_avatars.size(); i++) {
+        if (loaded_avatars[i].path == _path) {
+            return (int)i;
+        }
+    }
+    return -1;
+}
+
+int AssetManager::FindAnimationIndexByPath(const std::string & _path) const {
+    for (size_t i = 0; i < loaded_animations.size(); i++) {
+        if (loaded_animations[i].path == _path) {
+            return (int)i;
+        }
+    }
     return -1;
 }
 
@@ -158,6 +178,8 @@ std::vector<std::string> AssetManager::GetFilepathsInDirectory (const std::strin
 
 void AssetManager::UnloadAllAssets() {
     UnloadAllTextureAssets();
+    loaded_avatars.clear();
+    loaded_animations.clear();
 }
 
 void AssetManager::UnloadAllTilesetTextureAssets() {
@@ -256,6 +278,77 @@ void AssetManager::UnloadAllTextureAssets() {
 Texture2D & AssetManager::LoadTilesetTexture (const string & _path) {
     return LoadTextureAsset(_path);
 
+}
+
+Avatar* AssetManager::LoadAvatarAsset(const std::string & _filepath) {
+    const std::string normalizedPath = NormalizePath(_filepath);
+    const int existingIndex = FindAvatarIndexByPath(normalizedPath);
+
+    if (existingIndex >= 0) {
+        return &loaded_avatars[(size_t)existingIndex].avatar;
+    }
+
+    const std::filesystem::path sourcePath(normalizedPath);
+    const std::string filename = sourcePath.stem().string();
+    const std::string parentDirectory = sourcePath.parent_path().string() + "/";
+
+    LoadedAvatarAsset asset;
+    asset.path = normalizedPath;
+
+    if (!asset.avatar.LoadAvrFile(filename, parentDirectory)) {
+        std::cerr << "Failed to load avatar asset: " << normalizedPath << "\n";
+        return nullptr;
+    }
+
+    asset.avatar.LoadInternalJointTextures(*this);
+    loaded_avatars.push_back(std::move(asset));
+    return &loaded_avatars.back().avatar;
+}
+
+Animation* AssetManager::LoadAnimationAsset(const std::string & _filepath) {
+    const std::string normalizedPath = NormalizePath(_filepath);
+    const int existingIndex = FindAnimationIndexByPath(normalizedPath);
+
+    if (existingIndex >= 0) {
+        return &loaded_animations[(size_t)existingIndex].animation;
+    }
+
+    const std::filesystem::path sourcePath(normalizedPath);
+    const std::string filename = sourcePath.stem().string();
+    const std::string parentDirectory = sourcePath.parent_path().string() + "/";
+
+    LoadedAnimationAsset asset;
+    asset.path = normalizedPath;
+
+    if (!asset.animation.LoadAnimFile(filename, parentDirectory)) {
+        std::cerr << "Failed to load animation asset: " << normalizedPath << "\n";
+        return nullptr;
+    }
+
+    loaded_animations.push_back(std::move(asset));
+    return &loaded_animations.back().animation;
+}
+
+Avatar* AssetManager::GetAvatarAssetIfLoaded(const std::string & _filepath) {
+    const std::string normalizedPath = NormalizePath(_filepath);
+    const int existingIndex = FindAvatarIndexByPath(normalizedPath);
+
+    if (existingIndex < 0) {
+        return nullptr;
+    }
+
+    return &loaded_avatars[(size_t)existingIndex].avatar;
+}
+
+Animation* AssetManager::GetAnimationAssetIfLoaded(const std::string & _filepath) {
+    const std::string normalizedPath = NormalizePath(_filepath);
+    const int existingIndex = FindAnimationIndexByPath(normalizedPath);
+
+    if (existingIndex < 0) {
+        return nullptr;
+    }
+
+    return &loaded_animations[(size_t)existingIndex].animation;
 }
 
 

@@ -37,6 +37,7 @@ void GameEngine::Initialize(Renderer & _renderer, InputManager & _input, FrameSt
         systems.add_system<RenderSystem>(Phases::RENDERING, *renderer, scene, *window);
     }
     
+    systems.add_system   <AvatarRenderingSystem>     (Phases::RENDERING, scene, *renderer);
     systems.add_system   <DebugOverlaySystem>        (Phases::RENDERING, *renderer, *frame);
 
     if (CheckFlag(Flags::EDITOR)) {
@@ -46,7 +47,7 @@ void GameEngine::Initialize(Renderer & _renderer, InputManager & _input, FrameSt
 
 
     // Entities Initialization
-    Entity player = spawndef::SpawnPlayer(registry);
+    Entity player = spawndef::SpawnPlayer(registry, assets);
     Entity cameraManager = spawndef::SpawnCameraManager(registry);
     Entity camera = spawndef::SpawnCamera(registry, player, 5.0f);
     Entity engine = spawndef::SpawnEngineManager(registry);

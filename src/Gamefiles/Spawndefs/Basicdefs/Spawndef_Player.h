@@ -6,10 +6,12 @@
 #include "../../../Engine/ECS/Registry.h"
 #include "../../../Gamefiles/Components/Components.h"
 
+#include "../../../Gamefiles/Assets/AssetManager.h"
+
 
 namespace spawndef {
 
-    inline Entity SpawnPlayer (Registry & registry,  Vec2 position = {200.0f, -1080.0f}) {
+    inline Entity SpawnPlayer (Registry & registry, AssetManager& assets, Vec2 position = {200.0f, -1080.0f}) {
 
         Entity entity = registry.create_entity();
 
@@ -32,9 +34,15 @@ namespace spawndef {
         // Just want to load a basic character with idle animation 
         // BRHumanoid_template.avr and BRHumanoid_Idle.anim, dont know best way
         // to set up this system, i want it to be fast and efficient
-        registry.get_component<comp::AvatarRenderer>(entity).ConnectAvatar();
-        registry.get_component<comp::AvatarRenderer>(entity).SetBaseAnimation();
-        registry.get_component<comp::AvatarRenderer>(entity).PlayBaseAnimation();
+        
+        Avatar* avatar = assets.LoadAvatarAsset("assets/avatars/BRHumanoid_template.avr");
+        Animation* idleAnimation = assets.LoadAnimationAsset("assets/animations/BRHumanoid_Idle.anim");
+
+        comp::AvatarRenderer& avatarRenderer = registry.get_component<comp::AvatarRenderer>(entity);
+        avatarRenderer.ConnectTransform(&registry.get_component<comp::Transform>(entity));
+        avatarRenderer.ConnectAvatar(avatar);
+        avatarRenderer.SetBaseAnimation(idleAnimation);
+        avatarRenderer.PlayBaseAnimation();
 
         return entity;
 

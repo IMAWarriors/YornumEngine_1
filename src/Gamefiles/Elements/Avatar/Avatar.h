@@ -5,7 +5,6 @@
 
 #include "../../../Engine/Core/Overhead/GameTypes.h"
 #include "../../Assets/AssetManager.h"
-
 #include "../../../Engine/Core/Rendering/Renderer.h"
 
 #include <string>

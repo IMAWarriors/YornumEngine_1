@@ -9,6 +9,7 @@
 #include <memory>
 #include <stdexcept>
 #include <cstddef>
+#include <deque>
 
 #include "raylib.h"
 
@@ -29,14 +30,27 @@ class AssetManager {
 
         std::vector<LoadedTextureAsset> loaded_textures;
 
-        std::vector<Avatar> loaded_avatars;
-        std::vector<Animation> loaded_animations;
+        struct LoadedAvatarAsset {
+            std::string path;
+            Avatar avatar;
+        };
+
+        struct LoadedAnimationAsset {
+            std::string path;
+            Animation animation;
+        };
+
+        std::deque<LoadedAvatarAsset> loaded_avatars;
+        std::deque<LoadedAnimationAsset> loaded_animations;
 
         std::string NormalizePath(const std::string & _path) const;
 
         int FindTextureIndexByPath(const std::string & _path) const;
 
         int FindTextureIndexByPointer(const Texture2D * _texture_ptr) const;
+
+        int FindAvatarIndexByPath(const std::string & _path) const;
+        int FindAnimationIndexByPath(const std::string & _path) const;
 
 
 
@@ -61,6 +75,12 @@ class AssetManager {
         void UnloadAllTextureAssets();
 
         Texture2D & LoadTilesetTexture (const std::string & _path);
+
+        Avatar* LoadAvatarAsset(const std::string & _filepath);
+        Animation* LoadAnimationAsset(const std::string & _filepath);
+
+        Avatar* GetAvatarAssetIfLoaded(const std::string & _filepath);
+        Animation* GetAnimationAssetIfLoaded(const std::string & _filepath);
 
         bool UnloadTilesetTexture(Texture2D * _texture_ptr);
 
