@@ -29,6 +29,7 @@ void GameEngine::Initialize(Renderer & _renderer, InputManager & _input, FrameSt
     systems.add_system   <CameraClampManagerSystem>  (Phases::SIMULATION, scene);
     systems.add_system   <CameraSystem>              (Phases::SIMULATION, *renderer);
     systems.add_system   <EngineManagerSystem>       (Phases::SIMULATION, *frame);
+    systems.add_system   <PlayerAnimationSystem>     (Phases::SIMULATION);
 
 
     if (CheckFlag(Flags::EDITOR)) { 

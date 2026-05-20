@@ -1,6 +1,7 @@
 // Renderer.cpp
 
 #include "Renderer.h"
+#include "rlgl.h"
 
 #include "../../../Gamefiles/Game/GameEngine.h"
 
@@ -147,12 +148,60 @@ void Renderer::rdraw_sprite_col (Texture2D _texture, Rectangle _crop, Rectangle 
 }
 
 
+// Draw a textured quad with 4 explicitly supplied SCREEN-SPACE corners.
+// This is the Raylib equivalent of ImGui's draw_list->AddImageQuad().
+//
+// corners[0] = top-left
+// corners[1] = top-right
+// corners[2] = bottom-right
+// corners[3] = bottom-left
+//
+// uv_min / uv_max are the normalised UV coordinates of the crop region
+// (same values as crop_min / crop_max stored on AvatarJoint).
+//
+// The function bypasses Raylib's higher-level sprite helpers so that we can
+// supply arbitrary corner positions - necessary for rotation + offset.
+ 
 
-void Renderer::rdraw_sprite_world_ext(Texture2D _texture, Rectangle _crop, Vec2 _world_pos, Vec2 _origin, float _rotation_deg, Vec2 _scale, Color _color) {
-    Vec2 screen_pos = world_camera_transform(_world_pos);
-    float draw_w = _crop.width * _scale.x * camera_zoom;
-    float draw_h = _crop.height * _scale.y * camera_zoom;
-    Rectangle dest = {screen_pos.x, screen_pos.y, draw_w, draw_h};
-    Vector2 origin = {_origin.x * camera_zoom, _origin.y * camera_zoom};
-    DrawTexturePro(_texture, _crop, dest, origin, _rotation_deg, _color);
+void Renderer::rdraw_quad_screen(
+    Texture2D     _texture,
+    const Vector2 corners[4],
+    Vector2       uv_min,
+    Vector2       uv_max,
+    Color         _color)
+{
+    float u0 = uv_min.x, v0 = uv_min.y;
+    float u1 = uv_max.x, v1 = uv_max.y;
+ 
+    rlSetTexture(_texture.id);
+ 
+    rlBegin(RL_QUADS);
+ 
+        rlColor4ub(_color.r, _color.g, _color.b, _color.a);
+ 
+        // Raylib/OpenGL expects counter-clockwise winding for front faces
+        // when drawn as quads via rlgl.  The corner order TL,BL,BR,TR gives
+        // correct CCW winding matching how AddImageQuad renders.
+ 
+        // Top-Left
+        rlTexCoord2f(u0, v0);
+        rlVertex2f(corners[0].x, corners[0].y);
+ 
+        // Bottom-Left
+        rlTexCoord2f(u0, v1);
+        rlVertex2f(corners[3].x, corners[3].y);
+ 
+        // Bottom-Right
+        rlTexCoord2f(u1, v1);
+        rlVertex2f(corners[2].x, corners[2].y);
+ 
+        // Top-Right
+        rlTexCoord2f(u1, v0);
+        rlVertex2f(corners[1].x, corners[1].y);
+ 
+    rlEnd();
+ 
+    rlSetTexture(0);
 }
+
+

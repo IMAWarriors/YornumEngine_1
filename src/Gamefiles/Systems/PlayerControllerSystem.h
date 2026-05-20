@@ -55,8 +55,13 @@ class PlayerControllerSystem : public System {
                 float JUMP_FORCE        = 1150.0f;
 
                 float target = input.horz_axis * MAX_VELOCITY_X;
-
                 float control_multiplier = body.onSolidGround ? 1.0f : 0.75f;
+
+                if (player_velocity.magnitude.x > 0.5f) {
+                    body.direction = 1;
+                } else if (player_velocity.magnitude.x < -0.5f) {
+                    body.direction = -1;
+                }
 
                 if (body.walljumpBuffer > 0) {
 

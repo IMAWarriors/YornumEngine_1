@@ -38,12 +38,18 @@ struct AvatarRenderer {
         body_anchor = anchor;
     }
 
+    
+
     // Renderer specific drawing settings
     Vec2 offset_position = {0.0f, 0.0f};
     float offset_rotation = 0.0f;
     Vec2 scale = {1.0f, 1.0f};
     bool mirror = false;
     bool visible = true;
+
+    void SetTransformOffset (Vec2 offset) {
+        offset_position = offset;
+    }
 
     // Priority animation controls
     bool playing_animation = false;
@@ -64,11 +70,16 @@ struct AvatarRenderer {
     Animation* base_animation = nullptr;
     
     // Time bucket
-    int accumulated_ms = 0; // += (float)(1.0f / INTENDED_FPS) * (1000.0f);
+    float accumulated_ms = 0.0f; // += (float)(1.0f / INTENDED_FPS) * (1000.0f);
                             // += (float)(deltatime) * (1000.0f); (deltatime is measured in... seconds?)
 
 
     std::deque<AnimQueue> animation_queue;
+    
+    void SetAnimationSpeedMultiplier (float mult) {
+        if (mult > 0.0f)
+            animation_speed = mult;
+    }
 
     // Default constructor
     AvatarRenderer () {
@@ -107,11 +118,14 @@ struct AvatarRenderer {
     void ResetCurrentAnimation (bool play_animation = true) {
         playing_animation = play_animation;
 
+
         if (playing_animation)
             PlayAnimation();
+        else
+            accumulated_ms = 0.0f;
 
         tick_frame_of_animation = 0;
-        accumulated_ms = 0;
+
     }
 
     // Set the base animation without switching
@@ -156,19 +170,31 @@ struct AvatarRenderer {
             return;
 
         // Tick
-        accumulated_ms += (int)(deltatime * 1000.0f * animation_speed);
+        accumulated_ms += (deltatime * 1000.0f * animation_speed);
 
-        if (accumulated_ms >= animation_to_play->ms_per_tick_frame) {
+        while (accumulated_ms >= animation_to_play->ms_per_tick_frame) {
 
             // Get rid of overflow and progress
             accumulated_ms -= animation_to_play->ms_per_tick_frame;
             tick_frame_of_animation += 1;
 
-            if (animation_to_play == base_animation && loop_base_animation) {
+            if (tick_frame_of_animation >= animation_to_play->total_tick_frame_count()) {
 
-                if (tick_frame_of_animation >= animation_to_play->total_tick_frame_count()) {
-                    ResetCurrentAnimation();
+                // If we are currently animating the base animation
+                if (animation_to_play == base_animation) {
+
+                    if (loop_base_animation) {
+                        // Loop base animation
+                        ResetCurrentAnimation();
+                        break;
+                    } /*else {
+                        // Set tick frame to 0 and stop animation
+                        tick_frame_of_animation = 0;
+                        accumulated_ms = 0.0f;
+                        PauseAnimation();
+                    }*/
                 }
+
             }
         }
     }

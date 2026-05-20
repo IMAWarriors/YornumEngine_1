@@ -30,6 +30,12 @@ namespace {
         };
     }
 
+    // Rotate a 2D point around the origin.
+    static Vec2 Rotate2D(Vec2 p, float cos_a, float sin_a) {
+        return { p.x * cos_a - p.y * sin_a,
+                 p.x * sin_a + p.y * cos_a };
+    }
+
     int TotalTickFrames(const Animation& anim) {
         int total = 0;
         for (const KeyAnimFrame& k : anim.frames) total += (k.time_to_next + 1);
@@ -79,136 +85,282 @@ KeyAnimFrame::KeyAnimFrame (const Avatar& _avatar) {
 }
 
 
-// Draw regular avatar according to some frame and calculate the interpolated joint positions
-// for which to draw the avatar---should essentially draw the exact same way the editor build
-// EditorUISystem.cpp draws the avatar according to animation except with Raylib instead of
-// ImGUI
-void Avatar::DrawAvatar (Renderer& renderer, Vec2 position, float rotation, Vec2 scale, const Animation& animation, int tick_frame) {
-    if (animation.frames.empty()) return;
-    if (default_frame.joints.empty() || default_texturing.joints.empty()) return;
-
-    int total_ticks = TotalTickFrames(animation);
-    int wrapped_tick = ((tick_frame % total_ticks) + total_ticks) % total_ticks;
-
-    int key_idx = 0;
+// Mirrors the editor's interpolation-playback draw path (EditorUISystem.cpp
+// lines 1786-1951) exactly, translated from ImGui screen-space quads into
+// Raylib world-space quads via Renderer::rdraw_quad_screen().
+//
+// Parameters
+//   position   - world-space point the avatar is anchored to
+//   rotation   - degrees; rotates the ENTIRE rendered avatar around `position`
+//   scale      - scales the ENTIRE rendered avatar around `position`
+//               (use {-1, 1} to mirror horizontally, {1,1} is normal)
+//   animation  - which animation to sample
+//   tick_frame - integer tick counter (incremented by AvatarRenderer each frame)
+// -----------------------------------------------------------------------------
+void Avatar::DrawAvatar(
+    Renderer&        renderer,
+    Vec2             position,
+    float            rotation,
+    Vec2             scale,
+    const Animation& animation,
+    int              tick_frame)
+{
+    if (animation.frames.empty())         return;
+    if (default_frame.joints.empty())     return;
+    if (default_texturing.joints.empty()) return;
+ 
+    const int joint_count = (int)std::min(
+        default_frame.joints.size(),
+        default_texturing.joints.size());
+ 
+    // -------------------------------------------------------------------------
+    // 1.  Wrap tick_frame into [0, total_ticks)
+    // -------------------------------------------------------------------------
+    const int total_ticks = TotalTickFrames(animation);
+    const int wrapped     = ((tick_frame % total_ticks) + total_ticks) % total_ticks;
+ 
+    // -------------------------------------------------------------------------
+    // 2.  Find which keyframe segment `wrapped` falls in.
+    //     Each segment k spans  [cursor, cursor + time_to_next + 1)  ticks.
+    // -------------------------------------------------------------------------
+    int key_idx        = 0;
     int key_start_tick = 0;
-    int tick_cursor = 0;
-    for (int k = 0; k < (int)animation.frames.size(); k++) {
-        int segment_end = tick_cursor + animation.frames[k].time_to_next + 1;
-        if (wrapped_tick >= tick_cursor && wrapped_tick < segment_end) {
-            key_idx = k;
-            key_start_tick = tick_cursor;
-            break;
-        }
-        tick_cursor = segment_end;
-    }
-
-    int next_idx = (key_idx + 1) % (int)animation.frames.size();
-    const KeyAnimFrame& frame_a = animation.frames[key_idx];
-    const KeyAnimFrame& frame_b = animation.frames[next_idx];
-    int segment_len = std::max(1, frame_a.time_to_next + 1);
-    float t = std::clamp((float)(wrapped_tick - key_start_tick) / (float)segment_len, 0.0f, 1.0f);
-
-    DrawAvatarBlend(renderer, position, rotation, scale, animation, wrapped_tick, animation, wrapped_tick + 1, (int)(t * 1000.0f), 1000);
-}
-
-// Draw avatar blend transition between Tick Frame [anim1_tick_frame] of Animation [anim1]
-// and [anim2_tick_frame] of Animation [anim2], choosing the point in the transition frame
-// to draw the blend based on the progresss of blend animation [tick_frame] according to
-// the total frames of the blend between animations [total_blend_tick_frames]
-void Avatar::DrawAvatarBlend (Renderer& renderer, Vec2 position, float rotation, Vec2 scale, const Animation& anim1, int anim1_tick_frame, const Animation& anim2, int anim2_tick_frame, int tick_frame, int total_blend_tick_frames) {
-    if (default_frame.joints.empty() || default_texturing.joints.empty()) return;
-    if (anim1.frames.empty() || anim2.frames.empty()) return;
-
-    auto sampleAnim = [](const Animation& anim, int tick) -> std::vector<AnimJointAdjustmentFrame> {
-        int total_ticks = TotalTickFrames(anim);
-        int wrapped_tick = ((tick % total_ticks) + total_ticks) % total_ticks;
-        int key_idx = 0;
-        int key_start_tick = 0;
-        int tick_cursor = 0;
-        for (int k = 0; k < (int)anim.frames.size(); k++) {
-            int segment_end = tick_cursor + anim.frames[k].time_to_next + 1;
-            if (wrapped_tick >= tick_cursor && wrapped_tick < segment_end) {
-                key_idx = k;
-                key_start_tick = tick_cursor;
+    {
+        int cursor = 0;
+        for (int k = 0; k < (int)animation.frames.size(); ++k) {
+            int seg_end = cursor + animation.frames[k].time_to_next + 1;
+            if (wrapped >= cursor && wrapped < seg_end) {
+                key_idx        = k;
+                key_start_tick = cursor;
                 break;
             }
-            tick_cursor = segment_end;
+            cursor = seg_end;
         }
-        int next_idx = (key_idx + 1) % (int)anim.frames.size();
-        const KeyAnimFrame& frame_a = anim.frames[key_idx];
-        const KeyAnimFrame& frame_b = anim.frames[next_idx];
-        int seg_len = std::max(1, frame_a.time_to_next + 1);
-        float t = std::clamp((float)(wrapped_tick - key_start_tick) / (float)seg_len, 0.0f, 1.0f);
-        std::vector<AnimJointAdjustmentFrame> out = frame_a.joints;
-        for (size_t i = 0; i < out.size() && i < frame_b.joints.size(); i++) {
-            const AnimJointAdjustmentFrame& a = frame_a.joints[i];
-            const AnimJointAdjustmentFrame& b = frame_b.joints[i];
-            out[i].origin.x = a.origin.x + (b.origin.x - a.origin.x) * t;
-            out[i].origin.y = a.origin.y + (b.origin.y - a.origin.y) * t;
-            float shortest_delta = WrapDeg180(b.rotation - a.rotation);
-            float rot_delta = a.normal_rotation ? shortest_delta : ((shortest_delta >= 0.0f) ? shortest_delta - 360.0f : shortest_delta + 360.0f);
-            out[i].rotation = a.rotation + rot_delta * t;
-        }
-        return out;
-    };
-
-    std::vector<AnimJointAdjustmentFrame> pose_a = sampleAnim(anim1, anim1_tick_frame);
-    std::vector<AnimJointAdjustmentFrame> pose_b = sampleAnim(anim2, anim2_tick_frame);
-
-    float blend_t = (total_blend_tick_frames <= 0) ? 1.0f : std::clamp((float)tick_frame / (float)total_blend_tick_frames, 0.0f, 1.0f);
-
-    int joint_count = std::min({(int)default_frame.joints.size(), (int)default_texturing.joints.size(), (int)pose_a.size(), (int)pose_b.size()});
-    std::vector<int> draw_order(joint_count);
-    for (int i = 0; i < joint_count; i++) draw_order[i] = i;
-    std::sort(draw_order.begin(), draw_order.end(), [&](int l, int r) {
-        int dl = (int)(pose_a[l].draw_order + (pose_b[l].draw_order - pose_a[l].draw_order) * blend_t);
-        int dr = (int)(pose_a[r].draw_order + (pose_b[r].draw_order - pose_a[r].draw_order) * blend_t);
-        return dl < dr;
-    });
-
-    float root_rad = rotation * PI / 180.0f;
-    float c = cosf(root_rad), s = sinf(root_rad);
-    for (int idx : draw_order) {
-        const JointFramePosition& anchor = default_frame.joints[idx];
-        const AvatarJoint& texture_joint = default_texturing.joints[idx];
-        if (texture_joint.texture == nullptr) continue;
-
-        AnimJointAdjustmentFrame j = pose_a[idx];
-        j.origin.x += (pose_b[idx].origin.x - pose_a[idx].origin.x) * blend_t;
-        j.origin.y += (pose_b[idx].origin.y - pose_a[idx].origin.y) * blend_t;
-        float d = WrapDeg180(pose_b[idx].rotation - pose_a[idx].rotation);
-        j.rotation += d * blend_t;
-
-        Vec2 base_joint_pos = {anchor.origin.x + j.origin.x, anchor.origin.y + j.origin.y};
-        Vec2 scaled = {base_joint_pos.x * scale.x, base_joint_pos.y * scale.y};
-        Vec2 rotated = {scaled.x * c - scaled.y * s, scaled.x * s + scaled.y * c};
-        Vec2 world_anchor = {position.x + rotated.x, position.y + rotated.y};
-
-        Vec2 anim_dir = RotNewDirectionVec(anchor.direction, j.rotation);
-        float base_angle_rad = atan2f(anim_dir.y, anim_dir.x);
-        float final_rotation_rad = root_rad + base_angle_rad + texture_joint.rotation;
-        float final_rotation = final_rotation_rad * 180.0f / PI;
-
-        Vec2 final_scale = {scale.x * texture_joint.scale.x, scale.y * texture_joint.scale.y};
-
-        Vec2 offset = {texture_joint.offset.x * scale.x, texture_joint.offset.y * scale.y};
-        float co = cosf(final_rotation_rad), so = sinf(final_rotation_rad);
-        Vec2 o_rot = {offset.x * co - offset.y * so, offset.x * so + offset.y * co};
-        
-        world_anchor = {world_anchor.x + o_rot.x, world_anchor.y + o_rot.y};
-
-        float crop_w = (texture_joint.crop_max.x - texture_joint.crop_min.x) * texture_joint.texture->width;
-        float crop_h = (texture_joint.crop_max.y - texture_joint.crop_min.y) * texture_joint.texture->height;
-        Rectangle crop = {
-            texture_joint.crop_min.x * texture_joint.texture->width,
-            texture_joint.crop_min.y * texture_joint.texture->height,
-            crop_w,
-            crop_h
-        };
-        
-        renderer.rdraw_sprite_world_ext(*texture_joint.texture, crop, world_anchor, {crop_w * 0.5f, crop_h * 0.5f}, final_rotation, final_scale, WHITE);
     }
+ 
+    const int next_idx  = (key_idx + 1) % (int)animation.frames.size();
+    const KeyAnimFrame& frame_a = animation.frames[key_idx];
+    const KeyAnimFrame& frame_b = animation.frames[next_idx];
+ 
+    // t = progress through this segment  [0, 1)
+    const int   seg_len = std::max(1, frame_a.time_to_next + 1);
+    const float t       = std::clamp(
+                              (float)(wrapped - key_start_tick) / (float)seg_len,
+                              0.0f, 1.0f);
+ 
+    // -------------------------------------------------------------------------
+    // 3.  Build draw-order table.
+    //     jidx_draw_order[i] = joint array index whose draw_order field == i.
+    //     This exactly mirrors the editor's jidx_draw_order construction
+    //     (EditorUISystem.cpp lines 1786-1801).
+    // -------------------------------------------------------------------------
+    std::vector<int> jidx_draw_order(joint_count, 0);
+    for (int i = 0; i < joint_count; ++i) {
+        for (int j = 0; j < joint_count; ++j) {
+            if (j < (int)frame_a.joints.size() &&
+                (int)frame_a.joints[j].draw_order == i)
+            {
+                jidx_draw_order[i] = j;
+                break;
+            }
+        }
+    }
+ 
+    // -------------------------------------------------------------------------
+    // 4.  Pre-compute avatar-level transform (rotation + scale).
+    //     This is applied to each joint's local position to move it into
+    //     world space around `position`.  Matches the notion of "rotate/scale
+    //     the entire canvas" rather than rotating individual sprites.
+    // -------------------------------------------------------------------------
+    const float avatar_rot_rad = rotation * PI / 180.0f;
+    const float cos_av         = cosf(avatar_rot_rad);
+    const float sin_av         = sinf(avatar_rot_rad);
+ 
+    const float zoom = renderer.get_camera_zoom();
+ 
+    // -------------------------------------------------------------------------
+    // 5.  Draw each joint in draw order (back to front).
+    // -------------------------------------------------------------------------
+    for (int i = 0; i < joint_count; ++i) {
+ 
+        const int idx = jidx_draw_order[i];
+ 
+        // Safety: skip if index is out of range for any parallel array
+        if (idx >= (int)default_frame.joints.size())     continue;
+        if (idx >= (int)default_texturing.joints.size()) continue;
+        if (idx >= (int)frame_a.joints.size())           continue;
+        if (idx >= (int)frame_b.joints.size())           continue;
+ 
+        const JointFramePosition& anchor   = default_frame.joints[idx];
+        const AvatarJoint&        tex_info = default_texturing.joints[idx];
+ 
+        if (tex_info.texture == nullptr) continue;
+ 
+        const AnimJointAdjustmentFrame& ja = frame_a.joints[idx];
+        const AnimJointAdjustmentFrame& jb = frame_b.joints[idx];
+ 
+        // ---------------------------------------------------------------------
+        // 5a.  Interpolate the joint adjustment between frame_a and frame_b.
+        //      Mirrors editor lines 1860-1874 exactly.
+        //        - origin:   linear lerp
+        //        - rotation: shortest-arc or long-arc depending on normal_rotation
+        // ---------------------------------------------------------------------
+        AnimJointAdjustmentFrame ji{};
+ 
+        ji.origin.x = ja.origin.x + (jb.origin.x - ja.origin.x) * t;
+        ji.origin.y = ja.origin.y + (jb.origin.y - ja.origin.y) * t;
+ 
+        {
+            float shortest = WrapDeg180(jb.rotation - ja.rotation);
+            float delta;
+            if (ja.normal_rotation) {
+                delta = shortest;                                    // short path
+            } else {
+                delta = (shortest >= 0.0f) ? shortest - 360.0f      // long path
+                                           : shortest + 360.0f;
+            }
+            ji.rotation = ja.rotation + delta * t;
+        }
+ 
+        // ---------------------------------------------------------------------
+        // 5b.  Compute the joint's world-space center position.
+        //      local  = anchor.origin + interpolated_adjustment.origin
+        //      world  = position + rotate(scale(local), avatar_rotation)
+        //
+        //      This is the exact equivalent of the editor's WorldToScreen() on
+        //      (joint_anchor.origin + joint_interp.origin).
+        // ---------------------------------------------------------------------
+        Vec2 joint_local = {
+            anchor.origin.x + ji.origin.x,
+            anchor.origin.y + ji.origin.y
+        };
+ 
+        // Apply avatar scale, then avatar rotation, then translate to position
+        Vec2 joint_scaled  = { joint_local.x * scale.x,
+                                joint_local.y * scale.y };
+        Vec2 joint_rotated = Rotate2D(joint_scaled, cos_av, sin_av);
+        Vec2 joint_world   = { position.x + joint_rotated.x,
+                                position.y + joint_rotated.y };
+ 
+        // Convert to screen space using the renderer's camera transform
+        Vec2 screen_center = renderer.world_camera_transform(joint_world);
+ 
+        // ---------------------------------------------------------------------
+        // 5c.  Compute the sprite's final rotation angle.
+        //      newDir     = RotNewDirectionVec(anchor.direction, ji.rotation)
+        //                   (rotates the anchor's direction vector by the anim
+        //                    rotation in degrees - same as editor line 1908)
+        //      base_angle = atan2(newDir.y, newDir.x)   (radians)
+        //      final      = base_angle + tex_info.rotation + avatar_rot_rad
+        //                   (tex_info.rotation is stored in radians)
+        // ---------------------------------------------------------------------
+        Vec2  new_dir    = RotNewDirectionVec(anchor.direction, ji.rotation);
+        float base_angle = atan2f(new_dir.y, new_dir.x);
+        float angle      = base_angle + tex_info.rotation + avatar_rot_rad;
+ 
+        float cosA = cosf(angle);
+        float sinA = sinf(angle);
+ 
+        // ---------------------------------------------------------------------
+        // 5d.  Sprite display dimensions in world units.
+        //      width  = texture.width  * tex_info.scale.x
+        //      height = texture.height * tex_info.scale.y
+        //
+        //      Avatar-level scale also stretches/squishes the limb size.
+        //      We multiply by |scale| so e.g. a 2x avatar has 2x limbs.
+        //      Using abs() so that mirroring (negative scale) doesn't invert
+        //      the sprite size - it only moves the joint center.
+        // ---------------------------------------------------------------------
+        float w = tex_info.texture->width  * tex_info.scale.x * fabsf(scale.x);
+        float h = tex_info.texture->height * tex_info.scale.y * fabsf(scale.y);
+ 
+        // ---------------------------------------------------------------------
+        // 5e.  Sprite offset (texture_joint.offset), applied in LOCAL space
+        //      before rotation - mirrors editor lines 1929-1933 exactly.
+        //
+        //      Avatar scale affects the offset distance too.
+        // ---------------------------------------------------------------------
+        float ox = tex_info.offset.x * fabsf(scale.x);
+        float oy = tex_info.offset.y * fabsf(scale.y);
+ 
+        // ---------------------------------------------------------------------
+        // 5f.  Build 4 screen-space quad corners.
+        //      Start with a centered rectangle [-w/2, +w/2] x [-h/2, +h/2].
+        //      Shift each corner by the offset.
+        //      Rotate by `angle`.
+        //      Translate to screen_center.
+        //      Multiply the rotated offset by zoom to convert world->screen.
+        //
+        //      This exactly replicates editor lines 1920-1934:
+        //        corners[k] = { -half.x, -half.y } ... { half.x, half.y }
+        //        x = corners[k].x + offset.x
+        //        y = corners[k].y + offset.y
+        //        rotated.x = center.x + x*cosA - y*sinA
+        //        rotated.y = center.y + x*sinA + y*cosA
+        //      The editor's offset.x is already in screen pixels (offset * zoom),
+        //      our ox/oy are world pixels so we multiply by zoom here.
+        //
+        //      corners[0]=TL  [1]=TR  [2]=BR  [3]=BL
+        // ---------------------------------------------------------------------
+        float hx = w * 0.5f;
+        float hy = h * 0.5f;
+ 
+        // Local (unrotated) corners, centered at zero
+        const Vec2 local_corners[4] = {
+            { -hx, -hy },   // TL
+            {  hx, -hy },   // TR
+            {  hx,  hy },   // BR
+            { -hx,  hy }    // BL
+        };
+ 
+        Vector2 screen_corners[4];
+        for (int k = 0; k < 4; ++k) {
+            // Offset in local frame (world units)
+            float lx = local_corners[k].x + ox;
+            float ly = local_corners[k].y + oy;
+            // Rotate in world units, then scale to screen pixels via zoom
+            float rx = (lx * cosA - ly * sinA) * zoom;
+            float ry = (lx * sinA + ly * cosA) * zoom;
+            screen_corners[k].x = screen_center.x + rx;
+            screen_corners[k].y = screen_center.y + ry;
+        }
+ 
+        // ---------------------------------------------------------------------
+        // 5g.  UV coordinates - directly from crop_min / crop_max (0..1 range).
+        //      The editor passes these straight to ImGui as UV0/UV1.
+        // ---------------------------------------------------------------------
+        Vector2 uv_min = { tex_info.crop_min.x, tex_info.crop_min.y };
+        Vector2 uv_max = { tex_info.crop_max.x, tex_info.crop_max.y };
+ 
+        // ---------------------------------------------------------------------
+        // 5h.  Submit the quad to the renderer.
+        // ---------------------------------------------------------------------
+        renderer.rdraw_quad_screen(*tex_info.texture, screen_corners,
+                                   uv_min, uv_max, WHITE);
+    }
+}
+ 
+ 
+// -----------------------------------------------------------------------------
+// REPLACEMENT  DrawAvatarBlend()
+//
+// For blending between two DIFFERENT animations (e.g. transitioning from
+// an idle to a run).  DrawAvatar no longer calls this.
+// Left intact for future use.  The body can stay as-is or be cleared.
+// -----------------------------------------------------------------------------
+void Avatar::DrawAvatarBlend(
+    Renderer& renderer,
+    Vec2 position, float rotation, Vec2 scale,
+    const Animation& anim1, int anim1_tick_frame,
+    const Animation& anim2, int anim2_tick_frame,
+    int tick_frame, int total_blend_tick_frames)
+{
+    // Not called by DrawAvatar anymore.
+    // Implement later when cross-animation blending is needed.
+    (void)renderer; (void)position; (void)rotation; (void)scale;
+    (void)anim1; (void)anim1_tick_frame;
+    (void)anim2; (void)anim2_tick_frame;
+    (void)tick_frame; (void)total_blend_tick_frames;
 }
 
 

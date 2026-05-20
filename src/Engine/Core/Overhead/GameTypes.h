@@ -12,6 +12,11 @@
 struct Vec2 {
     float x;
     float y;
+
+    Vec2 operator+ (const Vec2& rhs) const {
+        Vec2 result = {x + rhs.x, y + rhs.y};
+        return result;
+    }
 };
 
 struct ColorRGBA {

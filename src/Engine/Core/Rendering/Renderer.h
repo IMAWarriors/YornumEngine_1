@@ -53,8 +53,13 @@ class Renderer {
         void rdraw_sprite(Texture2D _image, Rectangle _crop, Rectangle _paste);
 
         void rdraw_sprite_col (Texture2D _texture, Rectangle _crop, Rectangle _paste, Color _color);
-        
-        void rdraw_sprite_world_ext(Texture2D _texture, Rectangle _crop, Vec2 _world_pos, Vec2 _origin, float _rotation_deg, Vec2 _scale, Color _color);
+
+        void rdraw_quad_screen(Texture2D     _texture,
+                           const Vector2 corners[4],
+                           Vector2       uv_min,
+                           Vector2       uv_max,
+                           Color         _color);
+
 
         std::string text(const char* fmt, ...);
 

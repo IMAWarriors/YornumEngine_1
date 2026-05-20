@@ -33,6 +33,10 @@ struct PhysicsBody {
     int walljumpWindow;
     int lastWallPush;
 
+    //
+
+    int direction = 1;
+
 
 };
 
