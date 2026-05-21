@@ -647,6 +647,33 @@ void RenderSystem::update (Registry & registry, float deltatime) {
 
     }
 
+
+    // AVATAR DRAW LOOP
+    for (Entity entity : registry.view<comp::Transform, comp::AvatarRenderer>()) {
+
+        comp::AvatarRenderer& avatar_renderer = registry.get_component<comp::AvatarRenderer>(entity);
+        comp::Transform& anchor_position = registry.get_component<comp::Transform>(entity);
+
+        bool renderer_has_avatar = (avatar_renderer.avatar_to_render != nullptr);
+        bool avatar_has_animation = (avatar_renderer.animation_to_play != nullptr);
+
+        if (renderer_has_avatar) {
+            Avatar& avatar_source = *avatar_renderer.avatar_to_render;
+
+            if (avatar_has_animation) {
+
+                if (avatar_renderer.mirror == false) {
+                    avatar_source.DrawAvatar(renderer, anchor_position.position + avatar_renderer.offset_position, 0.0f, {1.0f, 1.0f}, *avatar_renderer.animation_to_play, avatar_renderer.tick_frame_of_animation);
+                } else {
+                    avatar_source.DrawAvatar(renderer, {anchor_position.position.x + avatar_renderer.offset_position.x + avatar_renderer.mirror_offset_x, anchor_position.position.y + avatar_renderer.offset_position.y}, 0.0f, {-1.0f, 1.0f}, *avatar_renderer.animation_to_play, avatar_renderer.tick_frame_of_animation);
+                }
+            } else {
+                
+
+            }
+        }
+
+    }
 }
 
 

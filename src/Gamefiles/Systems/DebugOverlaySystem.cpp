@@ -74,11 +74,14 @@ void DebugOverlaySystem::update (Registry & registry, float deltatime)  {
     // DRAW PLAYER STATS
 
     for (Entity entity : registry.view<tag::Player>()) {
+
+
+
         const auto & player_input = registry.get_component<comp::InputState>(entity);
         const auto & player_pos = registry.get_component<comp::Transform>(entity);
         const auto & player_vel = registry.get_component<comp::Velocity>(entity);
-
         const auto & player_body = registry.get_component<comp::PhysicsBody>(entity);
+        const auto & player_anim = registry.get_component<comp::AvatarRenderer>(entity);
 
 
 
@@ -136,7 +139,20 @@ void DebugOverlaySystem::update (Registry & registry, float deltatime)  {
         G_DEBUGGER.push({"WJ Buffer: " + std::to_string(player_body.walljumpBuffer), {1000, 290}, 18, ORANGE});
         G_DEBUGGER.push({"WJ Window: " + std::to_string(player_body.walljumpWindow), {1000, 310}, 18, ORANGE});
 
+        G_DEBUGGER.push({"Animation State", {20, 300}, 18, WHITE});
+        G_DEBUGGER.push({std::string("Animation Tick Frame: " + std::to_string((int)(player_anim.tick_frame_of_animation))), {20, 320}, 18, YELLOW});
+        G_DEBUGGER.push({std::string("Accumulator: " + std::to_string((int)(player_anim.accumulated_ms))), {20, 340}, 18, YELLOW});
+        G_DEBUGGER.push({std::string("Base Animation: " + player_anim.base_animation->name), {20, 360}, 18, YELLOW});
+        G_DEBUGGER.push({std::string("Playing Animation: " + player_anim.animation_to_play->name), {20, 380}, 18, YELLOW});
 
+        if (player_anim.loop_base_animation) {
+            G_DEBUGGER.push({std::string("[ON] Loop Base Animation"), {20, 400}, 18, GREEN});
+        } else {
+            G_DEBUGGER.push({std::string("[OFF] Loop Base Animation"), {20, 400}, 18, RED});
+        }
+
+        G_DEBUGGER.push({std::string("Anim ms/frame: " + std::to_string((int)(player_anim.base_animation->ms_per_tick_frame))), {20, 420}, 18, YELLOW});
+        G_DEBUGGER.push({std::string("Anim Total Frames: " + std::to_string((int)(player_anim.base_animation->total_tick_frames))), {20, 440}, 18, YELLOW});
     }
 
     // DRAW CAMERA STATS
@@ -162,6 +178,8 @@ void DebugOverlaySystem::update (Registry & registry, float deltatime)  {
         } else {
             G_DEBUGGER.push({"no active clamping", {20,260}, 18, RED});
         }
+
+        
 
     }
 

@@ -25,6 +25,8 @@ namespace spawndef {
 
         registry.apply_component<comp::AvatarRenderer>(entity, comp::AvatarRenderer());
 
+        registry.apply_component<comp::AnimationRepertoire>(entity, comp::AnimationRepertoire());
+
         // registry.apply_component<comp::CircleRenderer>  (entity, {50.0f , { 255, 0 , 0 , 255 } });
         registry.apply_component<comp::InputState>      (entity, {0, false});
 
@@ -35,13 +37,19 @@ namespace spawndef {
         // to set up this system, i want it to be fast and efficient
         
         Avatar* avatar = assets.LoadAvatarAsset("assets/avatars/BRHumanoid_template.avr");
-        Animation* idleAnimation = assets.LoadAnimationAsset("assets/animations/BRHumanoid_Idle.anim");
+
+        comp::AnimationRepertoire& animationHandler = registry.get_component<comp::AnimationRepertoire>(entity);
+
+        animationHandler.ImportAnimationAsset("Idle", assets.LoadAnimationAsset("assets/animations/BRHumanoid_Idle.anim"));
+        animationHandler.ImportAnimationAsset("Walk", assets.LoadAnimationAsset("assets/animations/BRHumanoid_Walk.anim"));
 
         comp::AvatarRenderer& avatarRenderer = registry.get_component<comp::AvatarRenderer>(entity);
+
         avatarRenderer.ConnectTransform(&registry.get_component<comp::Transform>(entity));
         avatarRenderer.ConnectAvatar(avatar);
         avatarRenderer.SetTransformOffset({-32.0f, 24.0f});
-        avatarRenderer.SetBaseAnimation(idleAnimation);
+
+        avatarRenderer.SetBaseAnimation(animationHandler.repertoire["Idle"]);
         avatarRenderer.PlayBaseAnimation();
 
         return entity;

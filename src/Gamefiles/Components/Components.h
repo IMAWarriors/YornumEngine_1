@@ -14,6 +14,7 @@
 #include "comp/PhysicsBody.h"
 #include "comp/CameraClampManager.h"
 #include "comp/AvatarRenderer.h"
+#include "comp/AnimationRepertoire.h"
 
 #include "tag/Tag_Player.h"
 #include "tag/Tag_EngineManager.h"

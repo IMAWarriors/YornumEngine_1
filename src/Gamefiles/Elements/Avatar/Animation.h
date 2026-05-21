@@ -108,7 +108,8 @@ struct Animation {
     //  as if it were a list--keep in mind size is not intervalic;
     //  Index of last valid tick frame for animation is total_tick_frame_count() - 1
     int total_tick_frame_count () {
-        if (total_tick_frames == -1) {
+        if (total_tick_frames < 0) {
+            
             // Get the proper length of the animation in ticks
             int animation_tick_frame_length = 0;
 
@@ -117,7 +118,9 @@ struct Animation {
             }
 
             total_tick_frames = animation_tick_frame_length;
+
             return total_tick_frames;
+
         } else {
             return total_tick_frames;
         }

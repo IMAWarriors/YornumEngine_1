@@ -30,6 +30,7 @@ void GameEngine::Initialize(Renderer & _renderer, InputManager & _input, FrameSt
     systems.add_system   <CameraSystem>              (Phases::SIMULATION, *renderer);
     systems.add_system   <EngineManagerSystem>       (Phases::SIMULATION, *frame);
     systems.add_system   <PlayerAnimationSystem>     (Phases::SIMULATION);
+    systems.add_system   <AvatarRenderingSystem>     (Phases::SIMULATION, scene, *renderer);
 
 
     if (CheckFlag(Flags::EDITOR)) { 
@@ -38,7 +39,7 @@ void GameEngine::Initialize(Renderer & _renderer, InputManager & _input, FrameSt
         systems.add_system<RenderSystem>(Phases::RENDERING, *renderer, scene, *window);
     }
     
-    systems.add_system   <AvatarRenderingSystem>     (Phases::RENDERING, scene, *renderer);
+    
     systems.add_system   <DebugOverlaySystem>        (Phases::RENDERING, *renderer, *frame);
 
     if (CheckFlag(Flags::EDITOR)) {

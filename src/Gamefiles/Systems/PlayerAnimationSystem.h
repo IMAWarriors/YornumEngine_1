@@ -28,13 +28,17 @@ class PlayerAnimationSystem : public System {
     
         void update (Registry & registry, float deltatime) override {
 
-            for (Entity entity : registry.view<comp::InputState, comp::Velocity, comp::AvatarRenderer, tag::Player>()) {
+            for (Entity entity : registry.view<comp::InputState, comp::Velocity, comp::AvatarRenderer, tag::Player, comp::AnimationRepertoire>()) {
 
+
+                
                 comp::InputState & input = registry.get_component<comp::InputState>(entity);
                 comp::PhysicsBody & body = registry.get_component<comp::PhysicsBody>(entity);
                 comp::Velocity & player_velocity = registry.get_component<comp::Velocity>(entity);
                 comp::AvatarRenderer & animation_handler = registry.get_component<comp::AvatarRenderer>(entity);
 
+                comp::AnimationRepertoire & animation_repertoire = registry.get_component<comp::AnimationRepertoire>(entity);
+                
                 if (body.direction == 1) {
                     animation_handler.mirror = false;
                 } else if (body.direction == -1) {
@@ -45,15 +49,30 @@ class PlayerAnimationSystem : public System {
                     // Set the play animation to be the animation
                     // in the assets folder represented by
                     // --> BRHumanoid_Walk
-                    // animation_handler.PlayBaseAnimation(walk);
+
+                    const std::string set_state = "Walk";
+
+                    if (animation_handler.animation_state != set_state) {
+                        animation_handler.PlayBaseAnimation(animation_repertoire.repertoire[set_state]);
+                        animation_handler.animation_state = set_state;
+                    }
+                    
+
                 } else {
                     // Otherwise set to default idle animation
                     // in the assets folder represented by
                     // --> BRHumanoid_Idle
-                    // animation_handler.PlayBaseAnimation(idle);
+
+                    const std::string set_state = "Idle";
+
+                    if (animation_handler.animation_state != set_state) {
+                        animation_handler.PlayBaseAnimation(animation_repertoire.repertoire[set_state]);
+                        animation_handler.animation_state = set_state;
+                    }
+
                 }
 
-
+                
 
 
 

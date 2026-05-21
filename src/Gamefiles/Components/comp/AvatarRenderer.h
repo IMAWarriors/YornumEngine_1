@@ -45,7 +45,10 @@ struct AvatarRenderer {
     float offset_rotation = 0.0f;
     Vec2 scale = {1.0f, 1.0f};
     bool mirror = false;
+    float mirror_offset_x = 48.0f;
+
     bool visible = true;
+    std::string animation_state = "NOT_SET";
 
     void SetTransformOffset (Vec2 offset) {
         offset_position = offset;
@@ -91,6 +94,11 @@ struct AvatarRenderer {
         avatar_to_render = &avatar;
         base_animation = &animation;
         playing_animation = true;
+    }
+
+    // Set Mirror Offset X
+    void SetMirrorOffsetX (float x) {
+        mirror_offset_x = x;
     }
 
     // Get total number of queue animations
@@ -140,6 +148,13 @@ struct AvatarRenderer {
         if (base_anim != nullptr) {
             base_animation = base_anim;
         }
+
+        if (base_animation == nullptr) {
+            animation_to_play = nullptr;
+            playing_animation = false;
+            return;
+        }
+
         animation_to_play = base_animation;
 
         ResetCurrentAnimation();
@@ -166,7 +181,14 @@ struct AvatarRenderer {
     // Progress animation according to deltatime and either go forward a tick, loop, or blend accordingly
     void TickAnimation(float deltatime) {
 
+        if (animation_to_play == nullptr && base_animation != nullptr) {
+            animation_to_play = base_animation;
+        }
+
         if (!playing_animation || animation_to_play == nullptr)
+            return;
+
+        if (animation_to_play->frames.empty())
             return;
 
         // Tick
@@ -178,7 +200,10 @@ struct AvatarRenderer {
             accumulated_ms -= animation_to_play->ms_per_tick_frame;
             tick_frame_of_animation += 1;
 
-            if (tick_frame_of_animation >= animation_to_play->total_tick_frame_count()) {
+            const int totalTicks = animation_to_play->total_tick_frame_count();
+            
+
+            if (tick_frame_of_animation >= totalTicks) {
 
                 // If we are currently animating the base animation
                 if (animation_to_play == base_animation) {

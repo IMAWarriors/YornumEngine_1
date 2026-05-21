@@ -16,8 +16,9 @@ void AvatarRenderingSystem::update (Registry & registry, float deltatime) {
             Avatar& avatar_source = *avatar_renderer.avatar_to_render;
 
             if (avatar_has_animation) {
-                avatar_source.DrawAvatar(renderer, anchor_position.position + avatar_renderer.offset_position, 0.0f, {1.0f, 1.0f}, *avatar_renderer.animation_to_play, avatar_renderer.tick_frame_of_animation);
+                
                 avatar_renderer.TickAnimation(deltatime);
+                
             } else {
                 
 
