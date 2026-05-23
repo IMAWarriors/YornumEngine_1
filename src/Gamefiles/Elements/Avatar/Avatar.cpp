@@ -169,6 +169,8 @@ void Avatar::DrawAvatar(
     //     (EditorUISystem.cpp lines 1786-1801).
     // -------------------------------------------------------------------------
     const bool mirror_x = (scale.x < 0.0f);
+    const float scale_abs_x = fabsf(scale.x);
+    const float scale_abs_y = fabsf(scale.y);
     std::vector<int> jidx_draw_order(joint_count, 0);
     for (int i = 0; i < joint_count; ++i) {
         for (int j = 0; j < joint_count; ++j) {
@@ -180,18 +182,28 @@ void Avatar::DrawAvatar(
             }
         }
     }
-    // When mirroring, reverse the draw order so that limbs that were
-    // drawn behind stay behind after the horizontal flip.
-    if (mirror_x) {
-        std::reverse(jidx_draw_order.begin(), jidx_draw_order.end());
-    }
- 
+
     // -------------------------------------------------------------------------
     // 4.  Pre-compute avatar-level transform (rotation + scale).
     //     This is applied to each joint's local position to move it into
     //     world space around `position`.  Matches the notion of "rotate/scale
     //     the entire canvas" rather than rotating individual sprites.
     // -------------------------------------------------------------------------
+    // Mirror pivot in avatar-local space.
+    // Use anchor-frame X bounds center so mirrored poses reflect around the
+    // authored rig centerline rather than always around local x=0.
+    float mirror_pivot_x = 0.0f;
+    {
+        float min_x = default_frame.joints[0].origin.x;
+        float max_x = default_frame.joints[0].origin.x;
+        for (int i = 1; i < joint_count; ++i) {
+            min_x = std::min(min_x, default_frame.joints[i].origin.x);
+            max_x = std::max(max_x, default_frame.joints[i].origin.x);
+        }
+        mirror_pivot_x = (min_x + max_x) * 0.5f;
+    }
+
+    
     const float avatar_rot_rad = rotation * PI / 180.0f;
     const float cos_av         = cosf(avatar_rot_rad);
     const float sin_av         = sinf(avatar_rot_rad);
@@ -235,8 +247,15 @@ void Avatar::DrawAvatar(
         //     (anchor.origin + ji.origin) is the total local displacement.
         //     Multiply the whole thing by scale.x — ONE negation when mirroring.
         //     No extra conditional on ji.origin.x, no double-negation.
-        float local_x = (anchor.origin.x + ji.origin.x) * scale.x;
-        float local_y = (anchor.origin.y + ji.origin.y) * scale.y;
+        float joint_local_x = (anchor.origin.x + ji.origin.x);
+        float joint_local_y = (anchor.origin.y + ji.origin.y);
+
+        if (mirror_x) {
+            joint_local_x = (2.0f * mirror_pivot_x) - joint_local_x;
+        }
+
+        float local_x = joint_local_x * scale_abs_x;
+        float local_y = joint_local_y * scale_abs_y;
 
         Vec2 joint_rotated = Rotate2D({local_x, local_y}, cos_av, sin_av);
         Vec2 joint_world   = { position.x + joint_rotated.x,
@@ -247,19 +266,17 @@ void Avatar::DrawAvatar(
         //     Rotate the anchor direction by the animated rotation to get
         //     the direction vector, then mirror its X when needed.
         Vec2  anim_dir   = RotNewDirectionVec(anchor.direction, ji.rotation);
-        float dir_x      = mirror_x ? -anim_dir.x : anim_dir.x;
-        float base_angle = atan2f(anim_dir.y, dir_x);
-        float tex_rot    = mirror_x ? -tex_info.rotation : tex_info.rotation;
-        float angle      = base_angle + tex_rot + avatar_rot_rad;
+        float base_angle = atan2f(anim_dir.y, anim_dir.x);
+        float angle      = base_angle + tex_info.rotation + avatar_rot_rad;
         float cosA       = cosf(angle);
         float sinA       = sinf(angle);
 
         // 5d. Sprite size (always positive).
-        float w = tex_info.texture->width  * tex_info.scale.x * fabsf(scale.x);
-        float h = tex_info.texture->height * tex_info.scale.y * fabsf(scale.y);
+        float w = tex_info.texture->width  * tex_info.scale.x * scale_abs_x;
+        float h = tex_info.texture->height * tex_info.scale.y * scale_abs_y;
 
-        // 5e. Per-joint texture offset — flip X when mirroring.
-        float ox = mirror_x ? -tex_info.offset.x : tex_info.offset.x;
+        // 5e. Per-joint texture offset.
+        float ox = tex_info.offset.x;
         float oy = tex_info.offset.y;
 
         // 5f. Build quad corners.
@@ -282,8 +299,10 @@ void Avatar::DrawAvatar(
         float u1 = tex_info.crop_max.x;
         if (mirror_x) std::swap(u0, u1);
 
+
         Vector2 uv_min = { u0, tex_info.crop_min.y };
         Vector2 uv_max = { u1, tex_info.crop_max.y };
+        
 
         // 5h. Draw.
         renderer.rdraw_quad_screen(*tex_info.texture, screen_corners, uv_min, uv_max, WHITE);
