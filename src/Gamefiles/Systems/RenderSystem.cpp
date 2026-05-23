@@ -662,11 +662,28 @@ void RenderSystem::update (Registry & registry, float deltatime) {
 
             if (avatar_has_animation) {
 
-                if (avatar_renderer.mirror == false) {
-                    avatar_source.DrawAvatar(renderer, anchor_position.position + avatar_renderer.offset_position, 0.0f, {1.0f, 1.0f}, *avatar_renderer.animation_to_play, avatar_renderer.tick_frame_of_animation);
+                Vec2 draw_scale = avatar_renderer.scale;
+                if (avatar_renderer.mirror) {
+                    draw_scale.x = -fabsf(draw_scale.x);
                 } else {
-                    avatar_source.DrawAvatar(renderer, {anchor_position.position.x + avatar_renderer.offset_position.x + avatar_renderer.mirror_offset_x, anchor_position.position.y + avatar_renderer.offset_position.y}, 0.0f, {-1.0f, 1.0f}, *avatar_renderer.animation_to_play, avatar_renderer.tick_frame_of_animation);
+                    draw_scale.x = fabsf(draw_scale.x);
                 }
+                
+                Vec2 draw_pos = anchor_position.position + avatar_renderer.offset_position;
+                if (avatar_renderer.mirror) {
+                    draw_pos.x += avatar_renderer.mirror_offset_x;
+                }
+
+                avatar_source.DrawAvatar(
+                    renderer,
+                    draw_pos,
+                    avatar_renderer.offset_rotation,
+                    draw_scale,
+                    *avatar_renderer.animation_to_play,
+                    avatar_renderer.tick_frame_of_animation
+                );
+
+                
             } else {
                 
 

@@ -105,6 +105,20 @@ void Avatar::DrawAvatar(
     const Animation& animation,
     int              tick_frame)
 {
+
+    static bool once = false;
+    if (!once) {
+        once = true;
+        for (int i = 0; i < (int)default_frame.joints.size(); i++) {
+            printf("Joint %d: anchor.origin=(%.1f,%.1f)  anchor.direction=(%.1f,%.1f)\n",
+                i,
+                default_frame.joints[i].origin.x,
+                default_frame.joints[i].origin.y,
+                default_frame.joints[i].direction.x,
+                default_frame.joints[i].direction.y);
+        }
+    }
+
     if (animation.frames.empty())         return;
     if (default_frame.joints.empty())     return;
     if (default_texturing.joints.empty()) return;
@@ -154,6 +168,7 @@ void Avatar::DrawAvatar(
     //     This exactly mirrors the editor's jidx_draw_order construction
     //     (EditorUISystem.cpp lines 1786-1801).
     // -------------------------------------------------------------------------
+    const bool mirror_x = (scale.x < 0.0f);
     std::vector<int> jidx_draw_order(joint_count, 0);
     for (int i = 0; i < joint_count; ++i) {
         for (int j = 0; j < joint_count; ++j) {
@@ -164,6 +179,11 @@ void Avatar::DrawAvatar(
                 break;
             }
         }
+    }
+    // When mirroring, reverse the draw order so that limbs that were
+    // drawn behind stay behind after the horizontal flip.
+    if (mirror_x) {
+        std::reverse(jidx_draw_order.begin(), jidx_draw_order.end());
     }
  
     // -------------------------------------------------------------------------
@@ -177,167 +197,98 @@ void Avatar::DrawAvatar(
     const float sin_av         = sinf(avatar_rot_rad);
  
     const float zoom = renderer.get_camera_zoom();
- 
     // -------------------------------------------------------------------------
     // 5.  Draw each joint in draw order (back to front).
     // -------------------------------------------------------------------------
+
     for (int i = 0; i < joint_count; ++i) {
- 
+
         const int idx = jidx_draw_order[i];
- 
-        // Safety: skip if index is out of range for any parallel array
+
         if (idx >= (int)default_frame.joints.size())     continue;
         if (idx >= (int)default_texturing.joints.size()) continue;
         if (idx >= (int)frame_a.joints.size())           continue;
         if (idx >= (int)frame_b.joints.size())           continue;
- 
+
         const JointFramePosition& anchor   = default_frame.joints[idx];
         const AvatarJoint&        tex_info = default_texturing.joints[idx];
- 
+
         if (tex_info.texture == nullptr) continue;
- 
+
         const AnimJointAdjustmentFrame& ja = frame_a.joints[idx];
         const AnimJointAdjustmentFrame& jb = frame_b.joints[idx];
- 
-        // ---------------------------------------------------------------------
-        // 5a.  Interpolate the joint adjustment between frame_a and frame_b.
-        //      Mirrors editor lines 1860-1874 exactly.
-        //        - origin:   linear lerp
-        //        - rotation: shortest-arc or long-arc depending on normal_rotation
-        // ---------------------------------------------------------------------
+
+        // 5a. Interpolate
         AnimJointAdjustmentFrame ji{};
- 
         ji.origin.x = ja.origin.x + (jb.origin.x - ja.origin.x) * t;
         ji.origin.y = ja.origin.y + (jb.origin.y - ja.origin.y) * t;
- 
+
         {
             float shortest = WrapDeg180(jb.rotation - ja.rotation);
-            float delta;
-            if (ja.normal_rotation) {
-                delta = shortest;                                    // short path
-            } else {
-                delta = (shortest >= 0.0f) ? shortest - 360.0f      // long path
-                                           : shortest + 360.0f;
-            }
+            float delta    = ja.normal_rotation
+                           ? shortest
+                           : ((shortest >= 0.0f) ? shortest - 360.0f : shortest + 360.0f);
             ji.rotation = ja.rotation + delta * t;
         }
- 
-        // ---------------------------------------------------------------------
-        // 5b.  Compute the joint's world-space center position.
-        //      local  = anchor.origin + interpolated_adjustment.origin
-        //      world  = position + rotate(scale(local), avatar_rotation)
-        //
-        //      This is the exact equivalent of the editor's WorldToScreen() on
-        //      (joint_anchor.origin + joint_interp.origin).
-        // ---------------------------------------------------------------------
-        Vec2 joint_local = {
-            anchor.origin.x + ji.origin.x,
-            anchor.origin.y + ji.origin.y
-        };
- 
-        // Apply avatar scale, then avatar rotation, then translate to position
-        Vec2 joint_scaled  = { joint_local.x * scale.x,
-                                joint_local.y * scale.y };
-        Vec2 joint_rotated = Rotate2D(joint_scaled, cos_av, sin_av);
+
+        // 5b. Joint position in local space.
+        //     (anchor.origin + ji.origin) is the total local displacement.
+        //     Multiply the whole thing by scale.x — ONE negation when mirroring.
+        //     No extra conditional on ji.origin.x, no double-negation.
+        float local_x = (anchor.origin.x + ji.origin.x) * scale.x;
+        float local_y = (anchor.origin.y + ji.origin.y) * scale.y;
+
+        Vec2 joint_rotated = Rotate2D({local_x, local_y}, cos_av, sin_av);
         Vec2 joint_world   = { position.x + joint_rotated.x,
-                                position.y + joint_rotated.y };
- 
-        // Convert to screen space using the renderer's camera transform
+                               position.y + joint_rotated.y };
         Vec2 screen_center = renderer.world_camera_transform(joint_world);
- 
-        // ---------------------------------------------------------------------
-        // 5c.  Compute the sprite's final rotation angle.
-        //      newDir     = RotNewDirectionVec(anchor.direction, ji.rotation)
-        //                   (rotates the anchor's direction vector by the anim
-        //                    rotation in degrees - same as editor line 1908)
-        //      base_angle = atan2(newDir.y, newDir.x)   (radians)
-        //      final      = base_angle + tex_info.rotation + avatar_rot_rad
-        //                   (tex_info.rotation is stored in radians)
-        // ---------------------------------------------------------------------
-        Vec2  new_dir    = RotNewDirectionVec(anchor.direction, ji.rotation);
-        float base_angle = atan2f(new_dir.y, new_dir.x);
-        float angle      = base_angle + tex_info.rotation + avatar_rot_rad;
- 
-        float cosA = cosf(angle);
-        float sinA = sinf(angle);
- 
-        // ---------------------------------------------------------------------
-        // 5d.  Sprite display dimensions in world units.
-        //      width  = texture.width  * tex_info.scale.x
-        //      height = texture.height * tex_info.scale.y
-        //
-        //      Avatar-level scale also stretches/squishes the limb size.
-        //      We multiply by |scale| so e.g. a 2x avatar has 2x limbs.
-        //      Using abs() so that mirroring (negative scale) doesn't invert
-        //      the sprite size - it only moves the joint center.
-        // ---------------------------------------------------------------------
+
+        // 5c. Sprite draw angle.
+        //     Rotate the anchor direction by the animated rotation to get
+        //     the direction vector, then mirror its X when needed.
+        Vec2  anim_dir   = RotNewDirectionVec(anchor.direction, ji.rotation);
+        float dir_x      = mirror_x ? -anim_dir.x : anim_dir.x;
+        float base_angle = atan2f(anim_dir.y, dir_x);
+        float tex_rot    = mirror_x ? -tex_info.rotation : tex_info.rotation;
+        float angle      = base_angle + tex_rot + avatar_rot_rad;
+        float cosA       = cosf(angle);
+        float sinA       = sinf(angle);
+
+        // 5d. Sprite size (always positive).
         float w = tex_info.texture->width  * tex_info.scale.x * fabsf(scale.x);
         float h = tex_info.texture->height * tex_info.scale.y * fabsf(scale.y);
- 
-        // ---------------------------------------------------------------------
-        // 5e.  Sprite offset (texture_joint.offset), applied in LOCAL space
-        //      before rotation - mirrors editor lines 1929-1933 exactly.
-        //
-        //      Avatar scale affects the offset distance too.
-        // ---------------------------------------------------------------------
-        float ox = tex_info.offset.x * fabsf(scale.x);
-        float oy = tex_info.offset.y * fabsf(scale.y);
- 
-        // ---------------------------------------------------------------------
-        // 5f.  Build 4 screen-space quad corners.
-        //      Start with a centered rectangle [-w/2, +w/2] x [-h/2, +h/2].
-        //      Shift each corner by the offset.
-        //      Rotate by `angle`.
-        //      Translate to screen_center.
-        //      Multiply the rotated offset by zoom to convert world->screen.
-        //
-        //      This exactly replicates editor lines 1920-1934:
-        //        corners[k] = { -half.x, -half.y } ... { half.x, half.y }
-        //        x = corners[k].x + offset.x
-        //        y = corners[k].y + offset.y
-        //        rotated.x = center.x + x*cosA - y*sinA
-        //        rotated.y = center.y + x*sinA + y*cosA
-        //      The editor's offset.x is already in screen pixels (offset * zoom),
-        //      our ox/oy are world pixels so we multiply by zoom here.
-        //
-        //      corners[0]=TL  [1]=TR  [2]=BR  [3]=BL
-        // ---------------------------------------------------------------------
+
+        // 5e. Per-joint texture offset — flip X when mirroring.
+        float ox = mirror_x ? -tex_info.offset.x : tex_info.offset.x;
+        float oy = tex_info.offset.y;
+
+        // 5f. Build quad corners.
         float hx = w * 0.5f;
         float hy = h * 0.5f;
- 
-        // Local (unrotated) corners, centered at zero
-        const Vec2 local_corners[4] = {
-            { -hx, -hy },   // TL
-            {  hx, -hy },   // TR
-            {  hx,  hy },   // BR
-            { -hx,  hy }    // BL
-        };
- 
+
+        const float lx[4] = { -hx + ox,  hx + ox,  hx + ox, -hx + ox };
+        const float ly[4] = { -hy + oy, -hy + oy,  hy + oy,  hy + oy };
+
         Vector2 screen_corners[4];
         for (int k = 0; k < 4; ++k) {
-            // Offset in local frame (world units)
-            float lx = local_corners[k].x + ox;
-            float ly = local_corners[k].y + oy;
-            // Rotate in world units, then scale to screen pixels via zoom
-            float rx = (lx * cosA - ly * sinA) * zoom;
-            float ry = (lx * sinA + ly * cosA) * zoom;
+            float rx = (lx[k] * cosA - ly[k] * sinA) * zoom;
+            float ry = (lx[k] * sinA + ly[k] * cosA) * zoom;
             screen_corners[k].x = screen_center.x + rx;
             screen_corners[k].y = screen_center.y + ry;
         }
- 
-        // ---------------------------------------------------------------------
-        // 5g.  UV coordinates - directly from crop_min / crop_max (0..1 range).
-        //      The editor passes these straight to ImGui as UV0/UV1.
-        // ---------------------------------------------------------------------
-        Vector2 uv_min = { tex_info.crop_min.x, tex_info.crop_min.y };
-        Vector2 uv_max = { tex_info.crop_max.x, tex_info.crop_max.y };
- 
-        // ---------------------------------------------------------------------
-        // 5h.  Submit the quad to the renderer.
-        // ---------------------------------------------------------------------
-        renderer.rdraw_quad_screen(*tex_info.texture, screen_corners,
-                                   uv_min, uv_max, WHITE);
+
+        // 5g. UVs — swap u0/u1 to flip texture horizontally. NO corner swap.
+        float u0 = tex_info.crop_min.x;
+        float u1 = tex_info.crop_max.x;
+        if (mirror_x) std::swap(u0, u1);
+
+        Vector2 uv_min = { u0, tex_info.crop_min.y };
+        Vector2 uv_max = { u1, tex_info.crop_max.y };
+
+        // 5h. Draw.
+        renderer.rdraw_quad_screen(*tex_info.texture, screen_corners, uv_min, uv_max, WHITE);
     }
+
 }
  
  
