@@ -21,7 +21,7 @@ src\Engine\ECS\Registry.cpp ^
 src\Gamefiles\Elements\Avatar\Animation.cpp ^
 src\Gamefiles\Elements\Avatar\Avatar.cpp ^
 src\Gamefiles\Assets\AssetManager.cpp ^
-src\Gamefiles\Systems\AvatarRenderingSystem.cpp ^
+src\Gamefiles\Systems\AvatarAnimationTickSystem.cpp ^
 src\Gamefiles\Systems\CameraSystem.cpp ^
 src\Gamefiles\Systems\RenderSystem.cpp ^
 src\Gamefiles\Systems\InputSystem.cpp ^

@@ -1,7 +1,7 @@
-// AvatarRenderingSystem.h
+// AvatarAnimationTickSystem.h
 
-#ifndef AVATARRENDERINGSYSTEM_H
-#define AVATARRENDERINGSYSTEM_H
+#ifndef AVATARANIMATIONTICKSYSTEM_H
+#define AVATARANIMATIONTICKSYSTEM_H
 
 // Get System
 #include "../../Engine/ECS/System.h"
@@ -16,12 +16,12 @@
 #include "../../Gamefiles/World/Scene.h"
 
 
-class AvatarRenderingSystem : public System {
+class AvatarAnimationTickSystem : public System {
     private:
         Scene & scene;
         Renderer & renderer;
     public: 
-        AvatarRenderingSystem (Scene & _scene, Renderer & _renderer) : scene(_scene), renderer(_renderer) {}
+        AvatarAnimationTickSystem (Scene & _scene, Renderer & _renderer) : scene(_scene), renderer(_renderer) {}
         void update (Registry & registry, float deltatime) override;
 };
 #endif

@@ -661,13 +661,6 @@ void RenderSystem::update (Registry & registry, float deltatime) {
             Avatar& avatar_source = *avatar_renderer.avatar_to_render;
 
             if (avatar_has_animation) {
-
-                Vec2 draw_scale = avatar_renderer.scale;
-                if (avatar_renderer.mirror) {
-                    draw_scale.x = -fabsf(draw_scale.x);
-                } else {
-                    draw_scale.x = fabsf(draw_scale.x);
-                }
                 
                 Vec2 draw_pos = anchor_position.position + avatar_renderer.offset_position;
                 if (avatar_renderer.mirror) {
@@ -677,8 +670,7 @@ void RenderSystem::update (Registry & registry, float deltatime) {
                 avatar_source.DrawAvatar(
                     renderer,
                     draw_pos,
-                    avatar_renderer.offset_rotation,
-                    draw_scale,
+                    avatar_renderer.mirror,
                     *avatar_renderer.animation_to_play,
                     avatar_renderer.tick_frame_of_animation
                 );

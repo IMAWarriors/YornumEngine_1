@@ -1,8 +1,8 @@
-// AvatarRenderingSystem.cpp
+// AvatarAnimationTickSystem.cpp
 
-#include "AvatarRenderingSystem.h"
+#include "AvatarAnimationTickSystem.h"
 
-void AvatarRenderingSystem::update (Registry & registry, float deltatime) {
+void AvatarAnimationTickSystem::update (Registry & registry, float deltatime) {
 
     for (Entity entity : registry.view<comp::Transform, comp::AvatarRenderer>()) {
 

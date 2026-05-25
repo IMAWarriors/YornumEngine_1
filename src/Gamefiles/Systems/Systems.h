@@ -13,7 +13,7 @@
 #include "../Systems/EngineManagerSystem.h"
 #include "../Systems/EditorUISystem.h"
 #include "../Systems/CameraClampManagerSystem.h"
-#include "../Systems/AvatarRenderingSystem.h"
+#include "../Systems/AvatarAnimationTickSystem.h"
 #include "../Systems/PlayerAnimationSystem.h"
 
 #endif
