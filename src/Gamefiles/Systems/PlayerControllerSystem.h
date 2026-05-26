@@ -40,19 +40,18 @@ class PlayerControllerSystem : public System {
     
         void update (Registry & registry, float deltatime) override {
 
-            for (Entity entity : registry.view<comp::InputState, comp::Velocity, tag::Player>()) {
+            for (Entity entity : registry.view<comp::InputState, comp::Velocity, tag::Player, comp::PlayerConfig>()) {
 
                 comp::InputState & input = registry.get_component<comp::InputState>(entity);
-
                 comp::PhysicsBody & body = registry.get_component<comp::PhysicsBody>(entity);
-
                 comp::Velocity & player_velocity = registry.get_component<comp::Velocity>(entity);
+                comp::PlayerConfig & config = registry.get_component<comp::PlayerConfig>(entity);
 
 
-                float MAX_VELOCITY_X    = 650.0f;
-                float ACCELERATION      = 1500.0f;
-                float FRICTION          = 2700.0f;
-                float JUMP_FORCE        = 1150.0f;
+                float MAX_VELOCITY_X    = config.NatRunSpeed;
+                float ACCELERATION      = config.NatRunAccel;
+                float FRICTION          = config.NatRunFriction;
+                float JUMP_FORCE        = config.NatJumpForce;
 
                 float target = input.horz_axis * MAX_VELOCITY_X;
                 float control_multiplier = body.onSolidGround ? 1.0f : 0.75f;
@@ -135,6 +134,7 @@ class PlayerControllerSystem : public System {
                     input.jump_key = 20;
                     body.walljumpBuffer = 30;
                     body.lastWalljumpDir = -body.lastWallPush;
+                    body.direction = (player_velocity.magnitude.x > 0.0f) ? 1 : -1;
                 }
 
                 

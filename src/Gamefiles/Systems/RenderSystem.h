@@ -31,14 +31,18 @@ class RenderSystem : public System {
         Scene & scene;
         Window & window;
         bool renderSceneEditorUI = false;
-
+    
         int clock = 0;
+
+        bool debugMode = false;
 
     public:
 
         RenderSystem (Renderer & _renderer, Scene & _scene, Window & _window) : renderer(_renderer), scene(_scene), window(_window) {}
 
         RenderSystem (Renderer & _renderer, Scene & _scene, bool _editor, Window & _window) : renderer(_renderer), scene(_scene), renderSceneEditorUI(_editor), window(_window) {} 
+
+        RenderSystem (Renderer & _renderer, Scene & _scene, bool _editor, Window & _window, bool _debug) : renderer(_renderer), scene(_scene), renderSceneEditorUI(_editor), window(_window), debugMode(_debug) {}
 
         void update (Registry & registry, float deltatime) override;
 

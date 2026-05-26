@@ -104,8 +104,157 @@ void Avatar::DrawAvatar(
     const Animation& animation,
     int              tick_frame) {
 
-        
+    // -----------
+    
+    if (default_frame.joints.empty() ||
+        default_texturing.joints.empty() ||
+        animation.frames.empty()) {
+        return;
+    }
 
+    const int anchor_joint_count = (int)default_frame.joints.size();
+    const int texture_joint_count = (int)default_texturing.joints.size();
+    const int animation_joint_count = animation.joints_defined > 0 ? animation.joints_defined : (int)animation.frames.front().joints.size();
+
+    if (anchor_joint_count != texture_joint_count ||
+        anchor_joint_count != animation_joint_count) {
+        // Animation/avatar mismatch: refuse draw instead of rendering scrambled joint mapping.
+        return;
+    }
+
+    const int joint_count = anchor_joint_count;
+    const int total_ticks = TotalTickFrames(animation);
+    const int wrapped_tick = ((tick_frame % total_ticks) + total_ticks) % total_ticks;
+
+    int interp_frame_idx = 0;
+    int interp_frame_start_tick = 0;
+    {
+        int tick_cursor = 0;
+        for (int k = 0; k < (int)animation.frames.size(); k++) {
+            int segment_len = animation.frames[k].time_to_next;
+            int segment_end = tick_cursor + segment_len + 1;
+            if (wrapped_tick >= tick_cursor && wrapped_tick < segment_end) {
+                interp_frame_idx = k;
+                interp_frame_start_tick = tick_cursor;
+                break;
+            }
+            tick_cursor = segment_end;
+            interp_frame_idx = k;
+            interp_frame_start_tick = tick_cursor;
+        }
+    }
+
+    std::vector<int> draw_order_idx(joint_count);
+    for (int i = 0; i < joint_count; i++) {
+        int jidx = i;
+        for (int j = 0; j < joint_count && j < (int)animation.frames[interp_frame_idx].joints.size(); j++) {
+            if (i == animation.frames[interp_frame_idx].joints[j].draw_order) {
+                jidx = j;
+                break;
+            }
+        }
+        draw_order_idx[i] = jidx;
+    }
+
+    int segment_len = animation.frames[interp_frame_idx].time_to_next;
+    float t = (float)(wrapped_tick - interp_frame_start_tick) / ((float)segment_len + 1.0f);
+    t = std::clamp(t, 0.0f, 1.0f);
+
+    const KeyAnimFrame::TransitionMode transition_mode = animation.frames[interp_frame_idx].transition_mode;
+    if (transition_mode == KeyAnimFrame::TransitionMode::Instant) {
+        t = 0.0f;
+    } else if (transition_mode == KeyAnimFrame::TransitionMode::EaseInOut) {
+        t = t * t * (3.0f - 2.0f * t);
+    }
+    int next_frame_idx = (interp_frame_idx + 1) % (int)animation.frames.size();
+
+    const Vector2 mirror_pivot_screen = {
+        renderer.world_camera_transform(position).x,
+        renderer.world_camera_transform(position).y
+    };
+
+    for (int i = 0; i < joint_count; i++) {
+        const int idx = draw_order_idx[i];
+        if (idx < 0 || idx >= joint_count || idx >= (int)animation.frames[interp_frame_idx].joints.size() || idx >= (int)animation.frames[next_frame_idx].joints.size()) {
+            continue;
+        }
+
+        const auto& joint_anchor = default_frame.joints[idx];
+        const auto& joint_texture = default_texturing.joints[idx];
+        const auto& joint_anim = animation.frames[interp_frame_idx].joints[idx];
+        const auto& joint_blend = animation.frames[next_frame_idx].joints[idx];
+
+        AnimJointAdjustmentFrame joint_interp = joint_anim;
+        joint_interp.origin.x = joint_anim.origin.x + ((joint_blend.origin.x - joint_anim.origin.x) * t);
+        joint_interp.origin.y = joint_anim.origin.y + ((joint_blend.origin.y - joint_anim.origin.y) * t);
+
+        float raw_delta = (joint_blend.rotation - joint_anim.rotation);
+        float shortest_delta = WrapDeg180(raw_delta);
+        if (joint_anim.normal_rotation) {
+            joint_interp.rotation = joint_anim.rotation + (shortest_delta * t);
+        } else {
+            float long_delta = (shortest_delta >= 0.0f) ? (shortest_delta - 360.0f) : (shortest_delta + 360.0f);
+            joint_interp.rotation = joint_anim.rotation + (long_delta * t);
+        }
+
+        Vec2 anchor_world = {
+            position.x + joint_anchor.origin.x + joint_interp.origin.x,
+            position.y + joint_anchor.origin.y + joint_interp.origin.y
+        };
+
+        // Always compute the non-mirrored pose first; if mirroring is requested,
+        // reflect final screen-space geometry around the avatar pivot line.
+        Vec2 new_dir = RotNewDirectionVec(joint_anchor.direction, joint_interp.rotation);
+
+        if (joint_texture.texture == nullptr) continue;
+
+        const float zoom = renderer.get_camera_zoom();
+        Vector2 center = {(float)renderer.world_camera_transform(anchor_world).x, (float)renderer.world_camera_transform(anchor_world).y};
+
+        float width = joint_texture.texture->width * joint_texture.scale.x * zoom;
+        float height = joint_texture.texture->height * joint_texture.scale.y * zoom;
+
+        float base_angle = atan2f(new_dir.y, new_dir.x);
+        float angle = base_angle + joint_texture.rotation;
+        float cosA = cosf(angle);
+        float sinA = sinf(angle);
+
+        Vector2 offset = {joint_texture.offset.x * zoom, joint_texture.offset.y * zoom};
+
+        Vector2 half = {width * 0.5f, height * 0.5f};
+        Vector2 corners_local[4] = {
+            {-half.x, -half.y}, {half.x, -half.y}, {half.x, half.y}, {-half.x, half.y}
+        };
+        Vector2 corners[4];
+        for (int k = 0; k < 4; k++) {
+            float x = corners_local[k].x + offset.x;
+            float y = corners_local[k].y + offset.y;
+            corners[k].x = center.x + (x * cosA - y * sinA);
+            corners[k].y = center.y + (x * sinA + y * cosA);
+        }
+
+        Vector2 uv_min = {joint_texture.crop_min.x, joint_texture.crop_min.y};
+        Vector2 uv_max = {joint_texture.crop_max.x, joint_texture.crop_max.y};
+
+        if (mirror_x) {
+            for (int k = 0; k < 4; k++) {
+                corners[k].x = mirror_pivot_screen.x - (corners[k].x - mirror_pivot_screen.x);
+            }
+
+            // Reflection flips winding; remap corners back to TL,TR,BR,BL ordering
+            // expected by rdraw_quad_screen so mirrored quads don't get back-face culled.
+            Vector2 remapped[4] = { corners[1], corners[0], corners[3], corners[2] };
+            corners[0] = remapped[0];
+            corners[1] = remapped[1];
+            corners[2] = remapped[2];
+            corners[3] = remapped[3];
+
+            // Also mirror texture sampling horizontally.
+            std::swap(uv_min.x, uv_max.x);
+        }
+
+        renderer.rdraw_quad_screen(*joint_texture.texture, corners, uv_min, uv_max, WHITE);
+    }
 
 }
  

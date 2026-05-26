@@ -34,9 +34,13 @@ void GameEngine::Initialize(Renderer & _renderer, InputManager & _input, FrameSt
 
 
     if (CheckFlag(Flags::EDITOR)) { 
-        systems.add_system<RenderSystem>(Phases::RENDERING,*renderer,scene,true, *window);
+        systems.add_system<RenderSystem>(Phases::RENDERING,*renderer,scene, true, *window);
     } else {
-        systems.add_system<RenderSystem>(Phases::RENDERING, *renderer, scene, *window);
+        if (CheckFlag(Flags::DEBUG)) {
+            systems.add_system<RenderSystem>(Phases::RENDERING, *renderer, scene, false, *window, true);
+        } else {
+            systems.add_system<RenderSystem>(Phases::RENDERING, *renderer, scene, *window);
+        }
     }
     
     

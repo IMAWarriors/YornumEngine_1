@@ -886,6 +886,25 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 //$$$
                 if (selected_anim_frame == -1) {
 
+                    // selection window
+                    ImGui::Separator();
+                    ImGui::Text("All Joints (Anchor)");
+
+                    static int moveDX = 0;
+                    static int moveDY = 32;
+                    ImGui::DragInt("DX", &moveDX, 1.0f, -64, 64);
+                    ImGui::DragInt("DY", &moveDY, 1.0f, -64, 64);
+
+                    if (ImGui::Button("Move Anchor")) {
+                        for (JointFramePosition& joint : (*avatar_selected).default_frame.joints) {
+                            joint.origin.x += (float)moveDX;
+                            joint.origin.y += (float)moveDY;
+                        }
+                    }
+
+                    ImGui::Separator();
+
+                    // frame control
                     if (!frame_control_disabled) {
 
                         float bwidth = (ImGui::GetContentRegionAvail().x / 2.0) - 5.0f;
@@ -942,6 +961,28 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     }
 
                 } else {
+
+
+                    // Sleection window
+                    ImGui::Separator();
+
+                    ImGui::Text("All Joints (Frame)");
+
+                    static int moveDX = 0;
+                    static int moveDY = 32;
+
+                    ImGui::DragInt("DX", &moveDX, 1.0f, -64, 64);
+                    ImGui::DragInt("DY", &moveDY, 1.0f, -64, 64);
+
+                    if (ImGui::Button("Move Animation")) {
+                        for (AnimJointAdjustmentFrame& joint : animations[anim_selected].frames[selected_anim_frame].joints) {
+                            joint.origin.x += (float)moveDX;
+                            joint.origin.y += (float)moveDY;
+                        }
+                    }
+
+                    ImGui::Separator();
+                    //
 
                     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.5f, 0.2f, 1.0f));
                     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.15f, 0.45f, 0.15f, 1.0f)); // Slightly darker green on hover

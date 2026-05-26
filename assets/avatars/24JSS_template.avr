@@ -1,0 +1,104 @@
+~AVATAR_FILE
+VERSION_1
+~AVATAR_NAME
+24JSS_template
+~DEFAULT_TEXTURING
+24
+R HAND
+assets/sprites/characters\24JSS_DefaultRig\24JSS_j0.png
+0 0 0.35 0.35 0 0 0 1 1
+SWORD
+assets/sprites/characters\24JSS_DefaultRig\24JSS_j1.png
+0.6 -29.6 0.35 0.35 0 0 0 1 1
+R SLEEVE
+assets/sprites/characters\24JSS_DefaultRig\24JSS_j2.png
+2.2 1.7 0.35 0.35 0 0 0 1 1
+R FOREARM
+assets/sprites/characters\24JSS_DefaultRig\24JSS_j3.png
+0 0 0.35 0.35 0 0 0 1 1
+R SHOULDER
+assets/sprites/characters\24JSS_DefaultRig\24JSS_j4.png
+0 0 0.35 0.35 0 0 0 1 1
+UNDER HAIR
+assets/sprites/characters\24JSS_DefaultRig\24JSS_j5.png
+0 0 0.35 0.35 0 0 0 1 1
+BODY
+assets/sprites/characters\24JSS_DefaultRig\24JSS_j6.png
+0 0 0.35 0.35 0 0 0 1 1
+NECK
+assets/sprites/characters\24JSS_DefaultRig\24JSS_j7.png
+0 0 0.35 0.35 0 0 0 1 1
+HEAD
+assets/sprites/characters\24JSS_DefaultRig\24JSS_j8.png
+0 0 0.35 0.35 0 0 0 1 1
+UPPER HAIR
+assets/sprites/characters\24JSS_DefaultRig\24JSS_j9.png
+0 8 0.35 0.35 0 0 0 1 1
+R THIGH
+assets/sprites/characters\24JSS_DefaultRig\24JSS_j10.png
+0 0 0.35 0.25 0 0 0 1 1
+R SHIN
+assets/sprites/characters\24JSS_DefaultRig\24JSS_j12.png
+0 0 0.35 0.35 0 0 0 1 1
+R KNEE
+assets/sprites/characters\24JSS_DefaultRig\24JSS_j11.png
+0 0 0.35 0.35 0 0 0 1 1
+R FOOT
+assets/sprites/characters\24JSS_DefaultRig\24JSS_j13.png
+0 0 0.35 0.35 0 0 0 1 1
+WAIST
+assets/sprites/characters\24JSS_DefaultRig\24JSS_j14.png
+0 0 0.35 0.35 3.14159 0 0 1 1
+L THIGH
+assets/sprites/characters\24JSS_DefaultRig\24JSS_j15.png
+0 0 0.35 0.32 3.14159 0 0 1 1
+L SHIN
+assets/sprites/characters\24JSS_DefaultRig\24JSS_j17.png
+0 0 0.35 0.35 3.14159 0 0 1 1
+L KNEE
+assets/sprites/characters\24JSS_DefaultRig\24JSS_j16.png
+0 0 0.35 0.35 3.14159 0 0 1 1
+L FOOT
+assets/sprites/characters\24JSS_DefaultRig\24JSS_j18.png
+0 0 0.35 0.35 3.14159 0 0 1 1
+BELT
+assets/sprites/characters\24JSS_DefaultRig\24JSS_j19.png
+0 0 0.35 0.35 3.14159 0 0 1 1
+L SHOULDER
+assets/sprites/characters\24JSS_DefaultRig\24JSS_j20.png
+0 0 0.35 0.35 3.14159 0 0 1 1
+L FOREARM
+assets/sprites/characters\24JSS_DefaultRig\24JSS_j21.png
+0 0 0.35 0.35 3.14159 0 0 1 1
+L SLEEVE
+assets/sprites/characters\24JSS_DefaultRig\24JSS_j22.png
+0 0 0.35 0.35 3.14159 0 0 1 1
+L HAND
+assets/sprites/characters\24JSS_DefaultRig\24JSS_j23.png
+0 0 0.35 0.35 3.14159 0 0 1 1
+~ANCHOR_FRAME
+0 76.4811 -46.569 41.3333 -8
+1 86.9644 -46.1777 6.21878 49.3333
+2 72.7561 -52.6323 50 1.33333
+3 69.4779 -61.7083 17.1669 -2.99635
+4 68.1952 -79.2149 41.3333 -5.33333
+5 51.098 -101.7 32.5039 1.08808
+6 62.0465 -76.167 100 0
+7 60.9195 -97.734 100 0
+8 61.5323 -109.901 100 0
+9 61.035 -119.869 100 0
+10 69.9022 -36.3231 62.0606 -6.90909
+11 71.7674 -15.0768 44.7879 3.21212
+12 74.1631 -25.7558 46 2
+13 75.9443 -0.946503 46.3681 -1.68098
+14 61.4263 -45.575 -68.0003 -8.34465e-07
+15 52.5226 -36.9473 -53.3337 -4
+16 50.6141 -15.5823 -58.4807 2.57222
+17 50.8639 -24.8969 -53.3337 -4
+18 54.4462 -0.395955 -68.0003 -8.34465e-07
+19 60.6371 -52.0567 -68.0003 -8.34465e-07
+20 47.9105 -80.2794 -96.0003 -25.3333
+21 45.2265 -62.5412 -86.667 -8.66667
+22 43.6434 -50.777 -86.667 -4.66667
+23 42.8837 -43.7453 -103.334 2.66667
+~END_OF_FILE

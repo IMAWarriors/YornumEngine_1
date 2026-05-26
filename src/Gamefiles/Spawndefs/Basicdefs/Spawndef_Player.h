@@ -15,45 +15,68 @@ namespace spawndef {
 
         Entity entity = registry.create_entity();
 
+        // Basic tracking
         registry.apply_component<tag::Player>           (entity, {});
-
         registry.apply_component<comp::Transform>       (entity,  { position, position, 0.0f, {1.0f, 1.0f} });
-        
         registry.apply_component<comp::Velocity>        (entity, {0.0f, 0.0f} );
-
-        registry.apply_component<comp::PhysicsBody>     (entity, {{28.0f, 50.0f}, 1.0f, true, true, 4000.0f, true, false, false, false, 0, 0, 0, false, 0, 0, 0, 1});
-
-        registry.apply_component<comp::AvatarRenderer>(entity, comp::AvatarRenderer());
-
-        registry.apply_component<comp::AnimationRepertoire>(entity, comp::AnimationRepertoire());
-
-        // registry.apply_component<comp::CircleRenderer>  (entity, {50.0f , { 255, 0 , 0 , 255 } });
         registry.apply_component<comp::InputState>      (entity, {0, false});
 
-        // Need to load in an avatar and an animation somehow by adding loading system
-        // into asset manager?
-        // Just want to load a basic character with idle animation 
-        // BRHumanoid_template.avr and BRHumanoid_Idle.anim, dont know best way
-        // to set up this system, i want it to be fast and efficient
+        // Physics body setup
+        registry.apply_component<comp::PhysicsBody> (entity, 
+        {
+            {28.0f, 84.0f},     // Hitbox size, (x,y)
+            1.0f,               //
+            true,               //
+            true,               //
+            4000.0f,            //
+            true,               //
+            false,              //
+            false,              //
+            false,              //
+            0,                  //
+            0,                  //
+            0,                  //
+            false,              //
+            0,                  //
+            0,                  //
+            0,                  //
+            1                   //
+        });
+
+        // Avatar
+        registry.apply_component<comp::AvatarRenderer>      (entity, comp::AvatarRenderer());
+        registry.apply_component<comp::AnimationRepertoire> (entity, comp::AnimationRepertoire());
+        registry.apply_component<comp::PlayerConfig>        (entity, {});
         
-        Avatar* avatar = assets.LoadAvatarAsset("assets/avatars/BRHumanoid_template.avr");
+        comp::PlayerConfig& config = registry.get_component<comp::PlayerConfig>(entity);
+        config.NatRunSpeed     = 650.0f;
+        config.NatRunAccel     = 1500.0f;
+        config.NatRunFriction  = 2700.0f;
+        config.NatJumpForce    = 1150.0f;
+
+        // Load entity animations
+        Avatar* avatar = assets.LoadAvatarAsset("assets/avatars/24JSS_template.avr");
 
         comp::AnimationRepertoire& animationHandler = registry.get_component<comp::AnimationRepertoire>(entity);
-
-        animationHandler.ImportAnimationAsset("Idle", assets.LoadAnimationAsset("assets/animations/BRHumanoid_Idle.anim"));
-        animationHandler.ImportAnimationAsset("Walk", assets.LoadAnimationAsset("assets/animations/BRHumanoid_Walk.anim"));
-
         comp::AvatarRenderer& avatarRenderer = registry.get_component<comp::AvatarRenderer>(entity);
 
+        // Load animations into Animation Repertoire
+        animationHandler.ImportAnimationAsset("Idle", assets.LoadAnimationAsset("assets/animations/24JSS_IdleCalm.anim"));
+        animationHandler.ImportAnimationAsset("Walk", assets.LoadAnimationAsset("assets/animations/24JSS_WalkCalm.anim"));
+        animationHandler.ImportAnimationAsset("Jump", assets.LoadAnimationAsset("assets/animations/24JSS_JumpNormal.anim"));
+        animationHandler.ImportAnimationAsset("Fall", assets.LoadAnimationAsset("assets/animations/24JSS_FallNormal.anim"));
+        animationHandler.ImportAnimationAsset("Wallslide", assets.LoadAnimationAsset("assets/animations/24JSS_WallslideNormal.anim"));
+
+        // Set up the Avatar Renderer
         avatarRenderer.ConnectTransform(&registry.get_component<comp::Transform>(entity));
         avatarRenderer.ConnectAvatar(avatar);
-        avatarRenderer.SetTransformOffset({-32.0f, 24.0f});
-
+        avatarRenderer.SetTransformOffset({-64.0f, 44.0f});
+        avatarRenderer.SetMirrorOffsetX(128);
         avatarRenderer.SetBaseAnimation(animationHandler.repertoire["Idle"]);
         avatarRenderer.PlayBaseAnimation();
 
+        // Return entity
         return entity;
-
     }
 
 

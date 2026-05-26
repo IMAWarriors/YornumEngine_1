@@ -45,7 +45,7 @@ struct AvatarRenderer {
     float offset_rotation = 0.0f;
     Vec2 scale = {1.0f, 1.0f};
     bool mirror = false;
-    float mirror_offset_x = 48.0f;
+    float mirror_offset_x = 55.0f;
 
     bool visible = true;
     std::string animation_state = "NOT_SET";
@@ -66,6 +66,7 @@ struct AvatarRenderer {
     int prev_animation_blend_frame = 0;
     int blend_out_time_left = 0; // If 0, blending is complete
     int tick_frame_of_animation = 0;
+    bool blend_mode = false;
 
 
     // Animation that is played by default if nothing is queued
@@ -137,8 +138,25 @@ struct AvatarRenderer {
     }
 
     // Set the base animation without switching
-    void SetBaseAnimation (Animation* animation) {
+    void SetBaseAnimation (Animation* animation, int blend_frames = 0) {
+
+        // If we are interpolating between animations
+        if (interpolate_btwn && blend_frames != 0) {
+            blend_mode = true;
+            blend_out_time_left = blend_frames;
+            prev_animation_to_blend = animation_to_play;
+            prev_animation_blend_frame = tick_frame_of_animation;
+
+            // Start animation to be blending, idk how
+
+            animation_to_play = animation;
+            tick_frame_of_animation = 0;
+            return;
+        } 
+
+        // If we are... not interpolating between animations
         base_animation = animation;
+
     }
 
     // Clear all other animations and play the base animation, setting it a 
@@ -199,6 +217,17 @@ struct AvatarRenderer {
             // Get rid of overflow and progress
             accumulated_ms -= animation_to_play->ms_per_tick_frame;
             tick_frame_of_animation += 1;
+
+            // Tick the animation blend timer
+            blend_out_time_left--;
+
+            if (blend_out_time_left <= 0) {
+                blend_mode = false;
+                blend_out_time_left = 0;
+                prev_animation_blend_frame = 0;
+                prev_animation_to_blend = nullptr;
+            }
+
 
             const int totalTicks = animation_to_play->total_tick_frame_count();
             

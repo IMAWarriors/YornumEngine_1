@@ -587,32 +587,29 @@ void RenderSystem::update (Registry & registry, float deltatime) {
 
     // STEP DRAW LOOP: Draw all PhysicsBody hitboxes
 
-    for (Entity entity : registry.view<comp::Transform, comp::PhysicsBody>()) {      // For each iteration of Entity
-
-
+    if (renderSceneEditorUI || debugMode) {
+            
+        for (Entity entity : registry.view<comp::Transform, comp::PhysicsBody>()) {      // For each iteration of Entity
             comp::Transform & transform     = registry.get_component<comp::Transform>(entity);
             comp::PhysicsBody & body        = registry.get_component<comp::PhysicsBody>(entity);
 
-
-        
-
-
             if (body.render_hitbox) {
+
                 Color col_body;
+
                 if (body.inColl) {
-                    col_body = Color({0, 255, 255, 110});
+                    col_body = Color({0, 255, 255, 50});
                 } else {
-                    col_body = Color({0, 255, 0, 110});
+                    col_body = Color({0, 255, 0, 50});
                 }
 
                 Color col_skin;
                 if (body.innerSkinInColl) {
-                    col_skin = Color({255, 0, 255, 180});
+                    col_skin = Color({255, 0, 255, 90});
                 } else {
-                    col_skin = Color({255, 0, 0, 180});
+                    col_skin = Color({255, 0, 0, 90});
                 }
-
-                
+    
 
                 Vec2 top_left;
                 Vec2 bottom_right;
@@ -637,13 +634,8 @@ void RenderSystem::update (Registry & registry, float deltatime) {
                     body.size.y, 
                     col_body
                 );
-
-                
-
-
-
             }
-
+        }
 
     }
 
