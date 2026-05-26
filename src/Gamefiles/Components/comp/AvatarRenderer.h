@@ -127,7 +127,6 @@ struct AvatarRenderer {
     void ResetCurrentAnimation (bool play_animation = true) {
         playing_animation = play_animation;
 
-
         if (playing_animation)
             PlayAnimation();
         else
@@ -161,7 +160,22 @@ struct AvatarRenderer {
 
     // Clear all other animations and play the base animation, setting it a 
     // custom animation is desired
-    void PlayBaseAnimation (Animation* base_anim = nullptr) {
+    void PlayBaseAnimation (Animation* base_anim = nullptr, int blend_frames = 0) {
+
+        // If we are interpolating between animations
+        if (interpolate_btwn && blend_frames != 0) {
+            blend_mode = true;
+            blend_out_time_left = blend_frames;
+            prev_animation_to_blend = animation_to_play;
+            prev_animation_blend_frame = tick_frame_of_animation;
+
+            // Start animation to be blending, idk how
+            animation_to_play = base_anim;
+            tick_frame_of_animation = 0;
+            PlayAnimation();
+            return;
+            //--------------
+        }
 
         if (base_anim != nullptr) {
             base_animation = base_anim;
@@ -172,7 +186,7 @@ struct AvatarRenderer {
             playing_animation = false;
             return;
         }
-
+        
         animation_to_play = base_animation;
 
         ResetCurrentAnimation();
