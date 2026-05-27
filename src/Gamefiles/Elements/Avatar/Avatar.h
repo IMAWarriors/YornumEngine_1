@@ -71,6 +71,59 @@ struct AnimJointAdjustmentFrame {
 
 class AssetManager;
 
+struct AvatarJoint;
+
+struct JointTexture {
+
+    // ==================== Attributes ===================== //
+
+    // Image internal and pointer
+    std::string texture_path = "DEFAULT_CONSTRUCTOR_TEXTURE_PATH";
+    Texture2D* texture_ptr = nullptr;
+
+    // Adjustments
+    Vec2 offset = {0, 0};     // position relative to joint
+    Vec2 scale = {1, 1};      // size multiplier
+    float rotation = 0.0f;    // rotation in radians
+    Vec2 crop_min = {0, 0};   // UV min (0–1)
+    Vec2 crop_max = {1, 1};   // UV max (0–1)
+
+    // ==================== Methods ===================== //
+
+    // Default constructor
+    JointTexture () {
+        texture_path = "DEFAULT_CONSTRUCTOR_TEXTURE_PATH";
+        texture_ptr = nullptr;
+        offset = {0, 0};     // position relative to joint
+        scale = {1, 1};      // size multiplier
+        rotation = 0.0f;    // rotation in radians
+        crop_min = {0, 0};   // UV min (0–1)
+        crop_max = {1, 1};   // UV max (0–1)
+    }
+
+    // Selective constructor
+    JointTexture (AssetManager& assets, const std::string& path) {
+        texture_path = path;
+        texture_ptr = &assets.LoadTextureAsset(path);
+        offset = {0, 0};     // position relative to joint
+        scale = {1, 1};      // size multiplier
+        rotation = 0.0f;    // rotation in radians
+        crop_min = {0, 0};   // UV min (0–1)
+        crop_max = {1, 1};   // UV max (0–1)
+    }
+
+    // Constructor from parent AvatarJoint
+    JointTexture (AssetManager& assets, const std::string& path, const AvatarJoint& joint) {
+        texture_path = path;
+        texture_ptr = &assets.LoadTextureAsset(path);
+        offset = joint.offset;     // position relative to joint
+        scale = joint.scale;      // size multiplier
+        rotation = joint.rotation;    // rotation in radians
+        crop_min = joint.crop_min;   // UV min (0–1)
+        crop_max = joint.crop_max;   // UV max (0–1)
+    }
+};
+
 struct AvatarJoint {
 
     // Name of joint
@@ -85,23 +138,50 @@ struct AvatarJoint {
     Vec2 crop_min = {0, 0};   // UV min (0–1)
     Vec2 crop_max = {1, 1};   // UV max (0–1)
 
+
+    // Storage of additional animation textures
+    std::vector<JointTexture> animation_texture_library;
+
     // Loading functions
     bool joint_has_texture () { return (texture != nullptr);    }
-
     bool unload_texture (AssetManager & assets);
-
     bool load_texture_from_path (AssetManager & assets, const std::string & path);
 
-    AvatarJoint () {
-        name = "UNTITLED_AVATARJOINT_DEFAULT_CONSTRUCTOR";
-    }
-
+    // Push back new anim texture
+    bool push_back_new_anim_texture (AssetManager& assets, const std::string & path) {
+        // Make sure path is not empty
+        if (path.empty())
+            return false;
+        // Import new texture for the AvatarJoint group
+        animation_texture_library.push_back(JointTexture(assets, path, *this));
+        return true;
+    } 
     
-    AvatarJoint (const std::string & _name) {
-        this->name = _name;
-
-
+    // Unload all anim textures
+    bool unload_all_anim_textures () {
+        animation_texture_library.clear();
+        return true;
     }
+
+    // AvatarJoint constructors
+    AvatarJoint ()                          {   name = "UNTITLED_AVATARJOINT_DEFAULT_CONSTRUCTOR";  }
+    AvatarJoint (const std::string & _name) {   this->name = _name;                                 }
+
+    /*  How to add textures...
+
+        // 1.) Make a joint
+
+        AvatarJoint this_joint = AvatarJoint("leg");
+        this_joint.load_texture_from_path(assets, "image/address/img.jpg");             // original texture; id: -1
+
+        // 2.) Add new animation textures
+
+        this_joint.push_back_new_anim_texture(assets, "image/address/img_anim_1.jpg");  // anim id: 0
+        this_joint.push_back_new_anim_texture(assets, "image/address/img_anim_2.jpg");  // anim id: 1
+        this_joint.push_back_new_anim_texture(assets, "image/address/img_anim_3.jpg");  // anim id: 2
+        this_joint.push_back_new_anim_texture(assets, "image/address/img_anim_4.jpg");  // anim id: 3
+    
+    */
 
 };
 
@@ -111,8 +191,13 @@ struct AvatarJoint {
 //      - 3. active
 
 struct AvatarTextureRig {
+
+    // Storage of Joint Texturing native information
     std::vector<AvatarJoint> joints;
 
+    
+
+    // Clear joints helper
     void clear () {
         joints.clear();
     }
@@ -233,7 +318,7 @@ class Avatar {
 
         void DrawAvatar (Renderer& renderer, Vec2 position, bool mirror_x, const Animation& animation, int tick_frame);
 
-        void DrawAvatarBlend (Renderer& renderer, Vec2 position, const Animation& anim1, int anim1_tick_frame, const Animation& anim2, int anim2_tick_frame, int tick_frame, int total_blend_tick_frames);
+        void DrawAvatarBlend (Renderer& renderer, Vec2 position, bool mirror_x, const Animation& anim1, int anim1_tick_frame, const Animation& anim2, int anim2_tick_frame, int tick_frame, int total_blend_tick_frames);
 
         
         bool SaveAvrFile (const std::string& filename, const std::string& path);

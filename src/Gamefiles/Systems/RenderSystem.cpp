@@ -659,13 +659,29 @@ void RenderSystem::update (Registry & registry, float deltatime) {
                     draw_pos.x += avatar_renderer.mirror_offset_x;
                 }
 
-                avatar_source.DrawAvatar(
-                    renderer,
-                    draw_pos,
-                    avatar_renderer.mirror,
-                    *avatar_renderer.animation_to_play,
-                    avatar_renderer.tick_frame_of_animation
-                );
+                // Drawing?
+                if (avatar_renderer.blend_mode && avatar_renderer.prev_animation_to_blend != nullptr) {
+                    const int blend_tick = avatar_renderer.blend_out_time_total - avatar_renderer.blend_out_time_left;
+                    avatar_source.DrawAvatarBlend(
+                        renderer,
+                        draw_pos,
+                        avatar_renderer.mirror,
+                        *avatar_renderer.prev_animation_to_blend,
+                        avatar_renderer.prev_animation_blend_frame,
+                        *avatar_renderer.animation_to_play,
+                        0,
+                        blend_tick,
+                        avatar_renderer.blend_out_time_total
+                    );
+                } else {
+                    avatar_source.DrawAvatar(
+                        renderer,
+                        draw_pos,
+                        avatar_renderer.mirror,
+                        *avatar_renderer.animation_to_play,
+                        avatar_renderer.tick_frame_of_animation
+                    );
+                }
 
                 
             } else {

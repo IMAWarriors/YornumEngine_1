@@ -41,6 +41,53 @@ namespace {
         for (const KeyAnimFrame& k : anim.frames) total += (k.time_to_next + 1);
         return std::max(1, total);
     }
+
+    static std::vector<AnimJointAdjustmentFrame> SampleAnimPose(const Animation& animation, int tick_frame) {
+        if (animation.frames.empty()) return {};
+
+        const int total_ticks = TotalTickFrames(animation);
+        const int wrapped_tick = ((tick_frame % total_ticks) + total_ticks) % total_ticks;
+
+        int interp_frame_idx = 0;
+        int interp_frame_start_tick = 0;
+        int tick_cursor = 0;
+        for (int k = 0; k < (int)animation.frames.size(); k++) {
+            int segment_len = animation.frames[k].time_to_next;
+            int segment_end = tick_cursor + segment_len + 1;
+            if (wrapped_tick >= tick_cursor && wrapped_tick < segment_end) {
+                interp_frame_idx = k;
+                interp_frame_start_tick = tick_cursor;
+                break;
+            }
+            tick_cursor = segment_end;
+        }
+
+        int next_frame_idx = (interp_frame_idx + 1) % (int)animation.frames.size();
+        int segment_len = animation.frames[interp_frame_idx].time_to_next;
+        float t = (float)(wrapped_tick - interp_frame_start_tick) / ((float)segment_len + 1.0f);
+        t = std::clamp(t, 0.0f, 1.0f);
+
+        const KeyAnimFrame::TransitionMode transition_mode = animation.frames[interp_frame_idx].transition_mode;
+        if (transition_mode == KeyAnimFrame::TransitionMode::Instant) t = 0.0f;
+        else if (transition_mode == KeyAnimFrame::TransitionMode::EaseInOut) t = t * t * (3.0f - 2.0f * t);
+
+        std::vector<AnimJointAdjustmentFrame> out = animation.frames[interp_frame_idx].joints;
+        const int joint_count = (int)out.size();
+        for (int idx = 0; idx < joint_count && idx < (int)animation.frames[next_frame_idx].joints.size(); idx++) {
+            const auto& a = animation.frames[interp_frame_idx].joints[idx];
+            const auto& b = animation.frames[next_frame_idx].joints[idx];
+            out[idx].origin.x = a.origin.x + ((b.origin.x - a.origin.x) * t);
+            out[idx].origin.y = a.origin.y + ((b.origin.y - a.origin.y) * t);
+            float raw_delta = (b.rotation - a.rotation);
+            float shortest_delta = WrapDeg180(raw_delta);
+            if (a.normal_rotation) out[idx].rotation = a.rotation + (shortest_delta * t);
+            else {
+                float long_delta = (shortest_delta >= 0.0f) ? (shortest_delta - 360.0f) : (shortest_delta + 360.0f);
+                out[idx].rotation = a.rotation + (long_delta * t);
+            }
+        }
+        return out;
+    }
 }
 
 bool AvatarJoint::unload_texture (AssetManager & assets) {
@@ -62,6 +109,8 @@ bool AvatarJoint::load_texture_from_path (AssetManager & assets, const std::stri
     texturePath = path;
     return true;
 }
+
+
 
 void Avatar::LoadInternalJointTextures (AssetManager& assets) {
     for (AvatarJoint& joint : default_texturing.joints) {
@@ -269,16 +318,94 @@ void Avatar::DrawAvatar(
 void Avatar::DrawAvatarBlend(
     Renderer& renderer,
     Vec2 position,
+    bool mirror_x,
     const Animation& anim1, int anim1_tick_frame,
     const Animation& anim2, int anim2_tick_frame,
     int tick_frame, int total_blend_tick_frames)
 {
-    // Not called by DrawAvatar anymore.
-    // Implement later when cross-animation blending is needed.
-    (void)renderer; (void)position; 
-    (void)anim1; (void)anim1_tick_frame;
-    (void)anim2; (void)anim2_tick_frame;
-    (void)tick_frame; (void)total_blend_tick_frames;
+    if (default_frame.joints.empty() ||
+        default_texturing.joints.empty() ||
+        anim1.frames.empty() ||
+        anim2.frames.empty()) {
+        return;
+    }
+    const int joint_count = (int)default_frame.joints.size();
+    if (joint_count != (int)default_texturing.joints.size() ||
+        joint_count != (int)anim1.frames.front().joints.size() ||
+        joint_count != (int)anim2.frames.front().joints.size()) {
+        return;
+    }
+
+    const auto pose_a = SampleAnimPose(anim1, anim1_tick_frame);
+    const auto pose_b = SampleAnimPose(anim2, anim2_tick_frame);
+    if ((int)pose_a.size() != joint_count || (int)pose_b.size() != joint_count) return;
+
+    const float blend_t = (total_blend_tick_frames <= 0)
+        ? 1.0f
+        : std::clamp((float)tick_frame / (float)total_blend_tick_frames, 0.0f, 1.0f);
+
+    std::vector<AnimJointAdjustmentFrame> blended_pose = pose_a;
+    for (int idx = 0; idx < joint_count; idx++) {
+        blended_pose[idx].origin.x = pose_a[idx].origin.x + (pose_b[idx].origin.x - pose_a[idx].origin.x) * blend_t;
+        blended_pose[idx].origin.y = pose_a[idx].origin.y + (pose_b[idx].origin.y - pose_a[idx].origin.y) * blend_t;
+        float shortest_delta = WrapDeg180(pose_b[idx].rotation - pose_a[idx].rotation);
+        blended_pose[idx].rotation = pose_a[idx].rotation + shortest_delta * blend_t;
+        blended_pose[idx].draw_order = pose_b[idx].draw_order;
+    }
+
+    std::vector<int> draw_order_idx(joint_count);
+    for (int i = 0; i < joint_count; i++) {
+        int jidx = i;
+        for (int j = 0; j < joint_count; j++) {
+            if (i == blended_pose[j].draw_order) {
+                jidx = j;
+                break;
+            }
+        }
+        draw_order_idx[i] = jidx;
+    }
+
+    const Vector2 mirror_pivot_screen = {
+        renderer.world_camera_transform(position).x,
+        renderer.world_camera_transform(position).y
+    };
+
+    for (int i = 0; i < joint_count; i++) {
+        int idx = draw_order_idx[i];
+        const auto& joint_anchor = default_frame.joints[idx];
+        const auto& joint_texture = default_texturing.joints[idx];
+        const auto& joint_interp = blended_pose[idx];
+        Vec2 anchor_world = { position.x + joint_anchor.origin.x + joint_interp.origin.x, position.y + joint_anchor.origin.y + joint_interp.origin.y };
+        Vec2 new_dir = RotNewDirectionVec(joint_anchor.direction, joint_interp.rotation);
+        if (joint_texture.texture == nullptr) continue;
+
+        const float zoom = renderer.get_camera_zoom();
+        Vector2 center = {(float)renderer.world_camera_transform(anchor_world).x, (float)renderer.world_camera_transform(anchor_world).y};
+        float width = joint_texture.texture->width * joint_texture.scale.x * zoom;
+        float height = joint_texture.texture->height * joint_texture.scale.y * zoom;
+        float angle = atan2f(new_dir.y, new_dir.x) + joint_texture.rotation;
+        float cosA = cosf(angle);
+        float sinA = sinf(angle);
+        Vector2 offset = {joint_texture.offset.x * zoom, joint_texture.offset.y * zoom};
+        Vector2 half = {width * 0.5f, height * 0.5f};
+        Vector2 corners_local[4] = {{-half.x, -half.y}, {half.x, -half.y}, {half.x, half.y}, {-half.x, half.y}};
+        Vector2 corners[4];
+        for (int k = 0; k < 4; k++) {
+            float x = corners_local[k].x + offset.x;
+            float y = corners_local[k].y + offset.y;
+            corners[k].x = center.x + (x * cosA - y * sinA);
+            corners[k].y = center.y + (x * sinA + y * cosA);
+        }
+        Vector2 uv_min = {joint_texture.crop_min.x, joint_texture.crop_min.y};
+        Vector2 uv_max = {joint_texture.crop_max.x, joint_texture.crop_max.y};
+        if (mirror_x) {
+            for (int k = 0; k < 4; k++) corners[k].x = mirror_pivot_screen.x - (corners[k].x - mirror_pivot_screen.x);
+            Vector2 remapped[4] = { corners[1], corners[0], corners[3], corners[2] };
+            corners[0] = remapped[0]; corners[1] = remapped[1]; corners[2] = remapped[2]; corners[3] = remapped[3];
+            std::swap(uv_min.x, uv_max.x);
+        }
+        renderer.rdraw_quad_screen(*joint_texture.texture, corners, uv_min, uv_max, WHITE);
+    }
 }
 
 

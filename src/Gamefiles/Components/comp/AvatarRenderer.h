@@ -65,6 +65,7 @@ struct AvatarRenderer {
     Animation* prev_animation_to_blend = nullptr;
     int prev_animation_blend_frame = 0;
     int blend_out_time_left = 0; // If 0, blending is complete
+    int blend_out_time_total = 0;
     int tick_frame_of_animation = 0;
     bool blend_mode = false;
 
@@ -139,14 +140,15 @@ struct AvatarRenderer {
     // Set the base animation without switching
     void SetBaseAnimation (Animation* animation, int blend_frames = 0) {
 
+        base_animation = animation;
+
         // If we are interpolating between animations
-        if (interpolate_btwn && blend_frames != 0) {
+        if (interpolate_btwn && blend_frames > 0 && animation_to_play != nullptr && animation_to_play != animation) {
             blend_mode = true;
             blend_out_time_left = blend_frames;
+            blend_out_time_total = blend_frames;
             prev_animation_to_blend = animation_to_play;
             prev_animation_blend_frame = tick_frame_of_animation;
-
-            // Start animation to be blending, idk how
 
             animation_to_play = animation;
             tick_frame_of_animation = 0;
@@ -154,7 +156,13 @@ struct AvatarRenderer {
         } 
 
         // If we are... not interpolating between animations
-        base_animation = animation;
+        blend_mode = false;
+        blend_out_time_left = 0;
+        blend_out_time_total = 0;
+        prev_animation_blend_frame = 0;
+        prev_animation_to_blend = nullptr;
+        animation_to_play = animation;
+        tick_frame_of_animation = 0;
 
     }
 
@@ -162,23 +170,25 @@ struct AvatarRenderer {
     // custom animation is desired
     void PlayBaseAnimation (Animation* base_anim = nullptr, int blend_frames = 0) {
 
+        // Play
+        Animation* target_anim = (base_anim != nullptr) ? base_anim : base_animation;
+        if (base_anim != nullptr) {
+            base_animation = base_anim;
+        }
+
         // If we are interpolating between animations
-        if (interpolate_btwn && blend_frames != 0) {
+        if (interpolate_btwn && blend_frames > 0 && animation_to_play != nullptr && animation_to_play != target_anim && target_anim != nullptr) {
             blend_mode = true;
             blend_out_time_left = blend_frames;
+            blend_out_time_total = blend_frames;
             prev_animation_to_blend = animation_to_play;
             prev_animation_blend_frame = tick_frame_of_animation;
 
-            // Start animation to be blending, idk how
-            animation_to_play = base_anim;
+            animation_to_play = target_anim;
             tick_frame_of_animation = 0;
             PlayAnimation();
             return;
             //--------------
-        }
-
-        if (base_anim != nullptr) {
-            base_animation = base_anim;
         }
 
         if (base_animation == nullptr) {
@@ -224,24 +234,31 @@ struct AvatarRenderer {
             return;
 
         // Tick
-        accumulated_ms += (deltatime * 1000.0f * animation_speed);
+        if (blend_mode) {
+            accumulated_ms += (deltatime * 1000.0f);
+        } else {
+            accumulated_ms += (deltatime * 1000.0f * animation_speed);
+        }
 
         while (accumulated_ms >= animation_to_play->ms_per_tick_frame) {
 
             // Get rid of overflow and progress
             accumulated_ms -= animation_to_play->ms_per_tick_frame;
-            tick_frame_of_animation += 1;
 
-            // Tick the animation blend timer
-            blend_out_time_left--;
-
-            if (blend_out_time_left <= 0) {
-                blend_mode = false;
-                blend_out_time_left = 0;
-                prev_animation_blend_frame = 0;
-                prev_animation_to_blend = nullptr;
+            if (blend_mode) {
+                blend_out_time_left--;
+                if (blend_out_time_left <= 0) {
+                    blend_mode = false;
+                    blend_out_time_left = 0;
+                    blend_out_time_total = 0;
+                    prev_animation_blend_frame = 0;
+                    prev_animation_to_blend = nullptr;
+                    tick_frame_of_animation = 0;
+                }
+                continue;
             }
 
+            tick_frame_of_animation += 1;
 
             const int totalTicks = animation_to_play->total_tick_frame_count();
             
