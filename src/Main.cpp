@@ -1,27 +1,27 @@
 // main.cpp
 
 /**    =======================================================================================================
- *      > MAIN FILE, Version E-Build Alpha 1.7.0
- *      > E-Build Alpha 1.7.0 [Stabilized Push!]: Fixed tile splitting
+ *      > MAIN FILE, Version E-Build Alpha 1.8.0
+ *      > E-Build Alpha 1.8.0 [Stabilized Push!]: Added Avatar and Animation joint w/ basic Anim Texture handling
  *     -------------------------------------------------------------------------------------------------------
  *      > by IMAWarriors
  *      >  -------------------------------------------
  *          VERSION 
  *         -------------------------------------------
  *          E-Build Alpha 
- *          1.7.0
+ *          1.8.0
  *          [Stabilized Push!]
+ *          Added storage for Animation textures between frames
+ *          Added basic animation systems ingame rendering
+ *          Added Avatars and Animation file loading
  *          Added playforming collision
  *      ------------------------------------------------------------------------------------------------------
- *      > Stable working version pushed to Git on 04-11-2026, 9:45 PM 
+ *      > Stable working version pushed to Git on 05-27-2026, 9:20 PM 
  *      ======================================================================================================
  *      >>> New to this major build:                
  *      ======================================================================================================
  * 
- *       - Platforming collision
- *       - Made batch compilation portable
- *       - Fixed all major bugs
- *       - Fixed tile splitting
+ *       - Animation & Avatar handling
  *
  *    ======================================================================================================= */
 

@@ -110,6 +110,32 @@ bool AvatarJoint::load_texture_from_path (AssetManager & assets, const std::stri
     return true;
 }
 
+// ============= Packaged Animation Joint Textures ==================
+
+// Selective constructor
+JointTexture::JointTexture (AssetManager& assets, const std::string& path, Vec2 tex_offset, Vec2 tex_scale, float tex_rot, Vec2 cmin, Vec2 cmax) {
+    texture_path = path;
+    texture_ptr = &assets.LoadTextureAsset(path);
+    offset = tex_offset;     // position relative to joint
+    scale = tex_scale;      // size multiplier
+    rotation = tex_rot;    // rotation in radians
+    crop_min = cmin;   // UV min (0–1)
+    crop_max = cmax;   // UV max (0–1)
+}
+
+// Constructor from parent AvatarJoint
+JointTexture::JointTexture (AssetManager& assets, const std::string& path, const AvatarJoint& joint) {
+    texture_path = path;
+    texture_ptr = &assets.LoadTextureAsset(path);
+    offset = joint.offset;     // position relative to joint
+    scale = joint.scale;      // size multiplier
+    rotation = joint.rotation;    // rotation in radians
+    crop_min = joint.crop_min;   // UV min (0–1)
+    crop_max = joint.crop_max;   // UV max (0–1)
+}
+
+// ==================================================================
+
 
 
 void Avatar::LoadInternalJointTextures (AssetManager& assets) {

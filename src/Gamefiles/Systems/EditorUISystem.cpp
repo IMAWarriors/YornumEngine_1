@@ -216,6 +216,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
         static bool lock_window_drag = false;
         static int jointselected = -1;
 
+        static bool sterilizeJointForPopup = false;
+        static bool sterilizeJointForAnimPopup = false;
+
         auto get_idx_from_jlayer_id = [&](Avatar& avatar, int layer) -> int {
 
             if (layer >= 0 && layer < avatar.default_frame.joints.size())
@@ -663,6 +666,10 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     }
                 }
 
+                ImGui::SameLine();
+                
+                ImGui::Checkbox("Lock Window (no drag)", &lock_window_drag);
+
 
                 static int lastJointSelected = jointselected;
                 static char jointnamebuffer[128] = "Untitled joint";
@@ -887,7 +894,6 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 if (selected_anim_frame == -1) {
 
                     // selection window
-                    ImGui::Separator();
                     ImGui::Text("All Joints (Anchor)");
 
                     static int moveDX = 0;
@@ -961,10 +967,6 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     }
 
                 } else {
-
-
-                    // Sleection window
-                    ImGui::Separator();
 
                     ImGui::Text("All Joints (Frame)");
 
@@ -1211,9 +1213,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 }
 
 
-                ImGui::Separator();
-
-                ImGui::Checkbox("Lock Window (no drag)", &lock_window_drag);
+                
 
                 ImGui::Separator();
 
@@ -1227,7 +1227,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                     bool sel = (i == jointselected);
                     if (ImGui::Selectable( disp.c_str(), sel )) {
-                        jointselected = (sel) ? -1 : get_idx_from_jlayer_id((*avatar_selected), i);
+                        if (!sterilizeJointForPopup && !sterilizeJointForAnimPopup) {
+                            jointselected = (sel) ? -1 : get_idx_from_jlayer_id((*avatar_selected), i);
+                        }
                     }
                     ImGui::PopID();
                 }
@@ -1510,7 +1512,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                         // CLICK SELECT
                         if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-                            jointselected = idx;
+                            if (!sterilizeJointForPopup && !sterilizeJointForAnimPopup) {
+                                jointselected = idx;
+                            }
                         }
 
                 
@@ -1697,6 +1701,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         }
 
 
+                        /*
+
+                        EXTRA ONION LAYER FRAME TWO FRAMES AGO I THINK
 
                         if (anim.frames.size() > 2) {
                             // ------------------->
@@ -1782,6 +1789,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                             }
                         }
+
+                        */
 
                         
 
@@ -2020,6 +2029,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             bool hovered = dist < 8.0f;
                             bool selected = (idx == jointselected);
 
+                            
+
                             ImU32 color;
 
                             if (selected) {
@@ -2090,7 +2101,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                             // CLICK SELECT only should make sense if we are on a keyframe
                             if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-                                jointselected = idx;
+                                if (!sterilizeJointForPopup && !sterilizeJointForAnimPopup) {
+                                    jointselected = idx;
+                                }
                             }
 
                         }
@@ -2744,16 +2757,51 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                     if (ImGui::BeginTabBar("animtypetabs")) {
 
-                        if (jointselected != -1 || selected_anim_frame == -1) {
+                        if (jointselected != -1 || selected_anim_frame == -1 || (selected_anim_frame != -1 && ( (*avatar_selected).default_frame.joints.size() > 0 ) ) ) {
 
                             if (ImGui::BeginTabItem("Frame")) {
+
+                                ImGui::Separator();
+                               
+                                if (selected_anim_frame != -1) {
+
+                                    ImGui::Text(std::string("Joint Inspector").c_str());
+                                    ImGui::SameLine();
+                                    ImGui::Text(std::string("|").c_str());
+                                    ImGui::SameLine();
+
+                                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.3f, 1.0f));
+                                    ImGui::Text(std::string("Frame #" + std::to_string(selected_anim_frame)).c_str());
+                                    ImGui::PopStyleColor();
+                                
+                                } else {
+
+                                    ImGui::Text(std::string("Joint Inspector").c_str());
+                                    ImGui::SameLine();
+                                    ImGui::Text(std::string("|").c_str());
+                                    ImGui::SameLine();
+
+                                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.1f, 8.0f, 0.1f, 1.0f));
+                                    ImGui::Text(std::string("Anchor Frame").c_str());
+                                    ImGui::PopStyleColor();
+                                }
+
+                                ImGui::Separator(); 
 
                                 editing_anim_w_interpolation = false;
                                 play_preview_animation = false;
 
-                                if (jointselected!=-1) {
-                                
+                                /* If no joint is selected when we pop into Frame tab,
+                                    set to a default joint, joint 0 : DEACTIVATED
+                                ==========================================================
 
+                                if (selected_anim_frame != -1 && jointselected == -1) {
+                                    if ((*avatar_selected).default_frame.joints.size() > 0)
+                                        jointselected = 0;
+                                }
+                                */
+
+                                if (jointselected!=-1) {
                                     // ANCHOR FRAME EDITOR: This if branch handles if a joint is selected
                                     // for the joint inspector but we are on the default frame, so original
                                     // character data SHOULD be altered; this should be VICE VESA for
@@ -2824,33 +2872,633 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                             ImGui::EndTable();
                                         }
 
-                                        static std::vector<std::string> characterFiles;
-                                        static bool filesLoaded = false;
+                                        
 
-                                        if (!filesLoaded) {
-                                            characterFiles.clear();
+                                        
+                                        ImGui::Separator();
 
-                                            std::string root = "assets/sprites/characters";
+                                        // -------------------------------------------------------------------------- //
+                                        // -------------- Joint animation library textures controller --------------- //
+                                        //   - Save variables to manage popups
+                                        //   - Maintain texture adding buttons
+                                        //  
+                                        //
+                                        //
 
-                                            for (const auto& entry : std::filesystem::recursive_directory_iterator(root)) {
-                                                if (!entry.is_directory()) {
-                                                    std::string path = entry.path().string();
+                                        // LoadChangeRootTexturePopup Popup Manager
+                                        bool LoadChangeRootTexturePopup = false;
+                                        bool LoadAnimJointTextureLibraryPopup = false;
+                                        
+                                        // Joint Root Texture Selection
+                                        ImGui::Text("Joint Root Texture (Idx: -1):");
 
-                                                    if (entry.path().extension() == ".png") {
-                                                        characterFiles.push_back(path);
-                                                    }
-                                                }
-                                            }
+                                        ImGui::BeginChild("RootTexture", ImVec2(0, 60), true);
 
-                                            filesLoaded = true;
+                                        if (ImGui::Button("Change Root Texture")) {
+                                            // Open change root texture pop-up
+                                            LoadChangeRootTexturePopup = true;
                                         }
 
-                                        static int selectedFileIndex = -1;
+                                        ImGui::Separator();
+
+                                        const std::string& fullPath = joint_text.texturePath;
+                                        std::string displayName = std::filesystem::path(fullPath).filename().string();
+
+                                        ImGui::Text(std::string("Idx -1: "+ displayName).c_str());
+
+
+                                        ImGui::EndChild();
+
+
+                                        // ---------- Open Popup: Change Root Texture -----------
+
+                                        if (LoadChangeRootTexturePopup) {
+                                            ImGui::OpenPopup("Change Joint Root Texture");
+                                        }
+
+                                        ImVec2 lcrtModalSize = {
+                                            std::max(620.0f, GetScreenWidth() * 0.72f),
+                                            std::max(420.0f, GetScreenHeight() * 0.76f)
+                                        };
+
+                                        // Start the Save Avatar .avr file popup
+                                        ImGui::GetStyle().WindowPadding = ImVec2(8,8);
+                                        ImGui::SetNextWindowSize(lcrtModalSize, ImGuiCond_Appearing);
+
+                                        if (ImGui::BeginPopupModal("Change Joint Root Texture", NULL, ImGuiWindowFlags_NoCollapse)) {
+
+                                            sterilizeJointForPopup = true;
+
+                                            // %%%
+                                            ImGui::Text("Choose a valid texture file to replace the Root Texture of the ");
+                                            ImGui::SameLine();
+                                            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+                                            ImGui::Text(joint_text.name.c_str());
+                                            ImGui::PopStyleColor();
+                                            ImGui::SameLine();
+                                            ImGui::Text(" joint.");
+
+                                            ImGui::Separator();
+
+                                            // --------------------->
+
+                                            // --- Load in potential joint image files into this vector ---
+                                            static int selectedFileIndex = -1;
+                                            static Texture2D* previewTexture = nullptr;
+                                            static std::string previewTexturePath = "";
+
+                                            static std::vector<std::string> characterFiles;
+                                            static bool filesLoaded = false;
+                                            
+                                            if (!filesLoaded) {
+                                                selectedFileIndex = -1;
+                                                characterFiles.clear();
+                                                std::string root = "assets/sprites/characters";
+                                                for (const auto& entry : std::filesystem::recursive_directory_iterator(root)) {
+                                                    if (!entry.is_directory()) {
+                                                        std::string path = entry.path().string();
+                                                        if (entry.path().extension() == ".png") {
+                                                            characterFiles.push_back(path);
+                                                        }
+                                                    }
+                                                }
+                                                filesLoaded = true;
+                                            }
+                                            // -----------------------------------------------------------
+
+                                            float winsize = ImGui::GetContentRegionAvail().x * 0.98f;
+                                            float width_filepane = winsize * 0.55;
+                                            float width_currpane = winsize * 0.225;
+                                            float width_previewpane = winsize * 0.225;
+
+                                            // ***************** CHILD: ROOT CHARACTER FILES *************************
+                                            ImGui::BeginChild("RootCharacterFiles", ImVec2(width_filepane, 500), true);
+
+                                            
+                                            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.7f, 1.0f, 1.0f));
+                                            ImGui::Text("Joint Texture Filenames:");
+                                            ImGui::PopStyleColor();
+
+                                            ImGui::Separator();
+
+                                            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8f, 0.55f, 0.8f, 1.0f));
+                                            ImGui::Text("{ assets / sprites / characters / ... }");
+                                            ImGui::PopStyleColor();
+                                            
+                                            ImGui::Separator();
+
+                                            for (int i = 0; i < characterFiles.size(); i++) {
+                                                const std::string& fullPath = characterFiles[i];
+
+                                                // Optional: show only filename instead of full path
+                                                std::string displayName = std::filesystem::path(fullPath).filename().string();
+
+                                                if (ImGui::Selectable(displayName.c_str(), selectedFileIndex == i)) {
+
+                                                    if (selectedFileIndex != i) {
+                                                        selectedFileIndex = i;
+                                                    } else {
+                                                        selectedFileIndex = -1;
+                                                    }
+
+                                                    if (selectedFileIndex == -1) {
+                                                        previewTexturePath = "";
+                                                        previewTexture = nullptr;
+                                                    } else {
+                                                        previewTexturePath = fullPath;
+                                                        previewTexture = &assets.LoadTextureAsset(previewTexturePath);
+                                                    }
+
+                                                }
+                                            }
+                                            ImGui::EndChild();
+
+                                            // ************************************************************************
+
+
+                                            // ********************** CHILD: PREVIEW PANE ******************************
+
+                                            ImGui::SameLine();
+                                            ImGui::BeginChild("JFilePreviewPane", ImVec2(width_previewpane, 500), true);
+                                            
+                                            ImGui::Text("Preview ");
+                                            ImGui::SameLine();
+                                            
+                                            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+                                            ImGui::Text(joint_text.name.c_str());
+                                            ImGui::PopStyleColor();
+
+                                            ImGui::SameLine();
+                                            ImGui::Text(" Texture:");
+
+                                            ImGui::Separator();
+
+                                            if (selectedFileIndex == -1) { 
+                                                previewTexture = nullptr;
+                                                previewTexturePath = "";
+                                            } 
+
+                                            if (selectedFileIndex == -1 || previewTexture == nullptr || previewTexturePath == "") {
+
+                                                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+                                                ImGui::Text("No texture selected.");
+                                                ImGui::PopStyleColor();
+
+                                            } else {
+
+                                                float placewidth = width_previewpane / 1.4f;
+                                                float imgscale = 1.0f; // placewidth / (*previewTexture).width;
+
+                                                Vec2 imgsize = {
+                                                    (*previewTexture).width * imgscale,
+                                                    (*previewTexture).height * imgscale
+                                                };
+                                                
+                                                float availWidth = ImGui::GetContentRegionAvail().x;
+                                                float offsetX = (availWidth - imgsize.x) * 0.5f;
+
+                                                ImGui::Text("");
+                                                if (offsetX > 0.0f)
+                                                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offsetX);
+
+                                                
+                                                ImGui::Image((ImTextureID)(*previewTexture).id, ImVec2(imgsize.x, imgsize.y));
+                                                ImGui::Text("");
+
+                                            }
+
+                                            ImGui::Separator();
+
+                                            ImGui::EndChild();
+
+
+
+                                            // ********************** CHILD: CURRENT PANE ******************************
+
+                                            ImGui::SameLine();
+                                            ImGui::BeginChild("CFilePreviewPane", ImVec2(width_currpane, 500), true);
+
+                                            ImGui::Text("Current ");
+                                            ImGui::SameLine();
+                                            
+                                            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+                                            ImGui::Text(joint_text.name.c_str());
+                                            ImGui::PopStyleColor();
+
+                                            ImGui::SameLine();
+                                            ImGui::Text(" Texture:");
+
+                                            ImGui::Separator();
+
+                                            // Draw image
+                                            static Texture2D* currentLoadedJTexture = nullptr;
+                                            static std::string currentLoadedPath = "";
+                                            
+                                            if (currentLoadedPath != joint_text.texturePath) {
+                                                currentLoadedJTexture = &assets.LoadTextureAsset(joint_text.texturePath);
+                                                currentLoadedPath = joint_text.texturePath;
+                                            }
+
+                                            if (currentLoadedJTexture != nullptr && currentLoadedPath != "" && currentLoadedPath != "NONE") {
+
+                                                float cplacewidth = width_currpane / 1.4f;
+                                                float cimgscale = 1.0f; // cplacewidth / (*currentLoadedJTexture).width;
+
+                                                Vec2 imgsize = {
+                                                    (*currentLoadedJTexture).width * cimgscale,
+                                                    (*currentLoadedJTexture).height * cimgscale
+                                                };
+
+                                                float availWidth = ImGui::GetContentRegionAvail().x;
+                                                float offsetX = (availWidth - imgsize.x) * 0.5f;
+
+                                                ImGui::Text("");
+
+                                                if (offsetX > 0.0f)
+                                                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offsetX);
+
+                                                ImGui::Image((ImTextureID)(*currentLoadedJTexture).id, ImVec2(imgsize.x, imgsize.y));
+                                                ImGui::Text("");
+
+                                            } else {
+                                                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+                                                ImGui::Text("Joint has no applied texture");
+                                                ImGui::PopStyleColor();
+                                            }
+
+                                            ImGui::Separator();
+
+                                            ImGui::EndChild();
+                                            
+                                            // *************************************************************************
+
+                                            
+
+                                            ImGui::BeginDisabled((selectedFileIndex == -1));
+
+                                            if (ImGui::Button("Load Texture", ImVec2(110, 25))) {
+
+                                                if (selectedFileIndex != -1) {
+                                                    joint_text.load_texture_from_path(assets, characterFiles[selectedFileIndex]);
+                                                }
+
+                                                // Load Texture
+                                                filesLoaded = false;
+                                                ImGui::CloseCurrentPopup();
+                                            }
+
+                                            ImGui::EndDisabled();
+
+                                            ImGui::SameLine();
+
+                                            if (ImGui::Button("Cancel", ImVec2(70, 25))) {
+                                                // Cancel
+                                                filesLoaded = false;
+                                                ImGui::CloseCurrentPopup();
+                                            }
+
+                                            ImGui::EndPopup();
+                                        } else {
+
+                                            // As long as the other joint texture editing Popup for
+                                            // multiple animation textures isn't open too, not only this popup, 
+                                            // then yeah you can allow us to move joints again it
+
+                                            sterilizeJointForPopup = false;
+
+                                        }
+
+                                        // -------------------------------------------------------------
+
+
+
+
+                                        // Animations Texture Loading Child
+                                        static int selected_anim_texture_idx = -1;
 
                                         ImGui::Separator();
-                                        ImGui::Text("Character Sprites:");
+                                        ImGui::Text("Avatar Joint Anim Textures:");
 
-                                        ImGui::BeginChild("SpriteList", ImVec2(0, 150), true);
+                                        ImGui::BeginChild("AnimTextures", ImVec2(0, 90), true);
+
+                                        auto& joint_texture = (*avatar_selected).default_texturing.joints[jointselected];
+
+                                        if (ImGui::Button("New")) {
+                                            // Open new anim texture pop-up
+                                            joint_texture.push_back_new_anim_texture(assets, joint_texture.texturePath);
+                                        }
+
+                                        ImGui::SameLine();
+
+                                        ImGui::BeginDisabled((selected_anim_texture_idx == -1));
+
+                                        if (ImGui::Button("Delete")) {
+                                            if (selected_anim_texture_idx >= 0 && selected_anim_texture_idx < joint_texture.animation_texture_library.size()) {
+                                                joint_texture.animation_texture_library.erase(joint_texture.animation_texture_library.begin() + selected_anim_texture_idx);
+                                            }
+
+                                            if (selected_anim_texture_idx >= 0 && selected_anim_texture_idx < joint_texture.animation_texture_library.size()) {
+                                                selected_anim_texture_idx = -1;
+                                            }
+                                        }
+
+                                        ImGui::SameLine();
+
+                                        if (ImGui::Button("Load")) {
+                                            // Open popup for loading texture
+                                            LoadAnimJointTextureLibraryPopup = true;
+
+                                        }
+
+                                        ImGui::SameLine();
+
+                                        if (ImGui::Button("^^")) {
+                                            if (1 <= selected_anim_texture_idx && selected_anim_texture_idx < joint_texture.animation_texture_library.size()) {
+                                                
+                                                // --
+                                                std::swap(
+                                                    joint_texture.animation_texture_library[selected_anim_texture_idx],
+                                                    joint_texture.animation_texture_library[selected_anim_texture_idx-1]
+                                                );
+
+                                                selected_anim_texture_idx--;
+
+                                            }
+                                        }
+
+                                        ImGui::SameLine();
+
+                                        if (ImGui::Button("vv")) {
+                                            if (0 <= selected_anim_texture_idx && selected_anim_texture_idx < joint_texture.animation_texture_library.size()-1) {
+                                                
+                                                // --
+                                                std::swap(
+                                                    joint_texture.animation_texture_library[selected_anim_texture_idx],
+                                                    joint_texture.animation_texture_library[selected_anim_texture_idx+1]
+                                                );
+
+                                                selected_anim_texture_idx++;
+
+                                            }
+                                            
+                                        }
+
+                                        ImGui::EndDisabled();
+
+
+                                        ImGui::Separator();
+
+                                        // List
+                                        for (int i = 0; i < joint_texture.animation_texture_library.size(); i++) {
+
+                                            const std::string& fullPath = joint_texture.animation_texture_library[i].texture_path;
+                                            std::string displayName = "Idx " + std::to_string(i) + ": " + std::filesystem::path(fullPath).filename().string();
+
+                                            if (ImGui::Selectable(displayName.c_str(), selected_anim_texture_idx == i)) {
+                                                if (selected_anim_texture_idx == i) {
+                                                    selected_anim_texture_idx = -1;
+                                                } else {
+                                                    selected_anim_texture_idx = i;
+                                                }
+                                            }
+                                        }
+                                        ImGui::EndChild();
+
+
+
+                                        // ------------------------------------------------------------------------- //
+                                        // ------- Handle Popup: Anim Joint Texture Library Loader ----------------- //
+                                        // ------------------------------------------------------------------------- //
+
+                                        if (LoadAnimJointTextureLibraryPopup) {
+                                            ImGui::OpenPopup("Load Joint Animation Library Textures");
+                                        }
+
+                                        ImVec2 lajtlpModalSize = {
+                                            std::max(620.0f, GetScreenWidth() * 0.72f),
+                                            std::max(420.0f, GetScreenHeight() * 0.76f)
+                                        };
+
+                                        ImGui::GetStyle().WindowPadding = ImVec2(8,8);
+                                        ImGui::SetNextWindowSize(lajtlpModalSize, ImGuiCond_Appearing);
+
+                                        if (ImGui::BeginPopupModal("Load Joint Animation Library Textures", NULL, ImGuiWindowFlags_NoCollapse)) {
+
+                                            sterilizeJointForAnimPopup = true;
+
+                                            // %%%
+                                            ImGui::Text("Choose a texture file to load into index ");
+                                            ImGui::SameLine();
+                                            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+                                            ImGui::Text(std::to_string(selected_anim_texture_idx).c_str());
+                                            ImGui::PopStyleColor();
+                                            ImGui::SameLine();
+                                            ImGui::Text(" of the ");
+                                            ImGui::SameLine();
+                                            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+                                            ImGui::Text(joint_text.name.c_str());
+                                            ImGui::PopStyleColor();
+                                            ImGui::SameLine();
+                                            ImGui::Text(" joint animation library");
+
+                                            ImGui::Separator();
+
+                                            // --------------------->
+
+                                            // --- Load in potential joint image files into this vector ---
+                                            static int selectedFileIndex = -1;
+                                            static Texture2D* previewTexture = nullptr;
+                                            static std::string previewTexturePath = "";
+
+                                            static std::vector<std::string> characterFiles;
+                                            static bool filesLoaded = false;
+                                            
+                                            if (!filesLoaded) {
+                                                selectedFileIndex = -1;
+                                                characterFiles.clear();
+                                                std::string root = "assets/sprites/characters";
+                                                for (const auto& entry : std::filesystem::recursive_directory_iterator(root)) {
+                                                    if (!entry.is_directory()) {
+                                                        std::string path = entry.path().string();
+                                                        if (entry.path().extension() == ".png") {
+                                                            characterFiles.push_back(path);
+                                                        }
+                                                    }
+                                                }
+                                                filesLoaded = true;
+                                            }
+                                            // -----------------------------------------------------------
+
+                                            float winsize = ImGui::GetContentRegionAvail().x * 0.98f;
+                                            float width_filepane = winsize * 0.45f;
+                                            float width_libraryjoints = winsize * 0.275f;
+                                            float width_previewpane = winsize * 0.275f;
+
+                                            // ***************** CHILD: Root Char Files *************************
+                                            ImGui::BeginChild("RootCharacterFiles", ImVec2(width_filepane, 500), true);
+
+                                            
+                                            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.7f, 1.0f, 1.0f));
+                                            ImGui::Text("Joint Texture Filenames:");
+                                            ImGui::PopStyleColor();
+
+                                            ImGui::Separator();
+
+                                            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8f, 0.55f, 0.8f, 1.0f));
+                                            ImGui::Text("{ assets / sprites / characters / ... }");
+                                            ImGui::PopStyleColor();
+                                            
+                                            ImGui::Separator();
+
+                                            for (int i = 0; i < characterFiles.size(); i++) {
+                                                const std::string& fullPath = characterFiles[i];
+
+                                                // Optional: show only filename instead of full path
+                                                std::string displayName = std::filesystem::path(fullPath).filename().string();
+
+                                                if (ImGui::Selectable(displayName.c_str(), selectedFileIndex == i)) {
+
+                                                    if (selectedFileIndex != i) {
+                                                        selectedFileIndex = i;
+                                                    } else {
+                                                        selectedFileIndex = -1;
+                                                    }
+
+                                                    if (selectedFileIndex == -1) {
+                                                        previewTexturePath = "";
+                                                        previewTexture = nullptr;
+                                                    } else {
+                                                        previewTexturePath = fullPath;
+                                                        previewTexture = &assets.LoadTextureAsset(previewTexturePath);
+                                                    }
+
+                                                }
+                                            }
+                                            ImGui::EndChild();
+
+                                            // ************************************************************************
+
+
+
+                                            // ********************** CHILD: PREVIEW PANE ******************************
+
+                                            ImGui::SameLine();
+                                            ImGui::BeginChild("JFilePreviewPane", ImVec2(width_previewpane, 500), true);
+                                            
+                                            ImGui::Text("Preview Texture to Load:");
+
+                                            ImGui::Separator();
+
+                                            if (selectedFileIndex == -1) { 
+                                                previewTexture = nullptr;
+                                                previewTexturePath = "";
+                                            } 
+
+                                            if (selectedFileIndex == -1 || previewTexture == nullptr || previewTexturePath == "") {
+
+                                                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+                                                ImGui::Text("No texture selected.");
+                                                ImGui::PopStyleColor();
+
+                                            } else {
+
+                                                float placewidth = width_previewpane / 1.4f;
+                                                float imgscale = 1.0f; // placewidth / (*previewTexture).width;
+
+                                                Vec2 imgsize = {
+                                                    (*previewTexture).width * imgscale,
+                                                    (*previewTexture).height * imgscale
+                                                };
+                                                
+                                                float availWidth = ImGui::GetContentRegionAvail().x;
+                                                float offsetX = (availWidth - imgsize.x) * 0.5f;
+
+                                                ImGui::Text("");
+                                                if (offsetX > 0.0f)
+                                                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offsetX);
+
+                                                
+                                                ImGui::Image((ImTextureID)(*previewTexture).id, ImVec2(imgsize.x, imgsize.y));
+                                                ImGui::Text("");
+
+                                            }
+
+                                            ImGui::Separator();
+
+                                            ImGui::EndChild();
+                                            // ------------------------------------------------------
+
+
+
+
+                                            // ***************** CHILD: CURRENT TEXTURE PANE ******************************
+
+                                            ImGui::SameLine();
+                                            ImGui::BeginChild("JFileCurrentPane", ImVec2(width_previewpane, 500), true);
+                                            
+                                            ImGui::Text("Current Texture:");
+
+                                            ImGui::Separator();
+
+                                            // ++++++++++ TODO: Draw the Current Joint Texture Preview +++++++++++
+
+                                            
+
+
+
+
+                                            // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+                                            ImGui::Separator();
+
+                                            ImGui::EndChild();
+
+
+                                            
+
+                                            // Buttons for controlling
+
+                                            ImGui::BeginDisabled((selectedFileIndex == -1));
+
+                                            if (ImGui::Button("Load Texture", ImVec2(110, 25))) {
+
+                                                if (selectedFileIndex != -1) {
+                                                    joint_text.load_texture_from_path(assets, characterFiles[selectedFileIndex]);
+                                                }
+
+                                                // Load Texture
+                                                filesLoaded = false;
+                                                ImGui::CloseCurrentPopup();
+                                            }
+
+                                            ImGui::EndDisabled();
+
+                                            ImGui::SameLine();
+
+                                            if (ImGui::Button("Cancel", ImVec2(70, 25))) {
+                                                // Cancel
+                                                filesLoaded = false;
+                                                ImGui::CloseCurrentPopup();
+                                            }
+
+                                            ImGui::EndPopup();
+                                        } else {
+
+                                            // As long as the other joint texture editing Popup for
+                                            // multiple animation textures isn't open too, not only this popup, 
+                                            // then yeah you can allow us to move joints again it
+
+                                            sterilizeJointForAnimPopup = false;
+
+                                        }
+
+                                        // -------------------------------------------------------------
+
+                                        
+
+                                        /* 
+                                        
+                                        // "Select a Texture"
 
                                         for (int i = 0; i < characterFiles.size(); i++) {
                                             const std::string& fullPath = characterFiles[i];
@@ -2863,21 +3511,17 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                             }
                                         }
 
-                                        ImGui::EndChild();
-
                                         if (ImGui::Button("Set Image")) {
-                                            if (selectedFileIndex != -1) {
-                                                joint_text.load_texture_from_path(assets, characterFiles[selectedFileIndex]);
-                                            }
+                                            
                                         }
-
+                                        */
 
                                     } else {
 
                                         // INDIVIDUAL FRAME EDITOR: 
                                         // if (selected_anim_frame == 0, 1, 2, ... etc. ) {
                                         auto& joint = animations[anim_selected].frames[selected_anim_frame].joints[jointselected];
-                                        const auto& joint_text = (*avatar_selected).default_texturing.joints[jointselected];
+                                        auto& joint_text = (*avatar_selected).default_texturing.joints[jointselected];
 
                                         // ONLY update buffer when selection changes
                                         if (lastJointSelected != jointselected) {
@@ -2891,7 +3535,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                         ImGui::Separator();
 
                                         // TODO
-                                        ImGui::Text("Animation Frame Editor");
+                                        ImGui::Text("Animation Frame Editor:");
+                                        ImGui::Separator();
+
                                         ImGui::Text(std::string(" >> Selected Frame: " + std::to_string(selected_anim_frame)).c_str());
 
                                         if (ImGui::BeginTable("JointInspector", 2, ImGuiTableFlags_SizingStretchProp)) {
@@ -2920,92 +3566,273 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                             Row(">> Rot.", [&]() { ImGui::DragFloat("##dr", &joint.rotation, 0.1f); });
                                             Row(">> Shortest Angle Rot.", [&]() { ImGui::Checkbox("", &joint.normal_rotation); });
 
-                                            Row("Draw Order: ", [&]() { ImGui::Text(std::to_string(joint.draw_order).c_str()); });
+                                            // Row("Draw Order: ", [&]() { ImGui::Text(std::string("Draw Order: " + std::to_string(joint.draw_order)).c_str()); });
 
                                             ImGui::EndTable();
 
-                                            ImGui::Separator();
-
-                                            ImGui::BeginChild(
-                                                "dorder",
-                                                ImVec2(ImGui::GetContentRegionAvail().x, 110),
-                                                true
-                                            );
-
-                                            std::vector<std::string> nameDO;
-                                            std::vector<int> unid;
-
-                                            // Um this is extremely unoptimized code im pretty sure...
-                                            // like really bad... but i couldnt think of a better way off the top of my head
-                                            // so fuck you
-
-                                            for (int i = 0; i < animations[anim_selected].frames[selected_anim_frame].joints.size(); i++) {
-
-                                                int ujid = -1;
-
-                                                for (AnimJointAdjustmentFrame j : animations[anim_selected].frames[selected_anim_frame].joints) {
-
-                                                    // Optimization?
-                                                    if (j.draw_order < i) {
-                                                        continue;
-                                                    }
-
-                                                    if (j.draw_order == i) {
-                                                        unid.push_back(j.unique_id);
-                                                        ujid = j.unique_id;
-                                                        break;
-                                                    }
-                                                }
-
-                                                for (int j = 0; j < (*avatar_selected).default_texturing.joints.size(); j++ ) {
-                                                    const auto& position = (*avatar_selected).default_frame.joints[j];
-                                                    const auto& texture = (*avatar_selected).default_texturing.joints[j];
-
-                                                    if (position.unique_id == ujid) {
-                                                        nameDO.push_back(texture.name);
-                                                        break;
-                                                    }
-                                                }
-                                            }
-
-                                            assert(nameDO.size() == unid.size());
-
-
-                                            // Display draw order
-                                            for (int i = 0; i < nameDO.size(); i++) {
-
-                                                std::string disp = std::string(nameDO[i] + " > Unique JID: " + std::to_string(unid[i]));
-                                                ImGui::Text(disp.c_str());
-
-                                            }
-
-                                            ImGui::EndChild();
-
-                                            ImGui::Separator();
-
-                                            
-
+                                            // Anim Frame Texture Editor
+                                            // TODO HERE@@@
 
                                         }
 
-                                        
 
+                                        ImGui::Separator();
+                                        ImGui::Text("Frame Texture Editor:");
+                                        ImGui::Separator();
+
+                                        ImGui::Text(std::string(joint_text.name + " Texture Library Index:").c_str());
+
+                                        static int selected_anim_texture_idx = -1;
+                                        std::string preview_anim_string;
+
+                                        if (selected_anim_texture_idx == -1) {
+                                            const std::string& fullPath = joint_text.texturePath;
+                                            std::string display_option = std::filesystem::path(fullPath).filename().string();
+                                            preview_anim_string = "Idx " + std::to_string(selected_anim_texture_idx) + ": " + display_option;
+                                        } else {
+                                            const std::string& fullPath = joint_text.animation_texture_library[selected_anim_texture_idx].texture_path;
+                                            std::string display_option = std::filesystem::path(fullPath).filename().string();
+                                            preview_anim_string = "Idx " + std::to_string(selected_anim_texture_idx) + ": " + display_option;
+                                        }
+
+                                        if (ImGui::BeginCombo("##animDD", preview_anim_string.c_str())) {
+
+                                            for (int i = -1; i < (int)joint_text.animation_texture_library.size(); i++) {
+
+                                                std::string anim_option;
+
+                                                if (i == -1) {
+                                                    const std::string& fullPath = joint_text.texturePath;
+                                                    std::string display_option = std::filesystem::path(fullPath).filename().string();
+                                                    anim_option = "Idx " + std::to_string(i) + ": " + display_option;
+                                                } else {
+                                                    const std::string& fullPath = joint_text.animation_texture_library[i].texture_path;
+                                                    std::string display_option = std::filesystem::path(fullPath).filename().string();
+                                                    anim_option = "Idx " + std::to_string(i) + ": " + display_option;
+                                                }
+
+                                                bool isSelected = (selected_anim_texture_idx == i);
+
+                                                if (ImGui::Selectable( anim_option.c_str(), isSelected)) {
+                                                    selected_anim_texture_idx = i;
+                                                }
+
+                                                if (isSelected)
+                                                    ImGui::SetItemDefaultFocus();
+                                            }
+
+                                            ImGui::EndCombo();
+                                        }
+
+                                        ImGui::Separator();
+
+                                        static bool extra_texturing_options = false;
+
+                                        ImGui::Checkbox("Advanced View", &extra_texturing_options);
+
+                                        ImGui::Separator();
+
+                                        if (extra_texturing_options) {
+                                            
+                                            const std::string& tsettingdisplay = std::string(joint_text.name + " Idx: " + std::to_string(selected_anim_texture_idx) + " Settings:");
+                                            ImGui::Text(tsettingdisplay.c_str());
+
+
+                                            if (selected_anim_texture_idx != -1) {
+
+                                                auto& selected_anim_text = joint_text.animation_texture_library[selected_anim_texture_idx];
+
+                                                ImGui::PushItemWidth(-FLT_MIN);
+
+                                                ImGui::Text("Offset X: "); 
+                                                ImGui::SameLine();
+                                                ImGui::DragFloat("##offx", &selected_anim_text.offset.x, 0.1f);
+                                                
+                                                ImGui::Text("Offset Y: "); 
+                                                ImGui::SameLine();
+                                                ImGui::DragFloat("##offy", &selected_anim_text.offset.y, 0.1f);
+
+                                                ImGui::Text("Scale X: "); 
+                                                ImGui::SameLine();
+                                                ImGui::DragFloat("##scalex", &selected_anim_text.scale.x, 0.01f);
+
+                                                ImGui::Text("Scale Y: "); 
+                                                ImGui::SameLine();
+                                                ImGui::DragFloat("##scaley", &selected_anim_text.scale.y, 0.01f);
+
+                                                ImGui::Text("Crop Min X: "); 
+                                                ImGui::SameLine();
+                                                ImGui::DragFloat("##cminx", &selected_anim_text.crop_min.x, 0.1f);
+
+                                                ImGui::Text("Crop Min Y: "); 
+                                                ImGui::SameLine();
+                                                ImGui::DragFloat("##cminy", &selected_anim_text.crop_min.y, 0.1f);
+
+                                                ImGui::Text("Crop Max X: "); 
+                                                ImGui::SameLine();
+                                                ImGui::DragFloat("##cmaxx", &selected_anim_text.crop_max.x, 0.1f);
+                                                
+                                                ImGui::Text("Crop Max Y: "); 
+                                                ImGui::SameLine();
+                                                ImGui::DragFloat("##cmaxy", &selected_anim_text.crop_max.y, 0.1f);
+
+                                                ImGui::Text("Rotation: "); 
+                                                ImGui::SameLine();
+                                                float deg = selected_anim_text.rotation * 180.0f / 3.14159265f;
+                                                if (ImGui::DragFloat("##rot", &deg, 1.0f)) {
+                                                    selected_anim_text.rotation = deg * 3.14159265f / 180.0f;
+                                                }
+
+                                                ImGui::PopItemWidth();
+
+                                            } else {
+
+                                                ImGui::Separator();
+
+                                                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+
+                                                ImGui::Text("Note: The joint texture index");
+                                                ImGui::Text("chosen for this frame refers");
+                                                ImGui::Text("to the anchor frame's Root");
+                                                ImGui::Text("Texture texturing (idx: -1).");
+
+                                                ImGui::Text("");
+
+                                                ImGui::Text("Any changes made to these");
+                                                ImGui::Text("settings WILL persist to the");
+                                                ImGui::Text("Anchor Frame and any other");
+                                                ImGui::Text("frames that use default");
+                                                ImGui::Text("texturing.");
+
+                                                ImGui::PopStyleColor();
+
+                                                ImGui::Separator();
+                                                
+                                                ImGui::PushItemWidth(-FLT_MIN);
+
+                                                ImGui::Text("Offset X: "); 
+                                                ImGui::SameLine();
+                                                ImGui::DragFloat("##offx", &joint_text.offset.x, 0.1f);
+                                                
+                                                ImGui::Text("Offset Y: "); 
+                                                ImGui::SameLine();
+                                                ImGui::DragFloat("##offy", &joint_text.offset.y, 0.1f);
+
+                                                ImGui::Text("Scale X: "); 
+                                                ImGui::SameLine();
+                                                ImGui::DragFloat("##scalex", &joint_text.scale.x, 0.01f);
+
+                                                ImGui::Text("Scale Y: "); 
+                                                ImGui::SameLine();
+                                                ImGui::DragFloat("##scaley", &joint_text.scale.y, 0.01f);
+
+                                                ImGui::Text("Crop Min X: "); 
+                                                ImGui::SameLine();
+                                                ImGui::DragFloat("##cminx", &joint_text.crop_min.x, 0.1f);
+
+                                                ImGui::Text("Crop Min Y: "); 
+                                                ImGui::SameLine();
+                                                ImGui::DragFloat("##cminy", &joint_text.crop_min.y, 0.1f);
+
+                                                ImGui::Text("Crop Max X: "); 
+                                                ImGui::SameLine();
+                                                ImGui::DragFloat("##cmaxx", &joint_text.crop_max.x, 0.1f);
+                                                
+                                                ImGui::Text("Crop Max Y: "); 
+                                                ImGui::SameLine();
+                                                ImGui::DragFloat("##cmaxy", &joint_text.crop_max.y, 0.1f);
+
+                                                ImGui::Text("Rotation: "); 
+                                                ImGui::SameLine();
+                                                float deg = joint_text.rotation * 180.0f / 3.14159265f;
+                                                if (ImGui::DragFloat("##rot", &deg, 1.0f)) {
+                                                    joint_text.rotation = deg * 3.14159265f / 180.0f;
+                                                }
+
+                                                ImGui::PopItemWidth();
+                                            }
+
+                                            ImGui::Separator();
+
+                                        }
+ 
                                     }
 
 
-                                    ImGui::Separator();
-
-                                    // Onion the previous frame,
-                                    // Onion the anchor frame,
-
-                                    ImGui::Checkbox("Anchor Frame Ref", &onion_frame_anch);
+                                    
+                                    
 
 
-                                    ImGui::Checkbox("Previous Frame Ref", &onion_frame_prev);
-
-                                    ImGui::Separator();
-
+                                    // ============================ Draw Order Tooling ============================= //
                                     if (selected_anim_frame != -1) {
+                                        // Draw order list, unique ids
+                                        
+
+                                        auto& joint = animations[anim_selected].frames[selected_anim_frame].joints[jointselected];
+        
+                                        ImGui::Text(std::string("Draw Order: " + std::to_string(joint.draw_order)).c_str());
+                                        ImGui::BeginChild(
+                                            "dorder",
+                                            ImVec2(ImGui::GetContentRegionAvail().x, 110),
+                                            true
+                                        );
+
+                                        std::vector<std::string> nameDO;
+                                        std::vector<int> unid;
+
+                                        // Um this is extremely unoptimized code im pretty sure...
+                                        // like really bad... but i couldnt think of a better way off the top of my head
+                                        // so fuck you
+
+                                        for (int i = 0; i < animations[anim_selected].frames[selected_anim_frame].joints.size(); i++) {
+                                            
+                                            int ujid = -1;
+
+                                            for (AnimJointAdjustmentFrame j : animations[anim_selected].frames[selected_anim_frame].joints) {
+
+                                                // Optimization?
+                                                if (j.draw_order < i) {
+                                                    continue;
+                                                }
+
+                                                if (j.draw_order == i) {
+                                                    unid.push_back(j.unique_id);
+                                                    ujid = j.unique_id;
+                                                    break;
+                                                }
+                                            }
+
+                                            for (int j = 0; j < (*avatar_selected).default_texturing.joints.size(); j++ ) {
+                                                const auto& position = (*avatar_selected).default_frame.joints[j];
+                                                const auto& texture = (*avatar_selected).default_texturing.joints[j];
+
+                                                if (position.unique_id == ujid) {
+                                                    nameDO.push_back(texture.name);
+                                                    break;
+                                                }
+                                            }
+                                        
+                                        }
+
+                                        assert(nameDO.size() == unid.size());
+
+                                        // Display draw order
+                                        for (int i = 0; i < nameDO.size(); i++) {
+
+                                            if (joint.unique_id == unid[i]) {
+                                                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.2f, 0.8f, 0.0f, 1.0f));
+                                            }
+
+                                            std::string disp = std::string(nameDO[i] + " > Unique JID: " + std::to_string(unid[i]));
+                                            ImGui::Text(disp.c_str());
+
+                                            if (joint.unique_id == unid[i]) {
+                                                ImGui::PopStyleColor();
+                                            }
+                                        }
+
+                                        ImGui::EndChild();
+                                        
 
                                         if (ImGui::Button("^^ Draw Order")) {
 
@@ -3060,11 +3887,29 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                                     }
 
-                                
-                                
                                     
 
+
+                                } else {
+
+                                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.1f, 0.1f, 1.0f));
+                                    ImGui::Text("No joint selected");
+                                    ImGui::PopStyleColor();
+
                                 }
+
+                                // ================= Viewing Options ================= //
+                                ImGui::Separator();
+                                ImGui::Text("View Settings:");
+
+                                // Onion the previous frame,
+                                // Onion the anchor frame,
+
+                                ImGui::Separator();
+
+                                ImGui::Checkbox("Anchor Frame Ref", &onion_frame_anch);
+                                ImGui::Checkbox("Previous Frame Ref", &onion_frame_prev);
+                                // ===================================================== //
 
                                 ImGui::EndTabItem();
                             }

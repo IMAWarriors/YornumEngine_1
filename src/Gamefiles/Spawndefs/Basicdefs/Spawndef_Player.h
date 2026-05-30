@@ -49,8 +49,8 @@ namespace spawndef {
         registry.apply_component<comp::PlayerConfig>        (entity, {});
         
         comp::PlayerConfig& config = registry.get_component<comp::PlayerConfig>(entity);
-        config.NatRunSpeed     = 650.0f;
-        config.NatRunAccel     = 1500.0f;
+        config.NatRunSpeed     = 900.0f;
+        config.NatRunAccel     = 1200.0f;
         config.NatRunFriction  = 2700.0f;
         config.NatJumpForce    = 1150.0f;
 

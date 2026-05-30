@@ -172,8 +172,9 @@ struct AvatarRenderer {
 
         // Play
         Animation* target_anim = (base_anim != nullptr) ? base_anim : base_animation;
-        if (base_anim != nullptr) {
-            base_animation = base_anim;
+
+        if (base_anim != nullptr) { 
+            base_animation = base_anim; 
         }
 
         // If we are interpolating between animations

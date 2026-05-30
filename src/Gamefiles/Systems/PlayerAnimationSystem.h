@@ -92,6 +92,7 @@ class PlayerAnimationSystem : public System {
                            
                     }
                 }
+            
             }
         }
 };

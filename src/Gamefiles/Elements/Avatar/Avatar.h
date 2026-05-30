@@ -37,24 +37,26 @@ struct JointFramePosition {
 struct AnimJointAdjustmentFrame {
 
     int unique_id;
-
     Vec2 origin;
     float rotation;
     int draw_order;
-
     bool normal_rotation = true;
+
+    int anim_texture_idx = -1;
 
     AnimJointAdjustmentFrame () {
         unique_id = 0;
         origin = {0.0f, 0.0f};
         rotation = 0.0f;
         draw_order = 0;
+        anim_texture_idx = -1;  // Anchor frame texture == -1
     }
 
     AnimJointAdjustmentFrame (Vec2 orig_offset, float rot_offset, int d_order) {
         origin = orig_offset;
         rotation = rot_offset;
         draw_order = d_order;
+        anim_texture_idx = -1;
     }
 
     void SetRotMode_Normal () {
@@ -102,26 +104,11 @@ struct JointTexture {
     }
 
     // Selective constructor
-    JointTexture (AssetManager& assets, const std::string& path) {
-        texture_path = path;
-        texture_ptr = &assets.LoadTextureAsset(path);
-        offset = {0, 0};     // position relative to joint
-        scale = {1, 1};      // size multiplier
-        rotation = 0.0f;    // rotation in radians
-        crop_min = {0, 0};   // UV min (0–1)
-        crop_max = {1, 1};   // UV max (0–1)
-    }
+    JointTexture (AssetManager& assets, const std::string& path, Vec2 tex_offset = {0.0f, 0.0f}, Vec2 tex_scale = {1.0f, 1.0f}, float tex_rot = 0.0f, Vec2 cmin = {0.0f, 0.0f}, Vec2 cmax = {1.0f, 1.0f});
 
     // Constructor from parent AvatarJoint
-    JointTexture (AssetManager& assets, const std::string& path, const AvatarJoint& joint) {
-        texture_path = path;
-        texture_ptr = &assets.LoadTextureAsset(path);
-        offset = joint.offset;     // position relative to joint
-        scale = joint.scale;      // size multiplier
-        rotation = joint.rotation;    // rotation in radians
-        crop_min = joint.crop_min;   // UV min (0–1)
-        crop_max = joint.crop_max;   // UV max (0–1)
-    }
+    JointTexture (AssetManager& assets, const std::string& path, const AvatarJoint& joint);
+
 };
 
 struct AvatarJoint {
