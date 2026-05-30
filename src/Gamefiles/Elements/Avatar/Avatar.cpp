@@ -134,6 +134,12 @@ JointTexture::JointTexture (AssetManager& assets, const std::string& path, const
     crop_max = joint.crop_max;   // UV max (0–1)
 }
 
+bool AvatarJoint::change_anim_texture (AssetManager& assets, int index, const std::string& path) {
+    animation_texture_library[index].texture_path = path;
+    animation_texture_library[index].texture_ptr = &assets.LoadTextureAsset(path);
+    return true;
+}
+
 // ==================================================================
 
 

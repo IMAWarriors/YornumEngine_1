@@ -1635,6 +1635,19 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 auto& anchor_j = (*avatar_selected).default_frame.joints[idx];
                                 auto& anim_j = animations[anim_selected].frames[adj_anim_frame].joints[idx];
                                 auto& j_text = (*avatar_selected).default_texturing.joints[idx];
+
+                                // Get accurate texture info
+                                Texture2D* actual_texture = (anim_j.anim_texture_idx != -1) ? (j_text.animation_texture_library[anim_j.anim_texture_idx].texture_ptr) : (j_text.texture);
+                                float actual_texture_cmin_x = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].crop_min.x : j_text.crop_min.x;
+                                float actual_texture_cmin_y = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].crop_min.y : j_text.crop_min.y;
+                                float actual_texture_cmax_x = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].crop_max.x : j_text.crop_max.x;
+                                float actual_texture_cmax_y = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].crop_max.y : j_text.crop_max.y;
+                                float actual_texture_scale_x = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].scale.x : j_text.scale.x;
+                                float actual_texture_scale_y = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].scale.y : j_text.scale.y;
+                                float actual_texture_offset_x = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].offset.x : j_text.offset.x;
+                                float actual_texture_offset_y = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].offset.y : j_text.offset.y;
+                                float actual_texture_rotation = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].rotation : j_text.rotation;
+                                
                                 float direction_point_x = 0.0f;
                                 float direction_point_y = 0.0f;
                                 direction_point_x = RotNewPositionVec({anchor_j.origin.x + anim_j.origin.x, anchor_j.origin.y + anim_j.origin.y}, anchor_j.direction, anim_j.rotation).x;
@@ -1646,19 +1659,19 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 float thickness = 4.0f;
                                 draw->AddLine(a, b, color, thickness);
 
-                                if (j_text.texture != nullptr) {
+                                if (actual_texture != nullptr) {
                                     ImVec2 center = WorldToScreen(ImVec2(anchor_j.origin.x + anim_j.origin.x, anchor_j.origin.y + anim_j.origin.y));
-                                    float width  = j_text.texture->width  * j_text.scale.x * local_canvas_zoom;
-                                    float height = j_text.texture->height * j_text.scale.y * local_canvas_zoom;
+                                    float width  = actual_texture->width  * actual_texture_scale_x * local_canvas_zoom;
+                                    float height = actual_texture->height * actual_texture_scale_y * local_canvas_zoom;
                                     Vec2 newDir = RotNewDirectionVec(anchor_j.direction, anim_j.rotation);
                                     ImVec2 dir = { newDir.x, newDir.y };
                                     float baseAngle = atan2f(dir.y, dir.x);
-                                    float angle = baseAngle + j_text.rotation;
+                                    float angle = baseAngle + actual_texture_rotation;
                                     float cosA = cosf(angle);
                                     float sinA = sinf(angle);
                                     ImVec2 offset = {
-                                        j_text.offset.x * local_canvas_zoom,
-                                        j_text.offset.y * local_canvas_zoom
+                                        actual_texture_offset_x * local_canvas_zoom,
+                                        actual_texture_offset_y * local_canvas_zoom
                                     };
                                     ImVec2 half = { width * 0.5f, height * 0.5f };
                                     ImVec2 corners[4] = {
@@ -1678,13 +1691,11 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                     }
 
                                     ImU32 ghostTint = IM_COL32(255, 255, 255, 120);
-                                    ImVec2 uv0 = { j_text.crop_min.x, j_text.crop_min.y };
-                                    ImVec2 uv1 = { j_text.crop_max.x, j_text.crop_max.y };
-
-                                    
+                                    ImVec2 uv0 = { actual_texture_cmin_x, actual_texture_cmin_y };
+                                    ImVec2 uv1 = { actual_texture_cmax_x, actual_texture_cmax_y };
 
                                     draw->AddImageQuad(
-                                        (ImTextureID)(intptr_t)j_text.texture->id,
+                                        (ImTextureID)(intptr_t)actual_texture->id,
                                         rotated[0],
                                         rotated[1],
                                         rotated[2],
@@ -1696,7 +1707,6 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                         ghostTint
                                     );
                                 }
-
                             }
                         }
 
@@ -1791,8 +1801,6 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         }
 
                         */
-
-                        
 
                     }
 
@@ -1945,25 +1953,36 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                             }
 
-                            if (joint_texture.texture != nullptr) {
+                            Texture2D* actual_texture = (joint_anim.anim_texture_idx != -1) ? (joint_texture.animation_texture_library[joint_anim.anim_texture_idx].texture_ptr) : (joint_texture.texture);
+                            float actual_texture_cmin_x = (joint_anim.anim_texture_idx != -1) ? joint_texture.animation_texture_library[joint_anim.anim_texture_idx].crop_min.x : joint_texture.crop_min.x;
+                            float actual_texture_cmin_y = (joint_anim.anim_texture_idx != -1) ? joint_texture.animation_texture_library[joint_anim.anim_texture_idx].crop_min.y : joint_texture.crop_min.y;
+                            float actual_texture_cmax_x = (joint_anim.anim_texture_idx != -1) ? joint_texture.animation_texture_library[joint_anim.anim_texture_idx].crop_max.x : joint_texture.crop_max.x;
+                            float actual_texture_cmax_y = (joint_anim.anim_texture_idx != -1) ? joint_texture.animation_texture_library[joint_anim.anim_texture_idx].crop_max.y : joint_texture.crop_max.y;
+                            float actual_texture_scale_x = (joint_anim.anim_texture_idx != -1) ? joint_texture.animation_texture_library[joint_anim.anim_texture_idx].scale.x : joint_texture.scale.x;
+                            float actual_texture_scale_y = (joint_anim.anim_texture_idx != -1) ? joint_texture.animation_texture_library[joint_anim.anim_texture_idx].scale.y : joint_texture.scale.y;
+                            float actual_texture_offset_x = (joint_anim.anim_texture_idx != -1) ? joint_texture.animation_texture_library[joint_anim.anim_texture_idx].offset.x : joint_texture.offset.x;
+                            float actual_texture_offset_y = (joint_anim.anim_texture_idx != -1) ? joint_texture.animation_texture_library[joint_anim.anim_texture_idx].offset.y : joint_texture.offset.y;
+                            float actual_texture_rotation = (joint_anim.anim_texture_idx != -1) ? joint_texture.animation_texture_library[joint_anim.anim_texture_idx].rotation : joint_texture.rotation;
+
+                            if (actual_texture != nullptr) {
 
                                 // Center derivation... FIX JOINTS ANCHORED TO
                                 ImVec2 center = WorldToScreen(ImVec2(joint_anchor.origin.x + joint_interp.origin.x, joint_anchor.origin.y + joint_interp.origin.y));
 
                                 // Texture locale
-                                float width  = joint_texture.texture->width  * joint_texture.scale.x * local_canvas_zoom;
-                                float height = joint_texture.texture->height * joint_texture.scale.y * local_canvas_zoom;
+                                float width  = actual_texture->width  * actual_texture_scale_x * local_canvas_zoom;
+                                float height = actual_texture->height * actual_texture_scale_y * local_canvas_zoom;
 
                                 // Direction --> angle
                                 Vec2 newDir = RotNewDirectionVec(joint_anchor.direction, joint_interp.rotation);
                                 ImVec2 dir = { newDir.x, newDir.y };
                                 float baseAngle = atan2f(dir.y, dir.x);
-                                float angle = baseAngle + joint_texture.rotation;
+                                float angle = baseAngle + actual_texture_rotation;
                                 float cosA = cosf(angle);
                                 float sinA = sinf(angle);
 
                                 // Offset (in world space --> scaled)
-                                ImVec2 offset = {joint_texture.offset.x * local_canvas_zoom, joint_texture.offset.y * local_canvas_zoom};
+                                ImVec2 offset = {actual_texture_offset_x * local_canvas_zoom, actual_texture_offset_y * local_canvas_zoom};
 
                                 // Define local quad (centered)
                                 ImVec2 half = { width * 0.5f, height * 0.5f };
@@ -1983,11 +2002,11 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                     rotated[k].y = center.y + (x * sinA + y * cosA);
                                 }
 
-                                ImVec2 uv0 = { joint_texture.crop_min.x, joint_texture.crop_min.y };
-                                ImVec2 uv1 = { joint_texture.crop_max.x, joint_texture.crop_max.y };
+                                ImVec2 uv0 = { actual_texture_cmin_x, actual_texture_cmin_y };
+                                ImVec2 uv1 = { actual_texture_cmax_x, actual_texture_cmax_y };
 
                                 draw->AddImageQuad(
-                                    (ImTextureID)(intptr_t)joint_texture.texture->id,
+                                    (ImTextureID)(intptr_t)actual_texture->id,
                                     rotated[0],
                                     rotated[1],
                                     rotated[2],
@@ -1998,11 +2017,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                     ImVec2(uv0.x, uv1.y)
                                 );
                             }
-
                         }
-
-
-
 
                     } else {
 
@@ -2047,23 +2062,35 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                             draw->AddLine(a, b, color, thickness);
 
-                            if (j_text.texture != nullptr) {
+                            // Get accurate texture info
+                            Texture2D* actual_texture = (anim_j.anim_texture_idx != -1) ? (j_text.animation_texture_library[anim_j.anim_texture_idx].texture_ptr) : (j_text.texture);
+                            float actual_texture_cmin_x = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].crop_min.x : j_text.crop_min.x;
+                            float actual_texture_cmin_y = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].crop_min.y : j_text.crop_min.y;
+                            float actual_texture_cmax_x = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].crop_max.x : j_text.crop_max.x;
+                            float actual_texture_cmax_y = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].crop_max.y : j_text.crop_max.y;
+                            float actual_texture_scale_x = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].scale.x : j_text.scale.x;
+                            float actual_texture_scale_y = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].scale.y : j_text.scale.y;
+                            float actual_texture_offset_x = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].offset.x : j_text.offset.x;
+                            float actual_texture_offset_y = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].offset.y : j_text.offset.y;
+                            float actual_texture_rotation = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].rotation : j_text.rotation;
+
+                            if (actual_texture != nullptr) {
 
                                 // Locations
                                 ImVec2 center = WorldToScreen(ImVec2(anchor_j.origin.x + anim_j.origin.x, anchor_j.origin.y + anim_j.origin.y));
-                                float width  = j_text.texture->width  * j_text.scale.x * local_canvas_zoom;
-                                float height = j_text.texture->height * j_text.scale.y * local_canvas_zoom;
+                                float width  = actual_texture->width  * actual_texture_scale_x * local_canvas_zoom;
+                                float height = actual_texture->height * actual_texture_scale_y * local_canvas_zoom;
 
                                 // Direction --> angle
                                 Vec2 newDir = RotNewDirectionVec(anchor_j.direction, anim_j.rotation);
                                 ImVec2 dir = { newDir.x, newDir.y };
                                 float baseAngle = atan2f(dir.y, dir.x);
-                                float angle = baseAngle + j_text.rotation;
+                                float angle = baseAngle + actual_texture_rotation;
                                 float cosA = cosf(angle);
                                 float sinA = sinf(angle);
 
                                 // Offset (in world space --> scaled)
-                                ImVec2 offset = {j_text.offset.x * local_canvas_zoom, j_text.offset.y * local_canvas_zoom};
+                                ImVec2 offset = {actual_texture_offset_x * local_canvas_zoom, actual_texture_offset_y * local_canvas_zoom};
 
                                 // Define local quad (centered)
                                 ImVec2 half = { width * 0.5f, height * 0.5f };
@@ -2083,11 +2110,11 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                     rotated[k].y = center.y + (x * sinA + y * cosA);
                                 }
 
-                                ImVec2 uv0 = { j_text.crop_min.x, j_text.crop_min.y };
-                                ImVec2 uv1 = { j_text.crop_max.x, j_text.crop_max.y };
+                                ImVec2 uv0 = { actual_texture_cmin_x, actual_texture_cmin_y };
+                                ImVec2 uv1 = { actual_texture_cmax_x, actual_texture_cmax_y };
 
                                 draw->AddImageQuad(
-                                    (ImTextureID)(intptr_t)j_text.texture->id,
+                                    (ImTextureID)(intptr_t)actual_texture->id,
                                     rotated[0],
                                     rotated[1],
                                     rotated[2],
@@ -2109,7 +2136,6 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         }
 
                     }
-
 
 
                     // Clean up heap memory with jidx draw order
@@ -3442,9 +3468,40 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                                             // ++++++++++ TODO: Draw the Current Joint Texture Preview +++++++++++
 
+
+                                            static Texture2D* currentLoadedJTexture = nullptr;
+                                            static std::string currentLoadedPath = "";
+
+                                            assert(selected_anim_texture_idx != -1);
                                             
+                                            if (currentLoadedPath != joint_text.animation_texture_library[selected_anim_texture_idx].texture_path) {
+                                                currentLoadedJTexture = &assets.LoadTextureAsset(joint_text.animation_texture_library[selected_anim_texture_idx].texture_path);
+                                                currentLoadedPath = joint_text.animation_texture_library[selected_anim_texture_idx].texture_path;
+                                            }
 
+                                            if (currentLoadedJTexture != nullptr && currentLoadedPath != "" && currentLoadedPath != "NONE") {
+                                                    
 
+                                                float placewidth = width_previewpane / 1.4f;
+                                                float imgscale = 1.0f; // placewidth / (*currentLoadedJTexture).width;
+
+                                                Vec2 imgsize = {
+                                                    (*currentLoadedJTexture).width * imgscale,
+                                                    (*currentLoadedJTexture).height * imgscale
+                                                };
+                                                
+                                                float availWidth = ImGui::GetContentRegionAvail().x;
+                                                float offsetX = (availWidth - imgsize.x) * 0.5f;
+
+                                                ImGui::Text("");
+                                                if (offsetX > 0.0f)
+                                                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offsetX);
+
+                                                
+                                                ImGui::Image((ImTextureID)(*currentLoadedJTexture).id, ImVec2(imgsize.x, imgsize.y));
+                                                ImGui::Text("");
+
+                                            }
 
 
                                             // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -3463,7 +3520,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                             if (ImGui::Button("Load Texture", ImVec2(110, 25))) {
 
                                                 if (selectedFileIndex != -1) {
-                                                    joint_text.load_texture_from_path(assets, characterFiles[selectedFileIndex]);
+                                                    joint_text.change_anim_texture(assets, selected_anim_texture_idx, characterFiles[selectedFileIndex]);
                                                 }
 
                                                 // Load Texture
@@ -3582,17 +3639,18 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                                         ImGui::Text(std::string(joint_text.name + " Texture Library Index:").c_str());
 
-                                        static int selected_anim_texture_idx = -1;
+                                        int& frame_selected_anim_texture_idx = animations[anim_selected].frames[selected_anim_frame].joints[jointselected].anim_texture_idx;
+
                                         std::string preview_anim_string;
 
-                                        if (selected_anim_texture_idx == -1) {
+                                        if (frame_selected_anim_texture_idx == -1) {
                                             const std::string& fullPath = joint_text.texturePath;
                                             std::string display_option = std::filesystem::path(fullPath).filename().string();
-                                            preview_anim_string = "Idx " + std::to_string(selected_anim_texture_idx) + ": " + display_option;
+                                            preview_anim_string = "Idx " + std::to_string(frame_selected_anim_texture_idx) + ": " + display_option;
                                         } else {
-                                            const std::string& fullPath = joint_text.animation_texture_library[selected_anim_texture_idx].texture_path;
+                                            const std::string& fullPath = joint_text.animation_texture_library[frame_selected_anim_texture_idx].texture_path;
                                             std::string display_option = std::filesystem::path(fullPath).filename().string();
-                                            preview_anim_string = "Idx " + std::to_string(selected_anim_texture_idx) + ": " + display_option;
+                                            preview_anim_string = "Idx " + std::to_string(frame_selected_anim_texture_idx) + ": " + display_option;
                                         }
 
                                         if (ImGui::BeginCombo("##animDD", preview_anim_string.c_str())) {
@@ -3611,10 +3669,10 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                                     anim_option = "Idx " + std::to_string(i) + ": " + display_option;
                                                 }
 
-                                                bool isSelected = (selected_anim_texture_idx == i);
+                                                bool isSelected = (frame_selected_anim_texture_idx == i);
 
                                                 if (ImGui::Selectable( anim_option.c_str(), isSelected)) {
-                                                    selected_anim_texture_idx = i;
+                                                    frame_selected_anim_texture_idx = i;
                                                 }
 
                                                 if (isSelected)
@@ -3634,13 +3692,13 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                                         if (extra_texturing_options) {
                                             
-                                            const std::string& tsettingdisplay = std::string(joint_text.name + " Idx: " + std::to_string(selected_anim_texture_idx) + " Settings:");
+                                            const std::string& tsettingdisplay = std::string(joint_text.name + " Idx: " + std::to_string(frame_selected_anim_texture_idx) + " Settings:");
                                             ImGui::Text(tsettingdisplay.c_str());
 
 
-                                            if (selected_anim_texture_idx != -1) {
+                                            if (frame_selected_anim_texture_idx != -1) {
 
-                                                auto& selected_anim_text = joint_text.animation_texture_library[selected_anim_texture_idx];
+                                                auto& selected_anim_text = joint_text.animation_texture_library[frame_selected_anim_texture_idx];
 
                                                 ImGui::PushItemWidth(-FLT_MIN);
 

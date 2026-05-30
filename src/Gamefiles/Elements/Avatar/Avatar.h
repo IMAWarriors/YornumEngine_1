@@ -143,6 +143,8 @@ struct AvatarJoint {
         animation_texture_library.push_back(JointTexture(assets, path, *this));
         return true;
     } 
+
+    bool change_anim_texture (AssetManager& assets, int index, const std::string& path);
     
     // Unload all anim textures
     bool unload_all_anim_textures () {
