@@ -307,6 +307,8 @@ class Avatar {
 
         void DrawAvatarBlend (Renderer& renderer, Vec2 position, bool mirror_x, const Animation& anim1, int anim1_tick_frame, const Animation& anim2, int anim2_tick_frame, int tick_frame, int total_blend_tick_frames);
 
+        void DrawAvatarBlendFromPose (Renderer& renderer, Vec2 position, bool mirror_x, const std::vector<AnimJointAdjustmentFrame>& pose_a, const Animation& anim2, int anim2_tick_frame, int tick_frame, int total_blend_tick_frames);
+
         
         bool SaveAvrFile (const std::string& filename, const std::string& path);
 

@@ -349,22 +349,43 @@ void Avatar::DrawAvatarBlend(
     const Animation& anim2, int anim2_tick_frame,
     int tick_frame, int total_blend_tick_frames)
 {
+    const auto pose_a = SampleAnimPose(anim1, anim1_tick_frame);
+    DrawAvatarBlendFromPose(
+        renderer,
+        position,
+        mirror_x,
+        pose_a,
+        anim2,
+        anim2_tick_frame,
+        tick_frame,
+        total_blend_tick_frames
+    );
+}
+
+void Avatar::DrawAvatarBlendFromPose(
+    Renderer& renderer,
+    Vec2 position,
+    bool mirror_x,
+    const std::vector<AnimJointAdjustmentFrame>& pose_a,
+    const Animation& anim2, int anim2_tick_frame,
+    int tick_frame, int total_blend_tick_frames)
+{
     if (default_frame.joints.empty() ||
         default_texturing.joints.empty() ||
-        anim1.frames.empty() ||
+        pose_a.empty() ||
         anim2.frames.empty()) {
         return;
     }
     const int joint_count = (int)default_frame.joints.size();
     if (joint_count != (int)default_texturing.joints.size() ||
-        joint_count != (int)anim1.frames.front().joints.size() ||
+        joint_count != (int)pose_a.size() ||
         joint_count != (int)anim2.frames.front().joints.size()) {
         return;
     }
 
-    const auto pose_a = SampleAnimPose(anim1, anim1_tick_frame);
+    
     const auto pose_b = SampleAnimPose(anim2, anim2_tick_frame);
-    if ((int)pose_a.size() != joint_count || (int)pose_b.size() != joint_count) return;
+    if ((int)pose_b.size() != joint_count) return;
 
     const float blend_t = (total_blend_tick_frames <= 0)
         ? 1.0f
@@ -377,6 +398,7 @@ void Avatar::DrawAvatarBlend(
         float shortest_delta = WrapDeg180(pose_b[idx].rotation - pose_a[idx].rotation);
         blended_pose[idx].rotation = pose_a[idx].rotation + shortest_delta * blend_t;
         blended_pose[idx].draw_order = pose_b[idx].draw_order;
+        blended_pose[idx].anim_texture_idx = pose_b[idx].anim_texture_idx;
     }
 
     std::vector<int> draw_order_idx(joint_count);

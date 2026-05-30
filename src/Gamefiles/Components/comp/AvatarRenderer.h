@@ -3,7 +3,8 @@
 #ifndef AVATARRENDERER_H
 #define AVATARRENDERER_H
 
-
+#include <algorithm>
+#include <cmath>
 #include <deque>
 
 #include "../../../Engine/Core/Overhead/GameTypes.h"
@@ -64,6 +65,10 @@ struct AvatarRenderer {
     Animation* animation_to_play = nullptr;
     Animation* prev_animation_to_blend = nullptr;
     int prev_animation_blend_frame = 0;
+    // Frozen pose used as the start of the active blend. If a new blend starts
+    // during an existing blend, this stores the already-interpolated pose so
+    // the character can continue smoothly from exactly what was being drawn.
+    std::vector<AnimJointAdjustmentFrame> blend_start_pose;
     int blend_out_time_left = 0; // If 0, blending is complete
     int blend_out_time_total = 0;
     int tick_frame_of_animation = 0;
@@ -137,30 +142,146 @@ struct AvatarRenderer {
 
     }
 
+    static float WrapDegrees180 (float angle) {
+        float wrapped = fmodf(angle, 360.0f);
+        if (wrapped > 180.0f) wrapped -= 360.0f;
+        if (wrapped <= -180.0f) wrapped += 360.0f;
+        return wrapped;
+    }
+
+    static int GetTotalTickFrames (const Animation& animation) {
+        int total = 0;
+        for (const KeyAnimFrame& frame : animation.frames) {
+            total += frame.time_to_next + 1;
+        }
+        return std::max(1, total);
+    }
+
+    static std::vector<AnimJointAdjustmentFrame> SampleAnimationPose (const Animation& animation, int tick_frame) {
+        if (animation.frames.empty()) return {};
+
+        const int total_ticks = GetTotalTickFrames(animation);
+        const int wrapped_tick = ((tick_frame % total_ticks) + total_ticks) % total_ticks;
+
+        int current_frame_idx = 0;
+        int current_frame_start_tick = 0;
+        int tick_cursor = 0;
+        for (int frame_idx = 0; frame_idx < (int)animation.frames.size(); frame_idx++) {
+            const int segment_end = tick_cursor + animation.frames[frame_idx].time_to_next + 1;
+            if (wrapped_tick >= tick_cursor && wrapped_tick < segment_end) {
+                current_frame_idx = frame_idx;
+                current_frame_start_tick = tick_cursor;
+                break;
+            }
+            tick_cursor = segment_end;
+        }
+
+        const int next_frame_idx = (current_frame_idx + 1) % (int)animation.frames.size();
+        const KeyAnimFrame& current_frame = animation.frames[current_frame_idx];
+        const KeyAnimFrame& next_frame = animation.frames[next_frame_idx];
+
+        float pose_t = (float)(wrapped_tick - current_frame_start_tick) / ((float)current_frame.time_to_next + 1.0f);
+        pose_t = std::clamp(pose_t, 0.0f, 1.0f);
+
+        if (current_frame.transition_mode == KeyAnimFrame::TransitionMode::Instant) {
+            pose_t = 0.0f;
+        } else if (current_frame.transition_mode == KeyAnimFrame::TransitionMode::EaseInOut) {
+            pose_t = pose_t * pose_t * (3.0f - 2.0f * pose_t);
+        }
+
+        std::vector<AnimJointAdjustmentFrame> pose = current_frame.joints;
+        for (int idx = 0; idx < (int)pose.size() && idx < (int)next_frame.joints.size(); idx++) {
+            const AnimJointAdjustmentFrame& joint_a = current_frame.joints[idx];
+            const AnimJointAdjustmentFrame& joint_b = next_frame.joints[idx];
+
+            pose[idx].origin.x = joint_a.origin.x + ((joint_b.origin.x - joint_a.origin.x) * pose_t);
+            pose[idx].origin.y = joint_a.origin.y + ((joint_b.origin.y - joint_a.origin.y) * pose_t);
+
+            const float shortest_delta = WrapDegrees180(joint_b.rotation - joint_a.rotation);
+            if (joint_a.normal_rotation) {
+                pose[idx].rotation = joint_a.rotation + (shortest_delta * pose_t);
+            } else {
+                const float long_delta = (shortest_delta >= 0.0f) ? (shortest_delta - 360.0f) : (shortest_delta + 360.0f);
+                pose[idx].rotation = joint_a.rotation + (long_delta * pose_t);
+            }
+        }
+        return pose;
+    }
+
+    static std::vector<AnimJointAdjustmentFrame> BlendPoses (
+        const std::vector<AnimJointAdjustmentFrame>& pose_a,
+        const std::vector<AnimJointAdjustmentFrame>& pose_b,
+        float blend_t) {
+
+        if (pose_a.empty() || pose_a.size() != pose_b.size()) return {};
+
+        blend_t = std::clamp(blend_t, 0.0f, 1.0f);
+        std::vector<AnimJointAdjustmentFrame> pose = pose_a;
+        for (int idx = 0; idx < (int)pose.size(); idx++) {
+            pose[idx].origin.x = pose_a[idx].origin.x + ((pose_b[idx].origin.x - pose_a[idx].origin.x) * blend_t);
+            pose[idx].origin.y = pose_a[idx].origin.y + ((pose_b[idx].origin.y - pose_a[idx].origin.y) * blend_t);
+            const float shortest_delta = WrapDegrees180(pose_b[idx].rotation - pose_a[idx].rotation);
+            pose[idx].rotation = pose_a[idx].rotation + (shortest_delta * blend_t);
+            pose[idx].draw_order = pose_b[idx].draw_order;
+            pose[idx].anim_texture_idx = pose_b[idx].anim_texture_idx;
+        }
+        return pose;
+    }
+
+    std::vector<AnimJointAdjustmentFrame> GetCurrentBlendPose () const {
+        if (blend_mode && !blend_start_pose.empty() && animation_to_play != nullptr) {
+            std::vector<AnimJointAdjustmentFrame> target_pose = SampleAnimationPose(*animation_to_play, 0);
+            const float blend_tick = (float)(blend_out_time_total - blend_out_time_left);
+            const float blend_t = (blend_out_time_total <= 0) ? 1.0f : (blend_tick / (float)blend_out_time_total);
+            return BlendPoses(blend_start_pose, target_pose, blend_t);
+        }
+
+        if (animation_to_play != nullptr) {
+            return SampleAnimationPose(*animation_to_play, tick_frame_of_animation);
+        }
+
+        return {};
+    }
+
+    void ClearBlendState () {
+        blend_mode = false;
+        blend_out_time_left = 0;
+        blend_out_time_total = 0;
+        prev_animation_blend_frame = 0;
+        prev_animation_to_blend = nullptr;
+        blend_start_pose.clear();
+    }
+
+    void StartBlendToAnimation (Animation* target_anim, int blend_frames) {
+        blend_start_pose = GetCurrentBlendPose();
+        if (blend_start_pose.empty() && animation_to_play != nullptr) {
+            blend_start_pose = SampleAnimationPose(*animation_to_play, tick_frame_of_animation);
+        }
+
+        blend_mode = true;
+        blend_out_time_left = blend_frames;
+        blend_out_time_total = blend_frames;
+        prev_animation_to_blend = animation_to_play;
+        prev_animation_blend_frame = tick_frame_of_animation;
+
+        animation_to_play = target_anim;
+        tick_frame_of_animation = 0;
+    }
+
+
     // Set the base animation without switching
     void SetBaseAnimation (Animation* animation, int blend_frames = 0) {
 
         base_animation = animation;
 
         // If we are interpolating between animations
-        if (interpolate_btwn && blend_frames > 0 && animation_to_play != nullptr && animation_to_play != animation) {
-            blend_mode = true;
-            blend_out_time_left = blend_frames;
-            blend_out_time_total = blend_frames;
-            prev_animation_to_blend = animation_to_play;
-            prev_animation_blend_frame = tick_frame_of_animation;
-
-            animation_to_play = animation;
-            tick_frame_of_animation = 0;
+        if (interpolate_btwn && blend_frames > 0 && animation_to_play != nullptr && animation_to_play != animation && animation != nullptr) {
+            StartBlendToAnimation(animation, blend_frames);
             return;
         } 
 
         // If we are... not interpolating between animations
-        blend_mode = false;
-        blend_out_time_left = 0;
-        blend_out_time_total = 0;
-        prev_animation_blend_frame = 0;
-        prev_animation_to_blend = nullptr;
+        ClearBlendState();
         animation_to_play = animation;
         tick_frame_of_animation = 0;
 
@@ -179,14 +300,7 @@ struct AvatarRenderer {
 
         // If we are interpolating between animations
         if (interpolate_btwn && blend_frames > 0 && animation_to_play != nullptr && animation_to_play != target_anim && target_anim != nullptr) {
-            blend_mode = true;
-            blend_out_time_left = blend_frames;
-            blend_out_time_total = blend_frames;
-            prev_animation_to_blend = animation_to_play;
-            prev_animation_blend_frame = tick_frame_of_animation;
-
-            animation_to_play = target_anim;
-            tick_frame_of_animation = 0;
+            StartBlendToAnimation(target_anim, blend_frames);
             PlayAnimation();
             return;
             //--------------
@@ -219,6 +333,7 @@ struct AvatarRenderer {
         playing_animation = false;
         tick_frame_of_animation = 0;
         accumulated_ms = 0;
+        ClearBlendState();
     }
     
     // Progress animation according to deltatime and either go forward a tick, loop, or blend accordingly
@@ -249,11 +364,7 @@ struct AvatarRenderer {
             if (blend_mode) {
                 blend_out_time_left--;
                 if (blend_out_time_left <= 0) {
-                    blend_mode = false;
-                    blend_out_time_left = 0;
-                    blend_out_time_total = 0;
-                    prev_animation_blend_frame = 0;
-                    prev_animation_to_blend = nullptr;
+                    ClearBlendState();
                     tick_frame_of_animation = 0;
                 }
                 continue;

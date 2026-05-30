@@ -662,17 +662,30 @@ void RenderSystem::update (Registry & registry, float deltatime) {
                 // Drawing?
                 if (avatar_renderer.blend_mode && avatar_renderer.prev_animation_to_blend != nullptr) {
                     const int blend_tick = avatar_renderer.blend_out_time_total - avatar_renderer.blend_out_time_left;
-                    avatar_source.DrawAvatarBlend(
-                        renderer,
-                        draw_pos,
-                        avatar_renderer.mirror,
-                        *avatar_renderer.prev_animation_to_blend,
-                        avatar_renderer.prev_animation_blend_frame,
-                        *avatar_renderer.animation_to_play,
-                        0,
-                        blend_tick,
-                        avatar_renderer.blend_out_time_total
-                    );
+                    if (!avatar_renderer.blend_start_pose.empty()) {
+                        avatar_source.DrawAvatarBlendFromPose(
+                            renderer,
+                            draw_pos,
+                            avatar_renderer.mirror,
+                            avatar_renderer.blend_start_pose,
+                            *avatar_renderer.animation_to_play,
+                            0,
+                            blend_tick,
+                            avatar_renderer.blend_out_time_total
+                        );
+                    } else {
+                        avatar_source.DrawAvatarBlend(
+                            renderer,
+                            draw_pos,
+                            avatar_renderer.mirror,
+                            *avatar_renderer.prev_animation_to_blend,
+                            avatar_renderer.prev_animation_blend_frame,
+                            *avatar_renderer.animation_to_play,
+                            0,
+                            blend_tick,
+                            avatar_renderer.blend_out_time_total
+                        );
+                    }
                 } else {
                     avatar_source.DrawAvatar(
                         renderer,
