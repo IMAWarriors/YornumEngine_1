@@ -33,7 +33,7 @@ namespace hbpos {
 
         // Default Constructor
         Attack () {
-            int frame_count = 0;
+            frame_count = 0;
             frames.clear();
         }
 
@@ -47,6 +47,7 @@ namespace hbpos {
         // Standard Constructor
         Attack (int fc, const std::vector<RECT>& frame_data) {
             assert((int)frame_data.size() == fc);
+            frame_count = fc;
             frames = frame_data;
         }
 
@@ -122,9 +123,8 @@ struct AttackStats {
     }
 
 
-    void tick_one_frame () {
-        
-        accumulator += tick_time;
+    void tick_one_frame (float deltatime) {
+        accumulator += deltatime;
 
         if (accumulator >= tick_time) {
             attack_frame++;
