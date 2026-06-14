@@ -704,6 +704,35 @@ void RenderSystem::update (Registry & registry, float deltatime) {
         }
 
     }
+
+
+    // ATTACKS
+    for (Entity entity : registry.view<comp::Transform, tag::AttackDataNode, comp::AttackStats>()) {      // For each iteration of Entity
+        
+        comp::Transform & transform     = registry.get_component<comp::Transform>(entity);
+        comp::AttackStats & attack        = registry.get_component<comp::AttackStats>(entity);
+
+        Color col = Color({0, 255, 255, 180});
+
+        Vec2 top_left;
+
+        if (attack.attack_frame >= attack.ilk_id.frame_count)
+            continue;
+        
+        top_left.x = transform.position.x + (attack.ilk_id.frames[attack.attack_frame].POS.x);
+        top_left.y = transform.position.y + (attack.ilk_id.frames[attack.attack_frame].POS.y);
+        
+        renderer.rdraw_rect(
+            top_left.x, 
+            top_left.y, 
+            attack.ilk_id.frames[attack.attack_frame].SIZE.x, 
+            attack.ilk_id.frames[attack.attack_frame].SIZE.y, 
+            col
+        );
+
+    
+    }
+
 }
 
 

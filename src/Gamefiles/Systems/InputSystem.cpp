@@ -19,6 +19,9 @@ void InputSystem::update (Registry & registry, float deltatime)  {
             inputState.jump_key = 0;
         }
 
+        inputState.attack_key_down = input.get_attack_key_down();
+        inputState.attack_key_tapped = input.get_attack_key();
+
     }
 
 }

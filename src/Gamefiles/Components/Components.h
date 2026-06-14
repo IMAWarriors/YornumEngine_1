@@ -16,6 +16,7 @@
 #include "comp/AvatarRenderer.h"
 #include "comp/AnimationRepertoire.h"
 #include "comp/PlayerConfig.h"
+#include "comp/AttackStats.h"
 
 #include "tag/Tag_Player.h"
 #include "tag/Tag_EngineManager.h"

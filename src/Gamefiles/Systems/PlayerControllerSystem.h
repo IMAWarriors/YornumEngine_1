@@ -12,6 +12,8 @@
 // Get Specific Components
 #include "../Components/Components.h"
 
+#include "../Spawndefs/Spawndefs.h"
+
 //
 #include <cmath>
 
@@ -40,8 +42,9 @@ class PlayerControllerSystem : public System {
     
         void update (Registry & registry, float deltatime) override {
 
-            for (Entity entity : registry.view<comp::InputState, comp::Velocity, tag::Player, comp::PlayerConfig>()) {
+            for (Entity entity : registry.view<comp::InputState, comp::Transform, comp::Velocity, tag::Player, comp::PlayerConfig>()) {
 
+                comp::Transform & transform = registry.get_component<comp::Transform>(entity);
                 comp::InputState & input = registry.get_component<comp::InputState>(entity);
                 comp::PhysicsBody & body = registry.get_component<comp::PhysicsBody>(entity);
                 comp::Velocity & player_velocity = registry.get_component<comp::Velocity>(entity);
@@ -137,6 +140,12 @@ class PlayerControllerSystem : public System {
                     body.direction = (player_velocity.magnitude.x > 0.0f) ? 1 : -1;
                 }
 
+
+
+                // Attack?
+                if (input.attack_key_tapped) {
+                    spawndef::SpawnAttack(registry, transform.position, hbpos::STANDARD_SWING);
+                }
                 
                 
 

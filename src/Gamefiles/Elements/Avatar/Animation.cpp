@@ -36,7 +36,7 @@ bool Animation::SaveAnimFile (const std::string& filename, const std::string& pa
     // draw_order           int
     // normal_rotation      bool (int)
 
-    const std::string version = "VERSION_1";
+    const std::string version = "VERSION_2";
 
     file << "~ANIMATION_FILE" << '\n';
     file << version << '\n';
@@ -63,7 +63,8 @@ bool Animation::SaveAnimFile (const std::string& filename, const std::string& pa
                  << joint.origin.y << " "
                  << joint.rotation << " "
                  << joint.draw_order << " "
-                 << static_cast<int>(joint.normal_rotation) << '\n';
+                 << static_cast<int>(joint.normal_rotation) << " "
+                 << joint.anim_texture_idx << '\n';
         }
     }
 
@@ -89,7 +90,9 @@ bool Animation::LoadAnimFile (const std::string& filename, const std::string& pa
 
     std::string version;
     file >> version;
-    if (version != "VERSION_1")
+    const bool version_1 = (version == "VERSION_1");
+    const bool version_2 = (version == "VERSION_2");
+    if (!version_1 && !version_2)
         return false;
 
     file >> token;
@@ -151,6 +154,12 @@ bool Animation::LoadAnimFile (const std::string& filename, const std::string& pa
                  >> joint.rotation
                  >> joint.draw_order
                  >> normal_rotation_int;
+
+            if (version_2) {
+                file >> joint.anim_texture_idx;
+            } else {
+                joint.anim_texture_idx = -1;
+            }
 
             joint.normal_rotation = (normal_rotation_int != 0);
             frame.joints.push_back(joint);

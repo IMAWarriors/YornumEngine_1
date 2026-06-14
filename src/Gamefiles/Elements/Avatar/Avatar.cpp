@@ -9,6 +9,7 @@
 #include <sstream>
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace {
     // constexpr float PI = 3.14159265358979323846f;
@@ -135,9 +136,34 @@ JointTexture::JointTexture (AssetManager& assets, const std::string& path, const
 }
 
 bool AvatarJoint::change_anim_texture (AssetManager& assets, int index, const std::string& path) {
-    animation_texture_library[index].texture_path = path;
-    animation_texture_library[index].texture_ptr = &assets.LoadTextureAsset(path);
+    if (index < 0 || index >= (int)animation_texture_library.size() || path.empty())
+        return false;
+    animation_texture_library[(size_t)index].texture_path = path;
+    animation_texture_library[(size_t)index].texture_ptr = &assets.LoadTextureAsset(path);
     return true;
+}
+
+ResolvedJointTexture AvatarJoint::resolve_texture (int anim_texture_idx) const {
+    ResolvedJointTexture resolved;
+
+    const JointTexture* anim_texture = get_anim_texture_or_null(anim_texture_idx);
+    if (anim_texture != nullptr && anim_texture->texture_ptr != nullptr) {
+        resolved.texture = anim_texture->texture_ptr;
+        resolved.offset = anim_texture->offset;
+        resolved.scale = anim_texture->scale;
+        resolved.rotation = anim_texture->rotation;
+        resolved.crop_min = anim_texture->crop_min;
+        resolved.crop_max = anim_texture->crop_max;
+        return resolved;
+    }
+
+    resolved.texture = texture;
+    resolved.offset = offset;
+    resolved.scale = scale;
+    resolved.rotation = rotation;
+    resolved.crop_min = crop_min;
+    resolved.crop_max = crop_max;
+    return resolved;
 }
 
 // ==================================================================
@@ -147,6 +173,11 @@ bool AvatarJoint::change_anim_texture (AssetManager& assets, int index, const st
 void Avatar::LoadInternalJointTextures (AssetManager& assets) {
     for (AvatarJoint& joint : default_texturing.joints) {
         joint.load_texture_from_path(assets, joint.texturePath);
+        for (JointTexture& anim_texture : joint.animation_texture_library) {
+            if (!anim_texture.texture_path.empty()) {
+                anim_texture.texture_ptr = &assets.LoadTextureAsset(anim_texture.texture_path);
+            }
+        }
     }
 }
 
@@ -287,20 +318,21 @@ void Avatar::DrawAvatar(
         // reflect final screen-space geometry around the avatar pivot line.
         Vec2 new_dir = RotNewDirectionVec(joint_anchor.direction, joint_interp.rotation);
 
-        if (joint_texture.texture == nullptr) continue;
+        const ResolvedJointTexture resolved_texture = joint_texture.resolve_texture(joint_interp.anim_texture_idx);
+        if (resolved_texture.texture == nullptr) continue;
 
         const float zoom = renderer.get_camera_zoom();
         Vector2 center = {(float)renderer.world_camera_transform(anchor_world).x, (float)renderer.world_camera_transform(anchor_world).y};
 
-        float width = joint_texture.texture->width * joint_texture.scale.x * zoom;
-        float height = joint_texture.texture->height * joint_texture.scale.y * zoom;
+        float width = resolved_texture.texture->width * resolved_texture.scale.x * zoom;
+        float height = resolved_texture.texture->height * resolved_texture.scale.y * zoom;
 
         float base_angle = atan2f(new_dir.y, new_dir.x);
-        float angle = base_angle + joint_texture.rotation;
+        float angle = base_angle + resolved_texture.rotation;
         float cosA = cosf(angle);
         float sinA = sinf(angle);
 
-        Vector2 offset = {joint_texture.offset.x * zoom, joint_texture.offset.y * zoom};
+        Vector2 offset = {resolved_texture.offset.x * zoom, resolved_texture.offset.y * zoom};
 
         Vector2 half = {width * 0.5f, height * 0.5f};
         Vector2 corners_local[4] = {
@@ -314,8 +346,8 @@ void Avatar::DrawAvatar(
             corners[k].y = center.y + (x * sinA + y * cosA);
         }
 
-        Vector2 uv_min = {joint_texture.crop_min.x, joint_texture.crop_min.y};
-        Vector2 uv_max = {joint_texture.crop_max.x, joint_texture.crop_max.y};
+        Vector2 uv_min = {resolved_texture.crop_min.x, resolved_texture.crop_min.y};
+        Vector2 uv_max = {resolved_texture.crop_max.x, resolved_texture.crop_max.y};
 
         if (mirror_x) {
             for (int k = 0; k < 4; k++) {
@@ -334,7 +366,7 @@ void Avatar::DrawAvatar(
             std::swap(uv_min.x, uv_max.x);
         }
 
-        renderer.rdraw_quad_screen(*joint_texture.texture, corners, uv_min, uv_max, WHITE);
+        renderer.rdraw_quad_screen(*resolved_texture.texture, corners, uv_min, uv_max, WHITE);
     }
 
 }
@@ -431,16 +463,17 @@ void Avatar::DrawAvatarBlendFromPose(
         const auto& joint_interp = blended_pose[idx];
         Vec2 anchor_world = { position.x + joint_anchor.origin.x + joint_interp.origin.x, position.y + joint_anchor.origin.y + joint_interp.origin.y };
         Vec2 new_dir = RotNewDirectionVec(joint_anchor.direction, joint_interp.rotation);
-        if (joint_texture.texture == nullptr) continue;
+        const ResolvedJointTexture resolved_texture = joint_texture.resolve_texture(joint_interp.anim_texture_idx);
+        if (resolved_texture.texture == nullptr) continue;
 
         const float zoom = renderer.get_camera_zoom();
         Vector2 center = {(float)renderer.world_camera_transform(anchor_world).x, (float)renderer.world_camera_transform(anchor_world).y};
-        float width = joint_texture.texture->width * joint_texture.scale.x * zoom;
-        float height = joint_texture.texture->height * joint_texture.scale.y * zoom;
-        float angle = atan2f(new_dir.y, new_dir.x) + joint_texture.rotation;
+        float width = resolved_texture.texture->width * resolved_texture.scale.x * zoom;
+        float height = resolved_texture.texture->height * resolved_texture.scale.y * zoom;
+        float angle = atan2f(new_dir.y, new_dir.x) + resolved_texture.rotation;
         float cosA = cosf(angle);
         float sinA = sinf(angle);
-        Vector2 offset = {joint_texture.offset.x * zoom, joint_texture.offset.y * zoom};
+        Vector2 offset = {resolved_texture.offset.x * zoom, resolved_texture.offset.y * zoom};
         Vector2 half = {width * 0.5f, height * 0.5f};
         Vector2 corners_local[4] = {{-half.x, -half.y}, {half.x, -half.y}, {half.x, half.y}, {-half.x, half.y}};
         Vector2 corners[4];
@@ -450,15 +483,15 @@ void Avatar::DrawAvatarBlendFromPose(
             corners[k].x = center.x + (x * cosA - y * sinA);
             corners[k].y = center.y + (x * sinA + y * cosA);
         }
-        Vector2 uv_min = {joint_texture.crop_min.x, joint_texture.crop_min.y};
-        Vector2 uv_max = {joint_texture.crop_max.x, joint_texture.crop_max.y};
+        Vector2 uv_min = {resolved_texture.crop_min.x, resolved_texture.crop_min.y};
+        Vector2 uv_max = {resolved_texture.crop_max.x, resolved_texture.crop_max.y};
         if (mirror_x) {
             for (int k = 0; k < 4; k++) corners[k].x = mirror_pivot_screen.x - (corners[k].x - mirror_pivot_screen.x);
             Vector2 remapped[4] = { corners[1], corners[0], corners[3], corners[2] };
             corners[0] = remapped[0]; corners[1] = remapped[1]; corners[2] = remapped[2]; corners[3] = remapped[3];
             std::swap(uv_min.x, uv_max.x);
         }
-        renderer.rdraw_quad_screen(*joint_texture.texture, corners, uv_min, uv_max, WHITE);
+        renderer.rdraw_quad_screen(*resolved_texture.texture, corners, uv_min, uv_max, WHITE);
     }
 }
 
@@ -510,7 +543,7 @@ bool Avatar::SaveAvrFile (const std::string& filename, const std::string& path) 
     // --------------------------->
 
 
-    const std::string version = "VERSION_1";
+    const std::string version = "VERSION_2";
 
     file << "~AVATAR_FILE" << '\n';
     file << version << '\n';
@@ -548,6 +581,21 @@ bool Avatar::SaveAvrFile (const std::string& filename, const std::string& path) 
         file << jpath << '\n';
 
         file << joffset_x << " " << joffset_y << " " << jscale_x << " " << jscale_y << " " << jrotation << " " << jcmin_x << " " << jcmin_y << " " << jcmax_x  << " " << jcmax_y << '\n';
+
+        const int anim_texture_count = (int)default_texturing.joints[i].animation_texture_library.size();
+        file << anim_texture_count << '\n';
+        for (const JointTexture& anim_texture : default_texturing.joints[i].animation_texture_library) {
+            file << anim_texture.texture_path << '\n';
+            file << anim_texture.offset.x << " "
+                 << anim_texture.offset.y << " "
+                 << anim_texture.scale.x << " "
+                 << anim_texture.scale.y << " "
+                 << anim_texture.rotation << " "
+                 << anim_texture.crop_min.x << " "
+                 << anim_texture.crop_min.y << " "
+                 << anim_texture.crop_max.x << " "
+                 << anim_texture.crop_max.y << '\n';
+        }
 
 
     }
@@ -602,8 +650,9 @@ bool Avatar::LoadAvrFile (const std::string& filename, const std::string& path) 
     file >> version;
 
     const bool version_1 = (version == "VERSION_1");
+    const bool version_2 = (version == "VERSION_2");
 
-    if (!version_1)
+    if (!version_1 && !version_2)
         return false;
 
     // =========================================================================================
@@ -655,6 +704,31 @@ bool Avatar::LoadAvrFile (const std::string& filename, const std::string& path) 
                 >> joint.crop_max.x
                 >> joint.crop_max.y;
         file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+        if (version_2) {
+            int anim_texture_count = 0;
+            file >> anim_texture_count;
+            if (anim_texture_count < 0)
+                return false;
+            file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+            joint.animation_texture_library.reserve((size_t)anim_texture_count);
+            for (int anim_texture_idx = 0; anim_texture_idx < anim_texture_count; anim_texture_idx++) {
+                JointTexture anim_texture;
+                std::getline(file, anim_texture.texture_path, '\n');
+                file >> anim_texture.offset.x
+                     >> anim_texture.offset.y
+                     >> anim_texture.scale.x
+                     >> anim_texture.scale.y
+                     >> anim_texture.rotation
+                     >> anim_texture.crop_min.x
+                     >> anim_texture.crop_min.y
+                     >> anim_texture.crop_max.x
+                     >> anim_texture.crop_max.y;
+                file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                joint.animation_texture_library.push_back(anim_texture);
+            }
+        }
 
         default_texturing.joints.push_back(joint);
     }

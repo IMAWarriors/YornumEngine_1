@@ -45,9 +45,10 @@ class InputManager {
         // Key Accessors
 
         int get_move_axis ();
-
-
         bool get_jump_key ();
+        bool get_attack_key ();
+        bool get_attack_key_down ();
+
 
         
 

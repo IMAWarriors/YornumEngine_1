@@ -15,6 +15,7 @@
 #include "../Systems/CameraClampManagerSystem.h"
 #include "../Systems/AvatarAnimationTickSystem.h"
 #include "../Systems/PlayerAnimationSystem.h"
+#include "../Systems/AttackManagerSystem.h"
 
 #endif
 

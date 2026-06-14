@@ -48,4 +48,6 @@ int InputManager::get_move_axis () { return ( IsKeyDown(BIND_RDIR) - IsKeyDown(B
 bool InputManager::get_jump_key () { return (IsKeyDown(BIND_UDIR)); }
 
 
+bool InputManager::get_attack_key () {return (IsKeyPressed(BIND_SPECIAL)); }
 
+bool InputManager::get_attack_key_down () {return (IsKeyDown(BIND_SPECIAL));}

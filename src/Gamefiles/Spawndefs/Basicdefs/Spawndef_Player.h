@@ -17,7 +17,7 @@ namespace spawndef {
 
         // Basic tracking
         registry.apply_component<tag::Player>           (entity, {});
-        registry.apply_component<comp::Transform>       (entity,  { position, position, 0.0f, {1.0f, 1.0f} });
+        registry.apply_component<comp::Transform>       (entity,  comp::Transform(position));
         registry.apply_component<comp::Velocity>        (entity, {0.0f, 0.0f} );
         registry.apply_component<comp::InputState>      (entity, {0, false});
 
@@ -55,7 +55,7 @@ namespace spawndef {
         config.NatJumpForce    = 1150.0f;
 
         // Load entity animations
-        Avatar* avatar = assets.LoadAvatarAsset("assets/avatars/24JSS_template.avr");
+        Avatar* avatar = assets.LoadAvatarAsset("assets/avatars/24JSS_test0.avr");
 
         comp::AnimationRepertoire& animationHandler = registry.get_component<comp::AnimationRepertoire>(entity);
         comp::AvatarRenderer& avatarRenderer = registry.get_component<comp::AvatarRenderer>(entity);

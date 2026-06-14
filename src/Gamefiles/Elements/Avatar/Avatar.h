@@ -75,6 +75,15 @@ class AssetManager;
 
 struct AvatarJoint;
 
+struct ResolvedJointTexture {
+    Texture2D* texture = nullptr;
+    Vec2 offset = {0, 0};
+    Vec2 scale = {1, 1};
+    float rotation = 0.0f;
+    Vec2 crop_min = {0, 0};
+    Vec2 crop_max = {1, 1};
+};
+
 struct JointTexture {
 
     // ==================== Attributes ===================== //
@@ -145,6 +154,14 @@ struct AvatarJoint {
     } 
 
     bool change_anim_texture (AssetManager& assets, int index, const std::string& path);
+
+    const JointTexture* get_anim_texture_or_null (int index) const {
+        if (index < 0 || index >= (int)animation_texture_library.size())
+            return nullptr;
+        return &animation_texture_library[(size_t)index];
+    }
+
+    ResolvedJointTexture resolve_texture (int anim_texture_idx) const;
     
     // Unload all anim textures
     bool unload_all_anim_textures () {

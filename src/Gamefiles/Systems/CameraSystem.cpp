@@ -9,10 +9,6 @@
 
 void CameraSystem::update (Registry & registry, float deltatime) {
 
-
-
-
-
     Vec2 camera_clamp_min = {0.0f, 0.0f};
     Vec2 camera_clamp_max = {0.0f, 0.0f};
 
@@ -47,8 +43,10 @@ void CameraSystem::update (Registry & registry, float deltatime) {
 
         if (registry.has_component<comp::Transform>(camera.target)) {
 
+            const float CAMERA_OFFSET_Y_CONST = -64.0f;
+
             Vec2 camera_position = registry.get_component<comp::Transform>(camera.target).position;
-            target_position = {camera_position.x + camera.offset.x, camera_position.y + camera.offset.y};
+            target_position = {camera_position.x + camera.offset.x, camera_position.y + camera.offset.y + CAMERA_OFFSET_Y_CONST};
             target_exists = true;
 
         }

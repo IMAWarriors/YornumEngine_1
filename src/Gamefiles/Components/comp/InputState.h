@@ -11,6 +11,8 @@ namespace comp {
 
         int horz_axis;
         int jump_key;
+        bool attack_key_down;
+        bool attack_key_tapped;
 
         
     };

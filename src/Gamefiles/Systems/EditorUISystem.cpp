@@ -1637,16 +1637,17 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 auto& j_text = (*avatar_selected).default_texturing.joints[idx];
 
                                 // Get accurate texture info
-                                Texture2D* actual_texture = (anim_j.anim_texture_idx != -1) ? (j_text.animation_texture_library[anim_j.anim_texture_idx].texture_ptr) : (j_text.texture);
-                                float actual_texture_cmin_x = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].crop_min.x : j_text.crop_min.x;
-                                float actual_texture_cmin_y = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].crop_min.y : j_text.crop_min.y;
-                                float actual_texture_cmax_x = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].crop_max.x : j_text.crop_max.x;
-                                float actual_texture_cmax_y = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].crop_max.y : j_text.crop_max.y;
-                                float actual_texture_scale_x = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].scale.x : j_text.scale.x;
-                                float actual_texture_scale_y = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].scale.y : j_text.scale.y;
-                                float actual_texture_offset_x = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].offset.x : j_text.offset.x;
-                                float actual_texture_offset_y = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].offset.y : j_text.offset.y;
-                                float actual_texture_rotation = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].rotation : j_text.rotation;
+                                const ResolvedJointTexture resolved_texture = j_text.resolve_texture(anim_j.anim_texture_idx);
+                                Texture2D* actual_texture = resolved_texture.texture;
+                                float actual_texture_cmin_x = resolved_texture.crop_min.x;
+                                float actual_texture_cmin_y = resolved_texture.crop_min.y;
+                                float actual_texture_cmax_x = resolved_texture.crop_max.x;
+                                float actual_texture_cmax_y = resolved_texture.crop_max.y;
+                                float actual_texture_scale_x = resolved_texture.scale.x;
+                                float actual_texture_scale_y = resolved_texture.scale.y;
+                                float actual_texture_offset_x = resolved_texture.offset.x;
+                                float actual_texture_offset_y = resolved_texture.offset.y;
+                                float actual_texture_rotation = resolved_texture.rotation;
                                 
                                 float direction_point_x = 0.0f;
                                 float direction_point_y = 0.0f;
@@ -1953,16 +1954,17 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                             }
 
-                            Texture2D* actual_texture = (joint_anim.anim_texture_idx != -1) ? (joint_texture.animation_texture_library[joint_anim.anim_texture_idx].texture_ptr) : (joint_texture.texture);
-                            float actual_texture_cmin_x = (joint_anim.anim_texture_idx != -1) ? joint_texture.animation_texture_library[joint_anim.anim_texture_idx].crop_min.x : joint_texture.crop_min.x;
-                            float actual_texture_cmin_y = (joint_anim.anim_texture_idx != -1) ? joint_texture.animation_texture_library[joint_anim.anim_texture_idx].crop_min.y : joint_texture.crop_min.y;
-                            float actual_texture_cmax_x = (joint_anim.anim_texture_idx != -1) ? joint_texture.animation_texture_library[joint_anim.anim_texture_idx].crop_max.x : joint_texture.crop_max.x;
-                            float actual_texture_cmax_y = (joint_anim.anim_texture_idx != -1) ? joint_texture.animation_texture_library[joint_anim.anim_texture_idx].crop_max.y : joint_texture.crop_max.y;
-                            float actual_texture_scale_x = (joint_anim.anim_texture_idx != -1) ? joint_texture.animation_texture_library[joint_anim.anim_texture_idx].scale.x : joint_texture.scale.x;
-                            float actual_texture_scale_y = (joint_anim.anim_texture_idx != -1) ? joint_texture.animation_texture_library[joint_anim.anim_texture_idx].scale.y : joint_texture.scale.y;
-                            float actual_texture_offset_x = (joint_anim.anim_texture_idx != -1) ? joint_texture.animation_texture_library[joint_anim.anim_texture_idx].offset.x : joint_texture.offset.x;
-                            float actual_texture_offset_y = (joint_anim.anim_texture_idx != -1) ? joint_texture.animation_texture_library[joint_anim.anim_texture_idx].offset.y : joint_texture.offset.y;
-                            float actual_texture_rotation = (joint_anim.anim_texture_idx != -1) ? joint_texture.animation_texture_library[joint_anim.anim_texture_idx].rotation : joint_texture.rotation;
+                            const ResolvedJointTexture resolved_texture = joint_texture.resolve_texture(joint_anim.anim_texture_idx);
+                            Texture2D* actual_texture = resolved_texture.texture;
+                            float actual_texture_cmin_x = resolved_texture.crop_min.x;
+                            float actual_texture_cmin_y = resolved_texture.crop_min.y;
+                            float actual_texture_cmax_x = resolved_texture.crop_max.x;
+                            float actual_texture_cmax_y = resolved_texture.crop_max.y;
+                            float actual_texture_scale_x = resolved_texture.scale.x;
+                            float actual_texture_scale_y = resolved_texture.scale.y;
+                            float actual_texture_offset_x = resolved_texture.offset.x;
+                            float actual_texture_offset_y = resolved_texture.offset.y;
+                            float actual_texture_rotation = resolved_texture.rotation;
 
                             if (actual_texture != nullptr) {
 
@@ -2063,16 +2065,17 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             draw->AddLine(a, b, color, thickness);
 
                             // Get accurate texture info
-                            Texture2D* actual_texture = (anim_j.anim_texture_idx != -1) ? (j_text.animation_texture_library[anim_j.anim_texture_idx].texture_ptr) : (j_text.texture);
-                            float actual_texture_cmin_x = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].crop_min.x : j_text.crop_min.x;
-                            float actual_texture_cmin_y = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].crop_min.y : j_text.crop_min.y;
-                            float actual_texture_cmax_x = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].crop_max.x : j_text.crop_max.x;
-                            float actual_texture_cmax_y = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].crop_max.y : j_text.crop_max.y;
-                            float actual_texture_scale_x = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].scale.x : j_text.scale.x;
-                            float actual_texture_scale_y = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].scale.y : j_text.scale.y;
-                            float actual_texture_offset_x = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].offset.x : j_text.offset.x;
-                            float actual_texture_offset_y = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].offset.y : j_text.offset.y;
-                            float actual_texture_rotation = (anim_j.anim_texture_idx != -1) ? j_text.animation_texture_library[anim_j.anim_texture_idx].rotation : j_text.rotation;
+                            const ResolvedJointTexture resolved_texture = j_text.resolve_texture(anim_j.anim_texture_idx);
+                            Texture2D* actual_texture = resolved_texture.texture;
+                            float actual_texture_cmin_x = resolved_texture.crop_min.x;
+                            float actual_texture_cmin_y = resolved_texture.crop_min.y;
+                            float actual_texture_cmax_x = resolved_texture.crop_max.x;
+                            float actual_texture_cmax_y = resolved_texture.crop_max.y;
+                            float actual_texture_scale_x = resolved_texture.scale.x;
+                            float actual_texture_scale_y = resolved_texture.scale.y;
+                            float actual_texture_offset_x = resolved_texture.offset.x;
+                            float actual_texture_offset_y = resolved_texture.offset.y;
+                            float actual_texture_rotation = resolved_texture.rotation;
 
                             if (actual_texture != nullptr) {
 
@@ -3643,7 +3646,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                                         std::string preview_anim_string;
 
-                                        if (frame_selected_anim_texture_idx == -1) {
+                                        if (joint_text.get_anim_texture_or_null(frame_selected_anim_texture_idx) == nullptr) {
                                             const std::string& fullPath = joint_text.texturePath;
                                             std::string display_option = std::filesystem::path(fullPath).filename().string();
                                             preview_anim_string = "Idx " + std::to_string(frame_selected_anim_texture_idx) + ": " + display_option;
@@ -3696,7 +3699,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                             ImGui::Text(tsettingdisplay.c_str());
 
 
-                                            if (frame_selected_anim_texture_idx != -1) {
+                                            if (joint_text.get_anim_texture_or_null(frame_selected_anim_texture_idx) != nullptr) {
 
                                                 auto& selected_anim_text = joint_text.animation_texture_library[frame_selected_anim_texture_idx];
 
