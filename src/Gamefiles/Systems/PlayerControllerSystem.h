@@ -49,7 +49,9 @@ class PlayerControllerSystem : public System {
                 comp::PhysicsBody & body = registry.get_component<comp::PhysicsBody>(entity);
                 comp::Velocity & player_velocity = registry.get_component<comp::Velocity>(entity);
                 comp::PlayerConfig & config = registry.get_component<comp::PlayerConfig>(entity);
+                comp::BodyAttackState & attack_state = registry.get_component<comp::BodyAttackState>(entity);
 
+                
 
                 float MAX_VELOCITY_X    = config.NatRunSpeed;
                 float ACCELERATION      = config.NatRunAccel;
@@ -59,12 +61,23 @@ class PlayerControllerSystem : public System {
                 float target = input.horz_axis * MAX_VELOCITY_X;
                 float control_multiplier = body.onSolidGround ? 1.0f : 0.75f;
 
+                /*
                 if (player_velocity.magnitude.x > 0.5f) {
                     body.direction = 1;
                 } else if (player_velocity.magnitude.x < -0.5f) {
                     body.direction = -1;
                 }
+                */
 
+            
+                if (body.walljumpBuffer <= 0) {
+                    if (input.horz_axis == 1) {
+                        body.direction = 1;
+                    } else if (input.horz_axis == -1) {
+                        body.direction = -1;
+                    }
+                }
+                
                 if (body.walljumpBuffer > 0) {
 
                     body.walljumpBuffer--;
@@ -90,16 +103,19 @@ class PlayerControllerSystem : public System {
 
                 } else {
 
+                    // Handle turning around when INTENDED DIRECTION and MOVING DIRECTION do not match
                     if (player_velocity.magnitude.x * input.horz_axis < 0) {
                         accel = std::max(ACCELERATION, FRICTION);
+                    }
+
+                    // Actually move 
+                    if (attack_state.attacking) {
+                        target = 0.0f;
                     }
 
                     player_velocity.magnitude.x = approach_x(player_velocity.magnitude.x, target, accel * deltatime);
                 }
                 
-
-
-        
                 if (player_velocity.magnitude.x > MAX_VELOCITY_X)  {    player_velocity.magnitude.x =  MAX_VELOCITY_X; }
                 if (player_velocity.magnitude.x < -MAX_VELOCITY_X) {    player_velocity.magnitude.x = -MAX_VELOCITY_X; }
 
@@ -117,9 +133,6 @@ class PlayerControllerSystem : public System {
                 if ((input.jump_key > 0) && (body.vjump_window > 0)) {
                     player_velocity.magnitude.y = std::min(-JUMP_FORCE, player_velocity.magnitude.y);
                 }
-
-                
-                
 
                 // Clamp / Iterate jump values
                 if (input.jump_key <= 0) {
@@ -144,7 +157,11 @@ class PlayerControllerSystem : public System {
 
                 // Attack?
                 if (input.attack_key_tapped) {
-                    spawndef::SpawnAttack(registry, transform.position, hbpos::STANDARD_SWING);
+
+                    bool mirror_attack_direction = (body.direction == -1);
+                    attack_state.InitiatePlayerAttack(registry, entity, hbpos::STANDARD_SWING, mirror_attack_direction);
+                    
+
                 }
                 
                 

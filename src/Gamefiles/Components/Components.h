@@ -17,6 +17,7 @@
 #include "comp/AnimationRepertoire.h"
 #include "comp/PlayerConfig.h"
 #include "comp/AttackStats.h"
+#include "comp/BodyAttackState.h"
 
 #include "tag/Tag_Player.h"
 #include "tag/Tag_EngineManager.h"

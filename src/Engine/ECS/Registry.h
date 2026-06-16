@@ -21,20 +21,9 @@ class Registry {
 
         size_t iPENDING_COMPONENT_INDEX = 0;
 
-
-
-
-        EntityManager entity_manager;               // Manages specific entities for ALL component pools
-
-        std::vector<IPool*> component_pools;        // Components owned by specific entities
-
-        bool is_valid(Entity _entity);
-
-        
-
-        std::vector<std::function<void()>> operations_queue;
-
-
+        EntityManager entity_manager;                           // Manages specific entities for ALL component pools
+        std::vector<IPool*> component_pools;                    // Components owned by specific entities
+        std::vector<std::function<void()>> operations_queue;    // Function to destroy or create operations
 
 
     public:
@@ -52,8 +41,7 @@ class Registry {
 
         void destroy_entity (Entity _entity);
 
-
-
+        bool is_valid(Entity _entity);
 
 
 

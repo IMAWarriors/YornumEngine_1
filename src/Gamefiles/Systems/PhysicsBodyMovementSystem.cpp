@@ -315,6 +315,7 @@ static float try_move_y (Scene & scene, Vec2 pos, comp::PhysicsBody & body, floa
         // Ground state is only set by the downward branch and the zero-delta probe.
         if (found_collision) {
             vel.y = 0.0f;
+            body.vjump_window = 0;
         } else {
             body.falling++;
         }

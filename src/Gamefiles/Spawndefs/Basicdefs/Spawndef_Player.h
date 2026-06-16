@@ -43,6 +43,9 @@ namespace spawndef {
             1                   //
         });
 
+        // Attack State
+        registry.apply_component<comp::BodyAttackState>     (entity, comp::BodyAttackState());
+
         // Avatar
         registry.apply_component<comp::AvatarRenderer>      (entity, comp::AvatarRenderer());
         registry.apply_component<comp::AnimationRepertoire> (entity, comp::AnimationRepertoire());

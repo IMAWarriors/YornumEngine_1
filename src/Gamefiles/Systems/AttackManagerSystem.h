@@ -17,6 +17,8 @@
 #include "../Elements/Avatar/Animation.h"
 #include "../../Gamefiles/World/Scene.h"
 
+#include <vector>
+
 
 class AttackManagerSystem : public System {
     private:

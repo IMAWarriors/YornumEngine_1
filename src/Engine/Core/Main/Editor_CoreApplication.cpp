@@ -23,7 +23,7 @@ void CoreApplication::RunCoreEngineMainEditor (GameEngine & game) {
     // Initialize Raylib Drawing Aspects
     Renderer            renderer;         
     RenderTexture2D     canvas;           // Intialize CANVAS to draw game onto
-    InputManager        inputManager;
+    InputManager        inputManager;     // Calls default constructor!
     FrameStats          frame;
 
     renderer.init_canvas(canvas);

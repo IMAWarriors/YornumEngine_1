@@ -711,22 +711,38 @@ void RenderSystem::update (Registry & registry, float deltatime) {
         
         comp::Transform & transform     = registry.get_component<comp::Transform>(entity);
         comp::AttackStats & attack        = registry.get_component<comp::AttackStats>(entity);
+        auto& owner_position = registry.get_component<comp::Transform>(attack.owner).position;
 
-        Color col = Color({0, 255, 255, 180});
+        Color col = Color({0, 255, 255, 100});
 
         Vec2 top_left;
+        Vec2 box_size;
 
         if (attack.attack_frame >= attack.ilk_id.frame_count)
             continue;
+
+        box_size.x = attack.ilk_id.frames[attack.attack_frame].SIZE.x;
+        box_size.y = attack.ilk_id.frames[attack.attack_frame].SIZE.y;
         
-        top_left.x = transform.position.x + (attack.ilk_id.frames[attack.attack_frame].POS.x);
-        top_left.y = transform.position.y + (attack.ilk_id.frames[attack.attack_frame].POS.y);
+        if (attack.mirror_attack == false) {
+
+            top_left.x = owner_position.x + transform.position.x + (attack.ilk_id.frames[attack.attack_frame].POS.x);
+            top_left.y = owner_position.y + transform.position.y + (attack.ilk_id.frames[attack.attack_frame].POS.y);
+            
+        } else {
+
+            top_left.x = (owner_position.x + transform.position.x) - (attack.ilk_id.frames[attack.attack_frame].POS.x) - box_size.x;
+            top_left.y = (owner_position.y + transform.position.y) + (attack.ilk_id.frames[attack.attack_frame].POS.y);
+            
+        }
         
+
+        // Draw attack hitbox
         renderer.rdraw_rect(
             top_left.x, 
             top_left.y, 
-            attack.ilk_id.frames[attack.attack_frame].SIZE.x, 
-            attack.ilk_id.frames[attack.attack_frame].SIZE.y, 
+            box_size.x, 
+            box_size.y, 
             col
         );
 
