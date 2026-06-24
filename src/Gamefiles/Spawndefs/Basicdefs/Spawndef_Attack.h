@@ -19,8 +19,6 @@ namespace spawndef {
         registry.apply_component<comp::Transform>(attack, comp::Transform(offset));
         registry.apply_component<comp::AttackStats>(attack, comp::AttackStats(owner, type, mirror));
         
-        auto& owner_attack_state = registry.get_component<comp::BodyAttackState>(owner);
-       
         // registry.apply_component<comp::Velocity>        (camera, {0.0f, 0.0f} );
         // registry.apply_component<comp::InputState>      (camera, {0, false});
 

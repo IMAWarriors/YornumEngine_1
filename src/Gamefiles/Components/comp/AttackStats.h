@@ -19,8 +19,6 @@
 
 #include "../../Assets/AssetManager.h"
 
-
-#include "BodyAttackState.h"
 #include "Transform.h"
 
 namespace hbpos {
@@ -139,26 +137,24 @@ struct AttackStats {
     }
 
 
-    void tick_one_frame (comp::BodyAttackState& attack_state, float deltatime) {
+    int tick_one_frame (float deltatime) {
 
         float adjusted_tick_time = tick_time / 1000.0f;  
 
         accumulator += deltatime;
+        int frames_traveled = 0;
 
         while (accumulator >= adjusted_tick_time) {
             attack_frame++;
-            attack_state.frames_left--;
+            frames_traveled++;
             accumulator -= adjusted_tick_time;
-
-            if (attack_state.frames_left <= 0) {
-                attack_state.attacking = false;
-            }
         }
 
         if (attack_frame >= ilk_id.frame_count) {
             delete_flag = true;
-            attack_state.attacking = false;
         }
+
+        return frames_traveled;
     }
     
 };

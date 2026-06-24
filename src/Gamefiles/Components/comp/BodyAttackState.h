@@ -14,8 +14,6 @@
 
 #include "../../Components/comp/AttackStats.h"
 
-#include "../../Spawndefs/Spawndefs.h"
-
 namespace comp {
 
 struct BodyAttackState {
@@ -38,7 +36,7 @@ struct BodyAttackState {
     }
 
     // Make an attack
-    void InitiatePlayerAttack (Registry& registry, const Entity& owner, const hbpos::Attack& attack, bool mirror_attack = false) {
+    void BeginAttack (const hbpos::Attack& attack) {
 
         // Attack Allignment
         hurt_player = false;
@@ -49,11 +47,21 @@ struct BodyAttackState {
         // Attack timing setup
         attacking = true;
         frames_left = attack.frame_count;
+        entities_hit.clear();
 
-        // Generate Attack
-        spawndef::SpawnAttack(registry, {0.0f, -40.0f}, attack, owner, mirror_attack);
+    }
 
-        
+    void AdvanceAttackFrames (int frames_advanced) {
+        frames_left = std::max(0, frames_left - frames_advanced);
+
+        if (frames_left <= 0) {
+            attacking = false;
+        }
+    }
+
+    void FinishAttack () {
+        attacking = false;
+        frames_left = 0;
     }
 
 

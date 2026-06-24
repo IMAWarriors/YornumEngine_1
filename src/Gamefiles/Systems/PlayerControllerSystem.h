@@ -156,12 +156,10 @@ class PlayerControllerSystem : public System {
 
 
                 // Attack?
-                if (input.attack_key_tapped) {
-
+                if (input.attack_key_tapped && !attack_state.attacking) {
                     bool mirror_attack_direction = (body.direction == -1);
-                    attack_state.InitiatePlayerAttack(registry, entity, hbpos::STANDARD_SWING, mirror_attack_direction);
-                    
-
+                    attack_state.BeginAttack(hbpos::STANDARD_SWING);
+                    spawndef::SpawnAttack(registry, {0.0f, -40.0f}, hbpos::STANDARD_SWING, entity, mirror_attack_direction);
                 }
                 
                 

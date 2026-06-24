@@ -20,12 +20,15 @@ void AttackManagerSystem::update (Registry & registry, float deltatime) {
 
         // To Tick
         if (attack_stats.attack_frame < attack_stats.ilk_id.frame_count) {
-            attack_stats.tick_one_frame(attack_state, deltatime);
+            int frames_advanced = attack_stats.tick_one_frame(deltatime);
+            attack_state.AdvanceAttackFrames(frames_advanced);
         }
 
         // Check again if should be destroyed
-        if (attack_stats.delete_flag)
+        if (attack_stats.delete_flag) {
+            attack_state.FinishAttack();
             attacks_to_destroy.push_back(entity);
+        }
     
     }
 

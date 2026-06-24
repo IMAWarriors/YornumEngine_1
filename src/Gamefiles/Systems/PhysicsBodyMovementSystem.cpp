@@ -25,9 +25,17 @@ static bool is_tiletype_collision (CollisionType colltype, bool include_semisol 
 
 }
 
+static int get_tiletype_slope_dir (CollisionType colltype) {
 
+    if (colltype == CollisionType::COLL_PSLOPE1_SOLID) {
+        return 1;
+    } else if (colltype == CollisionType::COLL_NSLOPE1_SOLID) {
+        return -1;
+    } else {
+        return 0;
+    }
 
-
+}
 
 
 // ============================================================
@@ -184,7 +192,8 @@ static float try_move_y (Scene & scene, Vec2 pos, comp::PhysicsBody & body, floa
 
 
 
-                if (!is_tiletype_collision(layer.get_tile_coll(scene, tx, ty), true)) {
+                // grund
+                if (!is_tiletype_collision(layer.get_tile_coll(scene, tx, ty), true) ) {
                     float tile_top = ty * tile_size;
                     if (tile_top >= bottom - body.skin && tile_top <= probe_edge) {
                         grounded = true;
