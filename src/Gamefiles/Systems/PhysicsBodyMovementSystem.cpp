@@ -5,6 +5,13 @@
 #include <algorithm>
 #include <cmath>
 
+static float modulus (float val, float div) {
+    float local = std::fmod(val, div);
+    if (local < 0.0f)
+        local += 64.0f;
+    return local;
+}
+
 static bool is_tiletype_collision (CollisionType colltype, bool include_semisol = false) {
 
     if (colltype == CollisionType::COLL_FULL_SOLID) {
@@ -12,17 +19,10 @@ static bool is_tiletype_collision (CollisionType colltype, bool include_semisol 
     }
 
     if (include_semisol == true && colltype == CollisionType::COLL_FULL_SEMISOLID) {
-
-
-
-
-
-
         return true;
     }
 
     return false;
-
 }
 
 static int get_tiletype_slope_dir (CollisionType colltype) {
@@ -34,8 +34,9 @@ static int get_tiletype_slope_dir (CollisionType colltype) {
     } else {
         return 0;
     }
-
 }
+
+
 
 
 // ============================================================
@@ -67,6 +68,8 @@ static float try_move_x (Scene & scene, Vec2 pos, comp::PhysicsBody & body, floa
     bool  found_collision = false;
     float best_resolve_x  = pos.x + delta;   // default: full move, no collision
 
+    bool on_positive_1x1_slope = false;
+    bool on_negative_1x1_slope = false;
 
     if (x_dir == 1) {
 
@@ -78,9 +81,22 @@ static float try_move_x (Scene & scene, Vec2 pos, comp::PhysicsBody & body, floa
         int tile_x_min = (int)std::floor(leading_edge           / tile_size);
         int tile_x_max = (int)std::floor((target_edge + 0.001f) / tile_size);
 
+        
+
         for (const TileGrid & layer : scene.tile_layers)
         for (int tx = tile_x_min; tx <= tile_x_max; tx++)
         for (int ty = tile_y_min; ty <= tile_y_max; ty++) {
+
+            if (get_tiletype_slope_dir(layer.get_tile_coll(scene, tx, ty)) != 0) {
+
+                // Going up a slope to the RIGHT, POSITIVE SLOPE
+                if (get_tiletype_slope_dir(layer.get_tile_coll(scene, tx, ty)) > 0) {
+                    on_positive_1x1_slope = true;
+                // Going down a slope to the LEFT, NEGATIVE SLOPE
+                } else {
+                    on_negative_1x1_slope = true;
+                }
+            }
 
             if (!is_tiletype_collision(layer.get_tile_coll(scene, tx, ty), false)) { continue; }
 
@@ -150,6 +166,22 @@ static float try_move_x (Scene & scene, Vec2 pos, comp::PhysicsBody & body, floa
                 body.walljumpWindow = 6;
                 body.againstWall    = true;
             }
+        } else if (on_positive_1x1_slope) {
+
+            if (x_dir > 0) {
+                vel.rotate(45.0f);
+            } else {
+                vel.rotate(-135.0f);
+            }
+            
+        } else if (on_negative_1x1_slope) {
+
+            if (x_dir > 0) {
+                vel.rotate(-45.0f);
+            } else {
+                vel.rotate(135.0f);
+            }
+            
         }
     }
 
@@ -189,11 +221,49 @@ static float try_move_y (Scene & scene, Vec2 pos, comp::PhysicsBody & body, floa
             for (int tx = tile_x_min; tx <= tile_x_max && !grounded; tx++)
             for (int ty = tile_y_min; ty <= tile_y_max && !grounded; ty++) {
 
+                
+                // Check if we are below a slope line I suppose, don't know hwo necessary this is
+                bool inside_slope = false;
+                float tile_top;
+            
+                if (get_tiletype_slope_dir(layer.get_tile_coll(scene, tx, ty)) == 0) {
+                    tile_top = ty * tile_size;
+                    inside_slope = false;
+                } else {
+                    
+                    // Local X and Y positions within the tile
+                    float x_of_tilesize;
+                    float y_of_tilesize;
 
+                    if (get_tiletype_slope_dir(layer.get_tile_coll(scene, tx, ty)) == 1)  {
+                    
+                        // If we are moving in the RIGHT direction, we have to reverse it so that
+                        // the Y if localX==0 is 63, Y if localX == 63 is 0
+                            
+                        // RIGHT EDGE
+                        x_of_tilesize = modulus(pos.x + half_w, tile_size);
+                        y_of_tilesize = x_of_tilesize;
+
+                        // Flip the slope direction
+                        y_of_tilesize = (tile_size) - y_of_tilesize;
+                        
+                    } else {
+
+                        // LEFT EDGE
+                        x_of_tilesize = modulus(pos.x - half_w, tile_size);
+                        y_of_tilesize = x_of_tilesize;
+                    }
+
+                    tile_top = (ty * tile_size) + y_of_tilesize;
+
+                    if ((pos.y + half_h) > tile_top) {
+                        inside_slope = true;
+                    }
+                }
 
 
                 // grund
-                if (!is_tiletype_collision(layer.get_tile_coll(scene, tx, ty), true) ) {
+                if (!is_tiletype_collision(layer.get_tile_coll(scene, tx, ty), true) && (!inside_slope) ) {
                     float tile_top = ty * tile_size;
                     if (tile_top >= bottom - body.skin && tile_top <= probe_edge) {
                         grounded = true;
@@ -222,6 +292,7 @@ static float try_move_y (Scene & scene, Vec2 pos, comp::PhysicsBody & body, floa
 
         return pos.y;
     }
+
 
     // Normal path: player has non-zero vertical velocity this frame
     const float tile_size = (float)gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS;
@@ -257,9 +328,45 @@ static float try_move_y (Scene & scene, Vec2 pos, comp::PhysicsBody & body, floa
             if (layer.get_tile_coll(scene, tx, ty) == CollisionType::COLL_FULL_SEMISOLID && IsKeyDown(KEY_M))       // Primitive skip throuugh
                 continue;
 
-            if (!is_tiletype_collision(layer.get_tile_coll(scene, tx, ty), true)) { continue; }
+            if (!is_tiletype_collision(layer.get_tile_coll(scene, tx, ty), true) && 
+                get_tiletype_slope_dir(layer.get_tile_coll(scene, tx, ty)) == 0) { 
+                continue; 
+            }
 
-            float tile_top = ty * tile_size;
+            
+
+            // make sure slope or whatever tiletop
+            float tile_top;
+            
+            if (get_tiletype_slope_dir(layer.get_tile_coll(scene, tx, ty)) == 0) {
+                tile_top = ty * tile_size;
+            } else {
+                
+                // Local X and Y positions within the tile
+                float x_of_tilesize;
+                float y_of_tilesize;
+
+                if (get_tiletype_slope_dir(layer.get_tile_coll(scene, tx, ty)) == 1)  {
+                
+                    // If we are moving in the RIGHT direction, we have to reverse it so that
+                    // the Y if localX==0 is 63, Y if localX == 63 is 0
+                        
+                    // RIGHT EDGE
+                    x_of_tilesize = modulus(pos.x + half_w, tile_size);
+                    y_of_tilesize = x_of_tilesize;
+
+                    // Flip the slope direction
+                    y_of_tilesize = (tile_size) - y_of_tilesize;
+                    
+                } else {
+
+                    // LEFT EDGE
+                    x_of_tilesize = modulus(pos.x - half_w, tile_size);
+                    y_of_tilesize = x_of_tilesize;
+                }
+
+                tile_top = (ty * tile_size) + y_of_tilesize;
+            }
 
             // Skip - tile top is above our current bottom (already inside or behind)
             if (tile_top < leading_edge - body.skin) { continue; }

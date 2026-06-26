@@ -5202,12 +5202,12 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     // Reset positions on load
                     for (Entity player : registry.view<tag::Player>()) {
                         auto & transform = registry.get_component<comp::Transform>(player);
-                        transform.position = {200.0f, -1080.0f};
+                        transform.position = transform.init_position; // {200.0f, -1080.0f};
                     }
 
                     for (Entity camera : registry.view<comp::Camera>()) {
                         auto & transform = registry.get_component<comp::Transform>(camera);
-                        transform.position = {200.0f, -1080.0f};
+                        transform.position = transform.init_position;
                     }
 
                 }

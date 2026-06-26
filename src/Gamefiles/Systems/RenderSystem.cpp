@@ -332,14 +332,72 @@ void RenderSystem::update (Registry & registry, float deltatime) {
 
                             
                             if (G_DEBUGGER.show == true) {
+
+                                
+
+                                
                                 if (layer.get_tile_coll(scene, world_column, world_row) == CollisionType::COLL_FULL_SOLID) {
+
+                                    // Draw the red rectangle around the solid collisions
                                     Rectangle thisTileDestination = {
                                         screen_x,
                                         screen_y,
                                         (float)gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS * camera_zoom,
                                         (float)gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS * camera_zoom
                                     };
+                                    
                                     DrawRectangleLinesEx(thisTileDestination, 1.0f, RED);
+
+                                } else if (layer.get_tile_coll(scene, world_column, world_row) == CollisionType::COLL_PSLOPE1_SOLID) {
+
+                                    // Draw the green POSITIVE slope
+
+                                    float local_tilesize = (float)gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS * camera_zoom;
+
+                                    Vector2 point_a = {
+                                        screen_x,
+                                        screen_y + local_tilesize
+                                    };
+
+                                    Vector2 point_b = {
+                                        screen_x + local_tilesize,
+                                        screen_y + local_tilesize
+                                    };
+
+                                    Vector2 point_c = {
+                                        screen_x + local_tilesize,
+                                        screen_y
+                                    };
+
+                                    DrawLineEx(point_a, point_b, 2.0f, GREEN);
+                                    DrawLineEx(point_b, point_c, 2.0f, GREEN);
+                                    DrawLineEx(point_c, point_a, 2.0f, GREEN);
+
+                                } else if (layer.get_tile_coll(scene, world_column, world_row) == CollisionType::COLL_NSLOPE1_SOLID) {
+
+                                    // Draw the blue NEGATIVE slope
+
+                                    float local_tilesize = (float)gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS * camera_zoom;
+
+                                    Vector2 point_a = {
+                                        screen_x,
+                                        screen_y + local_tilesize
+                                    };
+
+                                    Vector2 point_b = {
+                                        screen_x,
+                                        screen_y
+                                    };
+
+                                    Vector2 point_c = {
+                                        screen_x + local_tilesize,
+                                        screen_y + local_tilesize
+                                    };
+
+                                    DrawLineEx(point_a, point_b, 2.0f, BLUE);
+                                    DrawLineEx(point_b, point_c, 2.0f, BLUE);
+                                    DrawLineEx(point_c, point_a, 2.0f, BLUE);
+
                                 }
 
                             }

@@ -54,7 +54,7 @@ void GameEngine::Initialize(Renderer & _renderer, InputManager & _input, FrameSt
 
 
     // Entities Initialization
-    Entity player = spawndef::SpawnPlayer(registry, assets);
+    Entity player = spawndef::SpawnPlayer(registry, assets, {-8000.0f, 10837.0f});
     Entity cameraManager = spawndef::SpawnCameraManager(registry);
     Entity camera = spawndef::SpawnCamera(registry, player, 5.0f);
     Entity engine = spawndef::SpawnEngineManager(registry);
