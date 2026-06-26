@@ -19,13 +19,17 @@ struct Vec2 {
         return result;
     }
 
-    Vec2 rotate (float degrees) {
-        const float radians = degrees * M_PI / 180.0f;
-        const double cos_rot = std::cos(radians);
-        const double sin_rot = std::sin(radians);
+    Vec2 rotated (float degrees) const {
+        const float radians = degrees * (float)M_PI / 180.0f;
+        const float cos_rot = std::cos(radians);
+        const float sin_rot = std::sin(radians);
 
-        return {(this->x * cos_rot) - (this->y * sin_rot),
-                (this->x * sin_rot) + (this->y * cos_rot)};
+        return {(x * cos_rot) - (y * sin_rot),
+                (x * sin_rot) + (y * cos_rot)};
+    }
+
+    void rotate (float degrees) {
+        *this = rotated(degrees);
     }
 };
 
