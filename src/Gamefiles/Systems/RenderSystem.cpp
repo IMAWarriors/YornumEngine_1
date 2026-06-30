@@ -331,11 +331,8 @@ void RenderSystem::update (Registry & registry, float deltatime) {
                         
 
                             
-                            if (G_DEBUGGER.show == true) {
+                            if (G_DEBUGGER.showTileOutlines == true) {
 
-                                
-
-                                
                                 if (layer.get_tile_coll(scene, world_column, world_row) == CollisionType::COLL_FULL_SOLID) {
 
                                     // Draw the red rectangle around the solid collisions
@@ -401,20 +398,27 @@ void RenderSystem::update (Registry & registry, float deltatime) {
                                 }
 
                             }
-
-
-
-
                     }
 
 
+                    // This "editor only code" is just for placing down tiles and stuff, shows which tile
+                    // is hovered/selected and such and a basic cursor...
+                    // Readjust THIS if you want to make it so you can still edit tiles when certain things are true...
+
+                    // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
                     //                                 EDITOR ONLY CODE 
                     // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
                     // renderSceneEditorUI check is reduntant, but reminds that this is ediotr only code
                     
                     
-                    if (renderSceneEditorUI && mouseHover && !scene.EDITOR_ONLY_ACTIVE_TAEDITOR && !scene.EDITOR_ONLY_ACTIVE_BACKGROUND_EDITOR && !scene.EDITOR_ONLY_BACKGROUND_TAB_SELECTED && !scene.uiCapturesMouse) {
+                    if (renderSceneEditorUI && 
+                        mouseHover && 
+                        !scene.EDITOR_ONLY_ACTIVE_TAEDITOR && 
+                        !scene.EDITOR_ONLY_ACTIVE_BACKGROUND_EDITOR && 
+                        !scene.EDITOR_ONLY_BACKGROUND_TAB_SELECTED && 
+                        (!scene.uiCapturesMouse || IsKeyDown(KEY_LEFT_SHIFT)) &&
+                        G_DEBUGGER.showTileOutlines == true) {
 
                         bool hoveringTileGrid = false;
 
@@ -443,7 +447,7 @@ void RenderSystem::update (Registry & registry, float deltatime) {
                                     );
                                 }
 
-                                DrawRectangleLinesEx(thisTileDestination, 3.0f, RED);
+                                DrawRectangleLinesEx(thisTileDestination, 3.0f, ORANGE);
                             }
 
 
@@ -485,7 +489,7 @@ void RenderSystem::update (Registry & registry, float deltatime) {
 
 
     
-    if (G_DEBUGGER.show == true) {
+    if (G_DEBUGGER.showCameraClamps == true) {
 
         static int active_corner = -1;      // 0–3 for player zone, 4–7 for clamp zone
         static CameraClamp* active_clamp = nullptr;
@@ -643,61 +647,6 @@ void RenderSystem::update (Registry & registry, float deltatime) {
 
 
 
-    // STEP DRAW LOOP: Draw all PhysicsBody hitboxes
-
-    if (renderSceneEditorUI || debugMode) {
-            
-        for (Entity entity : registry.view<comp::Transform, comp::PhysicsBody>()) {      // For each iteration of Entity
-            comp::Transform & transform     = registry.get_component<comp::Transform>(entity);
-            comp::PhysicsBody & body        = registry.get_component<comp::PhysicsBody>(entity);
-
-            if (body.render_hitbox) {
-
-                Color col_body;
-
-                if (body.inColl) {
-                    col_body = Color({0, 255, 255, 50});
-                } else {
-                    col_body = Color({0, 255, 0, 50});
-                }
-
-                Color col_skin;
-                if (body.innerSkinInColl) {
-                    col_skin = Color({255, 0, 255, 90});
-                } else {
-                    col_skin = Color({255, 0, 0, 90});
-                }
-    
-
-                Vec2 top_left;
-                Vec2 bottom_right;
-                
-                top_left.x = transform.position.x - (body.size.x / 2.0f);
-                top_left.y = transform.position.y - (body.size.y / 2.0f);
-                bottom_right.x = transform.position.x + (body.size.x / 2.0f);
-                bottom_right.y = transform.position.y + (body.size.y / 2.0f);
-
-                renderer.rdraw_rect(
-                    top_left.x + (body.skin), 
-                    top_left.y + (body.skin), 
-                    body.size.x - (body.skin*2.0f), 
-                    body.size.y - (body.skin*2.0f), 
-                    col_skin
-                );
-
-                renderer.rdraw_rect(
-                    top_left.x, 
-                    top_left.y, 
-                    body.size.x, 
-                    body.size.y, 
-                    col_body
-                );
-            }
-        }
-
-    }
-
-
     // AVATAR DRAW LOOP
     for (Entity entity : registry.view<comp::Transform, comp::AvatarRenderer>()) {
 
@@ -762,6 +711,92 @@ void RenderSystem::update (Registry & registry, float deltatime) {
         }
 
     }
+
+    
+    // STEP DRAW LOOP: Draw all PhysicsBody hitboxes
+    // (extra condition for renderSceneEditorUI boolean or Debugmode too... why?)
+    // idk we might need to remove it at some point but for now i think its a fine
+    // extra layer?
+    if ((renderSceneEditorUI || debugMode) && G_DEBUGGER.showPhysicsBodyHitboxes) {
+            
+        for (Entity entity : registry.view<comp::Transform, comp::PhysicsBody>()) {      // For each iteration of Entity
+            comp::Transform & transform     = registry.get_component<comp::Transform>(entity);
+            comp::PhysicsBody & body        = registry.get_component<comp::PhysicsBody>(entity);
+
+            if (body.render_hitbox) {
+
+                Color col_body;
+
+                if (body.inColl) {
+                    col_body = Color({0, 255, 255, 50});
+                } else {
+                    col_body = Color({0, 255, 0, 50});
+                }
+
+                Color col_skin;
+                if (body.innerSkinInColl) {
+                    col_skin = Color({255, 0, 255, 90});
+                } else {
+                    col_skin = Color({255, 0, 0, 90});
+                }
+    
+
+                Vec2 top_left;
+                Vec2 bottom_right;
+                
+                top_left.x = transform.position.x - (body.size.x / 2.0f);
+                top_left.y = transform.position.y - (body.size.y / 2.0f);
+                bottom_right.x = transform.position.x + (body.size.x / 2.0f);
+                bottom_right.y = transform.position.y + (body.size.y / 2.0f);
+
+                renderer.rdraw_rect(
+                    top_left.x + (body.skin), 
+                    top_left.y + (body.skin), 
+                    body.size.x - (body.skin*2.0f), 
+                    body.size.y - (body.skin*2.0f), 
+                    col_skin
+                );
+
+                renderer.rdraw_rect(
+                    top_left.x, 
+                    top_left.y, 
+                    body.size.x, 
+                    body.size.y, 
+                    col_body
+                );
+            }
+        }
+
+    }
+
+
+    // STEP DRAW LOOP: Draw all Hurtboxes, usually attached to entity w/ PhysicsBody and Transform components
+    if ((renderSceneEditorUI || debugMode) && G_DEBUGGER.showHurtboxes) {
+            
+        for (Entity entity : registry.view<comp::Transform, comp::HurtboxHandler>()) {      // For each iteration of Entity
+            comp::Transform & transform     = registry.get_component<comp::Transform>(entity);
+            comp::HurtboxHandler & hurtbox  = registry.get_component<comp::HurtboxHandler>(entity);
+
+            Color col_hb = {255, 20, 255, 200};
+
+
+            Vec2 top_left;
+            top_left.x = transform.position.x - (hurtbox.size.x / 2.0f);
+            top_left.y = transform.position.y - (hurtbox.size.y / 2.0f);
+            
+            renderer.rdraw_wfrect(
+                top_left.x, 
+                top_left.y, 
+                hurtbox.size.x, 
+                hurtbox.size.y, 
+                col_hb,
+                3.0f
+            );
+
+        }
+
+    }
+
 
 
     // ATTACKS

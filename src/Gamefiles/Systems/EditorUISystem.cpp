@@ -11,6 +11,8 @@
 #include "../../Gamefiles/World/Overhead/Gwconst.h"
 #include "../../Gamefiles/Assets/EditorAssets.h"
 
+#include "../../Tooling/Debug/DebugManager.h"
+
 
 // ========================================================================================================
 //            MAIN EDITOR SCRIPT
@@ -5014,7 +5016,13 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
             ImGui::EndMenu();
         }
 
-        
+        if (ImGui::BeginMenu("View")) {
+            ImGui::MenuItem("Show All Debug Vars", nullptr, &G_DEBUGGER.showAllInfo);
+            ImGui::MenuItem("Show Coll Outlines", "Permits Tile Editing", &G_DEBUGGER.showTileOutlines);
+            ImGui::MenuItem("Show Cam Clamps", nullptr, &G_DEBUGGER.showCameraClamps);
+            ImGui::MenuItem("Show PhysBody HBs", nullptr, &G_DEBUGGER.showPhysicsBodyHitboxes);
+            ImGui::EndMenu();
+        }
 
         if (ImGui::BeginMenu("Window")) {
             ImGui::MenuItem("Layer Manager", nullptr, &showLayerManager);

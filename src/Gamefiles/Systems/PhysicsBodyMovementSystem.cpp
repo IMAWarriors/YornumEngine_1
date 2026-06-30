@@ -17,7 +17,7 @@ static int get_tiletype_slope_dir (CollisionType colltype) {
     return 0;
 }
 
-    static bool is_solid_or_slope (CollisionType colltype, bool include_semisol = false) {
+static bool is_solid_or_slope (CollisionType colltype, bool include_semisol = false) {
     return is_tiletype_collision(colltype, include_semisol) || get_tiletype_slope_dir(colltype) != 0;
 }
 
@@ -106,7 +106,7 @@ static void set_grounded (comp::PhysicsBody & body, Vec2 & vel) {
     body.againstWall    = false;
 }
 
-static float try_move_x (Scene & scene, Vec2 pos, comp::PhysicsBody & body, float delta, Vec2 & vel, comp::InputState * input = nullptr) {
+static float try_move_x (Scene & scene, Vec2 pos, comp::PhysicsBody & body, float delta, Vec2 & vel, bool was_grounded, comp::InputState * input = nullptr) {
     if (std::abs(delta) < 0.0001f) return pos.x;
 
     const float tile_size = (float)gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS;
@@ -130,9 +130,17 @@ static float try_move_x (Scene & scene, Vec2 pos, comp::PhysicsBody & body, floa
         for (const TileGrid & layer : scene.tile_layers)
         for (int tx = tile_x_min; tx <= tile_x_max; ++tx)
         for (int ty = tile_y_min; ty <= tile_y_max; ++ty) {
-            if (!is_tiletype_collision(layer.get_tile_coll(scene, tx, ty), false)) continue;
+            CollisionType coll = layer.get_tile_coll(scene, tx, ty);
+            const int slope_dir = get_tiletype_slope_dir(coll);
+            if (!is_tiletype_collision(coll, false) && slope_dir >= 0) continue;
             float tile_left = tx * tile_size;
             if (tile_left < leading_edge - body.skin || tile_left > target_edge) continue;
+            
+            const float bottom = pos.y + half_h;
+            const float tile_top = ty * tile_size;
+            const float step_up = std::max(move + body.skin + 2.0f, 4.0f);
+            if (is_tiletype_collision(coll, false) && was_grounded && tile_top >= bottom - step_up && tile_top <= bottom + body.skin) continue;
+
             float candidate = tile_left - half_w - body.skin;
             if (!found_collision || candidate < best_resolve_x) { best_resolve_x = candidate; found_collision = true; }
         }
@@ -145,9 +153,17 @@ static float try_move_x (Scene & scene, Vec2 pos, comp::PhysicsBody & body, floa
         for (const TileGrid & layer : scene.tile_layers)
         for (int tx = tile_x_min; tx <= tile_x_max; ++tx)
         for (int ty = tile_y_min; ty <= tile_y_max; ++ty) {
-            if (!is_tiletype_collision(layer.get_tile_coll(scene, tx, ty), false)) continue;
+            CollisionType coll = layer.get_tile_coll(scene, tx, ty);
+            const int slope_dir = get_tiletype_slope_dir(coll);
+            if (!is_tiletype_collision(coll, false) && slope_dir <= 0) continue;
             float tile_right = (tx + 1) * tile_size;
             if (tile_right > leading_edge + body.skin || tile_right < target_edge) continue;
+            
+            const float bottom = pos.y + half_h;
+            const float tile_top = ty * tile_size;
+            const float step_up = std::max(move + body.skin + 2.0f, 4.0f);
+            if (is_tiletype_collision(coll, false) && was_grounded && tile_top >= bottom - step_up && tile_top <= bottom + body.skin) continue;
+
             float candidate = tile_right + half_w + body.skin;
             if (!found_collision || candidate > best_resolve_x) { best_resolve_x = candidate; found_collision = true; }
         }
@@ -261,7 +277,7 @@ void PhysicsBodyMovementSystem::update (Registry & registry, float deltatime) {
 
         Vec2 temp_pos = position;
         const float dx = velocity.x * deltatime;
-        temp_pos.x = try_move_x(scene, temp_pos, body, dx, velocity, inputPtr);
+        temp_pos.x = try_move_x(scene, temp_pos, body, dx, velocity, was_grounded, inputPtr);
 
         if (was_grounded && velocity.y >= 0.0f) {
             const float half_h = body.size.y * 0.5f;

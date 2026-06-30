@@ -43,6 +43,9 @@ namespace spawndef {
             1                   //
         });
 
+        // Hurtbox Setup
+        registry.apply_component<comp::HurtboxHandler> (entity, comp::HurtboxHandler());
+
         // Attack State
         registry.apply_component<comp::BodyAttackState>     (entity, comp::BodyAttackState());
 

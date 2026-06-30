@@ -23,6 +23,9 @@ void DebugOverlaySystem::update (Registry & registry, float deltatime)  {
     }
     */
 
+    if (!G_DEBUGGER.showAllInfo) {
+        return;
+    }
     
     auto to_string_dp = [&](float value, int dp) {
         std::ostringstream out;
