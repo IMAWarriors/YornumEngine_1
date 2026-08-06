@@ -2,6 +2,7 @@
 
 #include "GameEngine.h"
 
+// Singular global DebugManager instance
 DebugManager G_DEBUGGER;
 
 // Get Spawndefs

@@ -51,6 +51,7 @@ void DebugOverlaySystem::update (Registry & registry, float deltatime)  {
 
 
 
+
         if (G_DEBUGGER.MODE_ONEFRAME == true) {
 
             G_DEBUGGER.push({"ONE FRAME | " + std::to_string((int)frame.frames_per_second) + " FPS", {15,15}, 18, WHITE});
