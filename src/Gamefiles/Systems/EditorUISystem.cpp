@@ -6156,6 +6156,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                     CollisionType coll = scene.loaded_atlases[selectedIndex].tile_data[row * total_cols + col].collision_data;
                                     Rectangle ico_slice = {-9999,0,0,0};
 
+                                    // For future reference, this is where we draw the specific
+                                    // icon slices for the specific collision types
+
                                     if (coll == CollisionType::COLL_EMPTY) {
                                         ico_slice = editorAssets.util_tileset_geticon(CollisionIcons::UTIL_EMPTY_COL_ICO );
                                     } else if (coll == CollisionType::COLL_FULL_SOLID) {
@@ -6166,6 +6169,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                         ico_slice = editorAssets.util_tileset_geticon(CollisionIcons::UTIL_NSLOPE1_COL_ICO );
                                     } else if (coll == CollisionType::COLL_FULL_SEMISOLID) {
                                         ico_slice = editorAssets.util_tileset_geticon(CollisionIcons::UTIL_FULL_SEMISOL_COL_ICO );
+                                    } else if (coll == CollisionType::COLL_GROUND_HAZARD) {
+                                        ico_slice = editorAssets.util_tileset_geticon(CollisionIcons::UTIL_GROUND_HAZARD_COL_ICO );
                                     }
 
                                     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0,0,0,0));
@@ -6396,6 +6401,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                 currentIcon = editorAssets.util_tileset_geticon(CollisionIcons::UTIL_NSLOPE1_COL_ICO);
                             else if (currentCollision && (*currentCollision == CollisionType::COLL_FULL_SEMISOLID))
                                 currentIcon = editorAssets.util_tileset_geticon(CollisionIcons::UTIL_FULL_SEMISOL_COL_ICO );
+                            else if (currentCollision && (*currentCollision == CollisionType::COLL_GROUND_HAZARD))
+                                currentIcon = editorAssets.util_tileset_geticon(CollisionIcons::UTIL_GROUND_HAZARD_COL_ICO);
                         }
 
                         if (currentIcon.x != -9999) {
@@ -6433,17 +6440,18 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             const char* label;
                         };
 
-                        CollisionOption options[5] = {
+                        CollisionOption options[6] = {
                             {CollisionType::COLL_EMPTY,        CollisionIcons::UTIL_EMPTY_COL_ICO,   "Empty Collision"},
                             {CollisionType::COLL_FULL_SOLID,   CollisionIcons::UTIL_FULL_COL_ICO,    "Full Solid"},
                             {CollisionType::COLL_PSLOPE1_SOLID,CollisionIcons::UTIL_PSLOPE1_COL_ICO, "Positive Slope"},
                             {CollisionType::COLL_NSLOPE1_SOLID,CollisionIcons::UTIL_NSLOPE1_COL_ICO, "Negative Slope"},
-                            {CollisionType::COLL_FULL_SEMISOLID ,CollisionIcons::UTIL_FULL_SEMISOL_COL_ICO, "Semi-Solid Collision"}
+                            {CollisionType::COLL_FULL_SEMISOLID ,CollisionIcons::UTIL_FULL_SEMISOL_COL_ICO, "Semi-Solid Collision"},
+                            {CollisionType::COLL_GROUND_HAZARD ,CollisionIcons::UTIL_GROUND_HAZARD_COL_ICO, "Ground Hazard"}
                         };
 
                         ImVec2 buttonSize = ImVec2(28 * fullscreenScale.x, 28 * fullscreenScale.y);
 
-                        for (int i = 0; i < 5; i++) {
+                        for (int i = 0; i < 6; i++) {
 
 
                             ImGui::PushID(i);

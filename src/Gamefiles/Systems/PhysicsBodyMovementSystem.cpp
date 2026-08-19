@@ -33,8 +33,15 @@ static float slope_surface_y (int tx, int ty, float sample_x, int slope_dir) {
     // Negative slope descends to the right: top-left -> bottom-right.
     return (ty * tile_size) + local_x;
 }
-
-static bool find_floor_at_x (Scene & scene, float sample_x, float bottom, float probe_down, float probe_up, float & out_floor_y) {
+static bool find_floor_at_x (
+    Scene & scene,
+    float sample_x,
+    float bottom,
+    float probe_down,
+    float probe_up,
+    float skin,
+    float & out_floor_y
+) {
     const float tile_size = (float)gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS;
     const int tx = (int)std::floor(sample_x / tile_size);
     const int tile_y_min = (int)std::floor((bottom - probe_up) / tile_size) - 1;
@@ -50,12 +57,28 @@ static bool find_floor_at_x (Scene & scene, float sample_x, float bottom, float 
             if (coll == CollisionType::COLL_FULL_SEMISOLID && IsKeyDown(KEY_M)) continue;
 
             float surface_y = ty * tile_size;
+
             const int slope_dir = get_tiletype_slope_dir(coll);
+
             if (slope_dir != 0) {
                 surface_y = slope_surface_y(tx, ty, sample_x, slope_dir);
-            }
 
-    if (surface_y < bottom - probe_up || surface_y > bottom + probe_down) continue;
+                // Slopes are allowed to catch the player slightly above
+                // their current bottom because horizontal movement can
+                // move the slope surface upward between frames.
+                if (surface_y < bottom - probe_up ||
+                    surface_y > bottom + probe_down) {
+                    continue;
+                }
+
+            } else {
+
+                // Full solid tiles still require normal vertical contact.
+                if (surface_y < bottom - skin ||
+                    surface_y > bottom + probe_down) {
+                    continue;
+                }
+            }
 
             if (!found || surface_y < best_y) {
                 best_y = surface_y;
@@ -84,7 +107,7 @@ static bool find_body_floor (Scene & scene, Vec2 pos, comp::PhysicsBody & body, 
 
     for (float sample_x : samples) {
         float floor_y = 0.0f;
-        if (find_floor_at_x(scene, sample_x, bottom, probe_down, probe_up, floor_y)) {
+        if (find_floor_at_x(scene, sample_x, bottom, probe_down, probe_up, body.skin, floor_y)) {
             if (!found || floor_y < best_y) {
                 best_y = floor_y;
                 found = true;
@@ -139,10 +162,20 @@ static float try_move_x (Scene & scene, Vec2 pos, comp::PhysicsBody & body, floa
             const float bottom = pos.y + half_h;
             const float tile_top = ty * tile_size;
             const float step_up = std::max(move + body.skin + 2.0f, 4.0f);
-            if (is_tiletype_collision(coll, false) && was_grounded && tile_top >= bottom - step_up && tile_top <= bottom + body.skin) continue;
+            
+            if (is_tiletype_collision(coll, false) && 
+                was_grounded && 
+                tile_top >= bottom - step_up && 
+                tile_top <= bottom + body.skin) {
+                    continue;
+            }
 
             float candidate = tile_left - half_w - body.skin;
-            if (!found_collision || candidate < best_resolve_x) { best_resolve_x = candidate; found_collision = true; }
+
+            if (!found_collision || candidate < best_resolve_x) { 
+                best_resolve_x = candidate; 
+                found_collision = true; 
+            }
         }
     } else {
         const float leading_edge = pos.x - half_w;
@@ -165,9 +198,15 @@ static float try_move_x (Scene & scene, Vec2 pos, comp::PhysicsBody & body, floa
             if (is_tiletype_collision(coll, false) && was_grounded && tile_top >= bottom - step_up && tile_top <= bottom + body.skin) continue;
 
             float candidate = tile_right + half_w + body.skin;
-            if (!found_collision || candidate > best_resolve_x) { best_resolve_x = candidate; found_collision = true; }
+
+            if (!found_collision || candidate > best_resolve_x) { 
+                best_resolve_x = candidate; 
+                found_collision = true; 
+            }
+
         }
     }
+
     if (found_collision) {
         vel.x = 0.0f;
         if (input != nullptr && input->horz_axis == x_dir) {
@@ -182,7 +221,14 @@ static float try_move_x (Scene & scene, Vec2 pos, comp::PhysicsBody & body, floa
 }
 
 
-static float try_move_y (Scene & scene, Vec2 pos, comp::PhysicsBody & body, float delta, Vec2 & vel) {
+static float try_move_y (
+    Scene & scene,
+    Vec2 pos,
+    comp::PhysicsBody & body,
+    float delta,
+    float horizontal_delta,
+    Vec2 & vel
+) {
     const float tile_size = (float)gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS;
     const float half_h = body.size.y * 0.5f;
     
@@ -200,7 +246,16 @@ static float try_move_y (Scene & scene, Vec2 pos, comp::PhysicsBody & body, floa
     
         if (delta > 0.0f) {
         float floor_y = 0.0f;
-        if (find_body_floor(scene, pos, body, delta + body.skin, body.skin, floor_y)) {
+        const float slope_probe_up = std::max(std::abs(horizontal_delta) + body.skin + 2.0f, 4.0f);
+
+        if (find_body_floor(
+                scene,
+                pos,
+                body,
+                delta + body.skin,
+                slope_probe_up,
+                floor_y
+            )) {
             target_y = floor_y - half_h - body.skin;
             set_grounded(body, vel);
         } else {
@@ -255,9 +310,12 @@ void PhysicsBodyMovementSystem::update (Registry & registry, float deltatime) {
         if (body.walljumpWindow > 0 && body.wallPush == 0 && body.falling > 3) body.walljumpWindow--;
         if (body.walljumpWindow <= 0) { body.walljumpWindow = 0; body.againstWall = false; }
 
+        // If you were not in the air and you have gravity
         if (!was_grounded && body.gravitous) {
+            // if there is no wallpushing and you are falling down and you have been falling for more than 5 frames,
             if (body.wallPush != 0 && velocity.y > 0.0f && body.falling > 5) {
                 if (velocity.y > 250.0f) velocity.y = 250.0f;
+                // go down a little
                 velocity.y += ((150.0f - velocity.y) * 0.5f) * deltatime;
             } else if (velocity.y < 0.0f) {
                 velocity.y += body.gravity * deltatime;
@@ -288,10 +346,24 @@ void PhysicsBodyMovementSystem::update (Registry & registry, float deltatime) {
                 temp_pos.y = floor_y - half_h - body.skin;
                 set_grounded(body, velocity);
             } else {
-                temp_pos.y = try_move_y(scene, temp_pos, body, velocity.y * deltatime, velocity);
+                temp_pos.y = try_move_y(
+                    scene,
+                    temp_pos,
+                    body,
+                    velocity.y * deltatime,
+                    dx,
+                    velocity
+                );
             }
         } else {
-            temp_pos.y = try_move_y(scene, temp_pos, body, velocity.y * deltatime, velocity);
+            temp_pos.y = try_move_y(
+                    scene,
+                    temp_pos,
+                    body,
+                    velocity.y * deltatime,
+                    dx,
+                    velocity
+                );
         }
 
         position = temp_pos;

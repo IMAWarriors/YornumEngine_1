@@ -19,7 +19,8 @@ enum class CollisionType : uint8_t {
     COLL_FULL_SOLID,
     COLL_PSLOPE1_SOLID,
     COLL_NSLOPE1_SOLID,
-    COLL_FULL_SEMISOLID
+    COLL_FULL_SEMISOLID,
+    COLL_GROUND_HAZARD
 };
 
 

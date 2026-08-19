@@ -10,7 +10,8 @@ enum class CollisionIcons {
     UTIL_FULL_COL_ICO,
     UTIL_PSLOPE1_COL_ICO,
     UTIL_NSLOPE1_COL_ICO,
-    UTIL_FULL_SEMISOL_COL_ICO
+    UTIL_FULL_SEMISOL_COL_ICO,
+    UTIL_GROUND_HAZARD_COL_ICO
 };
 
 struct EditorAssets {
@@ -40,6 +41,10 @@ struct EditorAssets {
 
         if (ico == CollisionIcons::UTIL_FULL_SEMISOL_COL_ICO) {
             return {64,0,32,32};
+        }
+
+        if (ico == CollisionIcons::UTIL_GROUND_HAZARD_COL_ICO) {
+            return {64,32,32,32};
         }
 
         return {0,0,0,0};
