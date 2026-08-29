@@ -71,8 +71,7 @@ namespace spawndef {
         animationHandler.ImportAnimationAsset("Walk", assets.LoadAnimationAsset("assets/animations/24JSS_WalkCalm.anim"));
         animationHandler.ImportAnimationAsset("Jump", assets.LoadAnimationAsset("assets/animations/24JSS_JumpNormal.anim"));
         animationHandler.ImportAnimationAsset("Fall", assets.LoadAnimationAsset("assets/animations/24JSS_FallNormal.anim"));
-        animationHandler.ImportAnimationAsset("Wallslide", assets.LoadAnimationAsset("assets/animations/24JSS_StrokinHisShit.anim"));
-        // animationHandler.ImportAnimationAsset("Strokingit", assets.LoadAnimationAsset("assets/animations/24JSS_StrokinHisShit.anim"));
+        animationHandler.ImportAnimationAsset("Wallslide", assets.LoadAnimationAsset("assets/animations/24JSS_WallslideNormal.anim"));
 
         // Set up the Avatar Renderer
         avatarRenderer.ConnectTransform(&registry.get_component<comp::Transform>(entity));

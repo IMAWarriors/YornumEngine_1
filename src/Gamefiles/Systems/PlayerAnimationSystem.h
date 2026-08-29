@@ -48,7 +48,7 @@ class PlayerAnimationSystem : public System {
                 // you are into the transition or if you havent even started yet and till handle the animation
                 // state of the avatar so youre chilling! :)
 
-                auto SetBaseAnimationState = [&](const std::string& new_state, int trans_frames, bool reverse_mirror = false) {
+                auto SetBaseAnimationState = [&](const std::string& new_state, int trans_frames, int ms_per_trfr = 18, bool reverse_mirror = false) {
 
                     if (reverse_mirror)
                         animation_handler.mirror = !animation_handler.mirror;
@@ -82,17 +82,17 @@ class PlayerAnimationSystem : public System {
                         animation_handler.animation_speed = 0.4f + speed_factor;
 
                         // Set Walk Animation
-                        SetBaseAnimationState("Walk", 6);
+                        SetBaseAnimationState("Walk", 6, 22);
 
                     } else {
                         // If Player Velocity is around 0, 
                         // Set Idle Animation
 
                             if (animation_handler.animation_state != "Wallslide") {
-                                SetBaseAnimationState("Idle", 4);
+                                SetBaseAnimationState("Idle", 4, 30);
                             } else {
                                 // Clean up choppy transition from wallsliding --> idle
-                                SetBaseAnimationState("Idle", 8);
+                                SetBaseAnimationState("Idle", 8, 18);
                             }
 
 
@@ -104,14 +104,14 @@ class PlayerAnimationSystem : public System {
                     if (player_velocity.magnitude.y < 0.0f) {
 
                         // Set Jump Animation
-                        SetBaseAnimationState("Jump", 6);
+                        SetBaseAnimationState("Jump", 6, 18);
                         
                     } else {
 
                         if (body.againstWall)
-                            SetBaseAnimationState("Wallslide", 5, true);     // Set Wallslide Animation
+                            SetBaseAnimationState("Wallslide", 5, 24, true);     // Set Wallslide Animation
                         else 
-                            SetBaseAnimationState("Fall", 8);                // Set Falling Animation
+                            SetBaseAnimationState("Fall", 8, 24);                // Set Falling Animation
                            
                     }
                 }

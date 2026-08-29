@@ -73,6 +73,7 @@ struct AvatarRenderer {
     int blend_out_time_total = 0;
     int tick_frame_of_animation = 0;
     bool blend_mode = false;
+    int ms_per_blend_frame = 18;
 
 
     // Animation that is played by default if nothing is queued
@@ -183,6 +184,7 @@ struct AvatarRenderer {
         float pose_t = (float)(wrapped_tick - current_frame_start_tick) / ((float)current_frame.time_to_next + 1.0f);
         pose_t = std::clamp(pose_t, 0.0f, 1.0f);
 
+        // Transition mode handling
         if (current_frame.transition_mode == KeyAnimFrame::TransitionMode::Instant) {
             pose_t = 0.0f;
         } else if (current_frame.transition_mode == KeyAnimFrame::TransitionMode::EaseInOut) {
@@ -252,7 +254,7 @@ struct AvatarRenderer {
         blend_start_pose.clear();
     }
 
-    void StartBlendToAnimation (Animation* target_anim, int blend_frames) {
+    void StartBlendToAnimation (Animation* target_anim, int blend_frames, int ms_per_blend_fr = 18) {
         blend_start_pose = GetCurrentBlendPose();
         if (blend_start_pose.empty() && animation_to_play != nullptr) {
             blend_start_pose = SampleAnimationPose(*animation_to_play, tick_frame_of_animation);
@@ -261,6 +263,7 @@ struct AvatarRenderer {
         blend_mode = true;
         blend_out_time_left = blend_frames;
         blend_out_time_total = blend_frames;
+        ms_per_blend_frame = ms_per_blend_fr;
         prev_animation_to_blend = animation_to_play;
         prev_animation_blend_frame = tick_frame_of_animation;
 
@@ -270,13 +273,13 @@ struct AvatarRenderer {
 
 
     // Set the base animation without switching
-    void SetBaseAnimation (Animation* animation, int blend_frames = 0) {
+    void SetBaseAnimation (Animation* animation, int blend_frames = 0, int ms_per_blend_fr = 18) {
 
         base_animation = animation;
 
         // If we are interpolating between animations
         if (interpolate_btwn && blend_frames > 0 && animation_to_play != nullptr && animation_to_play != animation && animation != nullptr) {
-            StartBlendToAnimation(animation, blend_frames);
+            StartBlendToAnimation(animation, blend_frames, ms_per_blend_fr);
             return;
         } 
 
@@ -289,7 +292,7 @@ struct AvatarRenderer {
 
     // Clear all other animations and play the base animation, setting it a 
     // custom animation is desired
-    void PlayBaseAnimation (Animation* base_anim = nullptr, int blend_frames = 0) {
+    void PlayBaseAnimation (Animation* base_anim = nullptr, int blend_frames = 0, int ms_per_blend_fr = 18) {
 
         // Play
         Animation* target_anim = (base_anim != nullptr) ? base_anim : base_animation;
@@ -300,7 +303,7 @@ struct AvatarRenderer {
 
         // If we are interpolating between animations
         if (interpolate_btwn && blend_frames > 0 && animation_to_play != nullptr && animation_to_play != target_anim && target_anim != nullptr) {
-            StartBlendToAnimation(target_anim, blend_frames);
+            StartBlendToAnimation(target_anim, blend_frames, ms_per_blend_fr);
             PlayAnimation();
             return;
             //--------------
@@ -356,44 +359,65 @@ struct AvatarRenderer {
             accumulated_ms += (deltatime * 1000.0f * animation_speed);
         }
 
-        while (accumulated_ms >= animation_to_play->ms_per_tick_frame) {
 
-            // Get rid of overflow and progress
-            accumulated_ms -= animation_to_play->ms_per_tick_frame;
 
-            if (blend_mode) {
+        if (blend_mode) {
+
+            while (accumulated_ms >= ms_per_blend_frame) {
+
+                // Get rid of overflow and progress (but for blend state... basically calculate how many blend acculations = how many frames to change)
+                accumulated_ms -= ms_per_blend_frame;
+                
                 blend_out_time_left--;
+
                 if (blend_out_time_left <= 0) {
                     ClearBlendState();
                     tick_frame_of_animation = 0;
                 }
-                continue;
+
             }
 
-            tick_frame_of_animation += 1;
-
-            const int totalTicks = animation_to_play->total_tick_frame_count();
+        } else {
             
+            // Normal animation tick mode
 
-            if (tick_frame_of_animation >= totalTicks) {
+            while (accumulated_ms >= animation_to_play->ms_per_tick_frame) {
 
-                // If we are currently animating the base animation
-                if (animation_to_play == base_animation) {
+                // Get rid of overflow and progress
+                accumulated_ms -= animation_to_play->ms_per_tick_frame;
+            
+                tick_frame_of_animation += 1;
+                const int totalTicks = animation_to_play->total_tick_frame_count();
+                
+                if (tick_frame_of_animation >= totalTicks) {
 
-                    if (loop_base_animation) {
-                        // Loop base animation
-                        ResetCurrentAnimation();
-                        break;
-                    } /*else {
-                        // Set tick frame to 0 and stop animation
-                        tick_frame_of_animation = 0;
-                        accumulated_ms = 0.0f;
-                        PauseAnimation();
-                    }*/
+                    // If we are currently animating the base animation
+                    if (animation_to_play == base_animation) {
+
+                        if (loop_base_animation) {
+                            // Loop base animation
+                            ResetCurrentAnimation();
+                            break;
+                        } /*else {
+                            // Set tick frame to 0 and stop animation
+                            tick_frame_of_animation = 0;
+                            accumulated_ms = 0.0f;
+                            PauseAnimation();
+                        }*/
+                    }
+
                 }
 
             }
+
+
+
+
         }
+
+
+
+
     }
 
     // Attach avatar to the renderer
