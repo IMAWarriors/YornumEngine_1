@@ -25,6 +25,21 @@ struct DebugManager {
     bool showCameraClamps = false;
     bool showPhysicsBodyHitboxes = false;
     bool showHurtboxes = false;
+
+
+    bool playerOverridesEnabled = true;
+    bool playerGodmode = false;
+    bool playerAvatarVisible = false;
+    bool playerInvincible = false;
+    bool playerUnexpirable = false;
+    bool playerInfiniteAura = false;
+    bool playerCanFly = false;
+
+    /*ImGui::MenuItem("Avatar Visible", nullptr, & );
+            ImGui::MenuItem("Invincible", nullptr, & );
+            ImGui::MenuItem("Unexpirable", nullptr, & );
+            ImGui::MenuItem("Infinite Aura", nullptr, & );
+            ImGui::MenuItem("Can Fly", nullptr, & );*/
     
     int offset_x = 0;
     int offset_y = 0;

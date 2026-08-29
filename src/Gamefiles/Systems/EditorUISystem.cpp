@@ -5042,6 +5042,15 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
             ImGui::EndMenu();
         }
 
+        if (ImGui::BeginMenu("Player")) {
+            ImGui::MenuItem("Avatar Visible", nullptr, &G_DEBUGGER.playerAvatarVisible);
+            ImGui::MenuItem("Invincible", nullptr, &G_DEBUGGER.playerInvincible);
+            ImGui::MenuItem("Unexpirable", nullptr, &G_DEBUGGER.playerUnexpirable);
+            ImGui::MenuItem("Infinite Aura", nullptr, &G_DEBUGGER.playerInfiniteAura);
+            ImGui::MenuItem("Can Fly", nullptr, &G_DEBUGGER.playerCanFly);
+            ImGui::EndMenu();
+        }
+
         
 
 

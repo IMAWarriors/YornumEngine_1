@@ -41,15 +41,30 @@ class PlayerAnimationSystem : public System {
                 comp::AnimationRepertoire & animation_repertoire = registry.get_component<comp::AnimationRepertoire>(entity);
 
                 // Helper function to set animation state
-                auto SetBaseAnimationState = [&](const std::string& new_state, int trans_frames, bool reverse_mirror = false){
+                // --------------------------------------------------------------------------
+                // Really fun function because it handles state for you
+                // so in otherwords you can call the same function as many times as you want in the same loop
+                // with like transition frames param set to 8, it will automatically calculate how deep
+                // you are into the transition or if you havent even started yet and till handle the animation
+                // state of the avatar so youre chilling! :)
+
+                auto SetBaseAnimationState = [&](const std::string& new_state, int trans_frames, bool reverse_mirror = false) {
+
                     if (reverse_mirror)
                         animation_handler.mirror = !animation_handler.mirror;
+
                     const std::string set_state = new_state;
+
                     if (animation_handler.animation_state != set_state) {
                         animation_handler.PlayBaseAnimation(animation_repertoire.repertoire[set_state], trans_frames);
                         animation_handler.animation_state = set_state;
                     }   
+
                 };
+
+
+                
+
                 
                 // Reset base animation settings for display
                 animation_handler.animation_speed = 1.0f;
@@ -72,8 +87,16 @@ class PlayerAnimationSystem : public System {
                     } else {
                         // If Player Velocity is around 0, 
                         // Set Idle Animation
-                        SetBaseAnimationState("Idle", 4);
-                    }
+
+                            if (animation_handler.animation_state != "Wallslide") {
+                                SetBaseAnimationState("Idle", 4);
+                            } else {
+                                // Clean up choppy transition from wallsliding --> idle
+                                SetBaseAnimationState("Idle", 8);
+                            }
+
+
+                        }
 
                 } else {
 
