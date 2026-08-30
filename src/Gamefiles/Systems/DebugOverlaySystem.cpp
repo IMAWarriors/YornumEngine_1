@@ -11,7 +11,12 @@
 
 void DebugOverlaySystem::update (Registry & registry, float deltatime)  {
 
-    
+
+    // Listen for ONEFRAME as long as the DebugOverlaySystem is running basically
+    if (IsKeyPressed(KEY_RIGHT_SHIFT)) {
+        // Right Shift pressed
+        G_DEBUGGER.MODE_ONEFRAME = !G_DEBUGGER.MODE_ONEFRAME;
+    }
 
     /*DEPRICATED
     for (auto port : debug_info.float_ports) {
@@ -22,6 +27,9 @@ void DebugOverlaySystem::update (Registry & registry, float deltatime)  {
         } 
     }
     */
+
+
+
 
     if (!G_DEBUGGER.showAllInfo) {
         return;
@@ -43,13 +51,6 @@ void DebugOverlaySystem::update (Registry & registry, float deltatime)  {
 
         const auto & frame = registry.get_component<comp::FramerateTracker>(entity);
         const auto & mouse = registry.get_component<comp::MouseTracker>(entity);
-
-        if (IsKeyPressed(KEY_RIGHT_SHIFT)) {
-            // Right Shift pressed
-            G_DEBUGGER.MODE_ONEFRAME = !G_DEBUGGER.MODE_ONEFRAME;
-        }
-
-
 
 
         if (G_DEBUGGER.MODE_ONEFRAME == true) {

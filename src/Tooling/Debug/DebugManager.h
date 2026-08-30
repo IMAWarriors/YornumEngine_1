@@ -58,6 +58,17 @@ struct DebugManager {
     void draw();
     void moveoffset (int x, int y);
 
+
+    DebugManager () {
+
+        showAllInfo = true;
+        showTileOutlines = true;
+        showCameraClamps = true;
+        showPhysicsBodyHitboxes = true;
+        showHurtboxes = true;
+
+    }
+
         
 
 };

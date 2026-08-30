@@ -4701,9 +4701,10 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
 
                 // Add Layer
+                // Has problem...
                 if (ImGui::Button(" + ", ImVec2(buttonWidth, 0))) {
                     scene.tiles_push_new_layer();
-                    selectedLayer = (int)scene.tile_layers.size() - 1;
+                    selectedLayer = (int)(scene.tile_layers.size()) - 1;
                     scene.EDITOR_ONLY_SELECTED_LAYER = selectedLayer;
                 }
 
@@ -5039,6 +5040,12 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
         if (ImGui::BeginMenu("Shaders")) {
             ImGui::MenuItem("Enable Shader (Standard Build)", nullptr, &window.painter_enabled_game);
             ImGui::MenuItem("Enable Shader (Editor Viewport)", nullptr, &window.painter_enabled_editor);
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Input")) {
+            ImGui::MenuItem("One Frame", nullptr, &G_DEBUGGER.MODE_ONEFRAME);
+            ImGui::MenuItem("Bindings Menu...", nullptr);
             ImGui::EndMenu();
         }
 
