@@ -18,12 +18,20 @@ class TileGrid {
 
     private:
 
-        Tile tilegrid[gwconst::WORLD_TILEGRID_WIDTH][gwconst::WORLD_TILEGRID_HEIGHT];
-
+        // Tile layers are large (over 230,000 tiles).  Keeping their storage on
+        // the heap makes moving a layer cheap and prevents vector growth from
+        // copying multi-megabyte grids or placing one on the stack.
+        std::vector<Tile> tilegrid;
 
     public:
 
         TileGrid ();
+
+        // Move Only
+        TileGrid(const TileGrid&) = delete;
+        TileGrid& operator=(const TileGrid&) = delete;
+        TileGrid(TileGrid&&) noexcept = default;
+        TileGrid& operator=(TileGrid&&) noexcept = default;
 
         Tile & get_tile (int col, int row); // general mutator
 

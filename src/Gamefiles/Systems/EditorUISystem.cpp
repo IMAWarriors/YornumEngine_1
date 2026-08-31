@@ -4701,9 +4701,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
 
                 // Add Layer
-                // Has problem...
+                
                 if (ImGui::Button(" + ", ImVec2(buttonWidth, 0))) {
-                    scene.tiles_push_new_layer();
+                    scene.tiles_add_layer();
                     selectedLayer = (int)(scene.tile_layers.size()) - 1;
                     scene.EDITOR_ONLY_SELECTED_LAYER = selectedLayer;
                 }
@@ -4713,7 +4713,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                 // Delete Layer
                 if (ImGui::Button(" - ", ImVec2(buttonWidth, 0))) {
                     if (!scene.tile_layers.empty() && selectedLayer >= 0 && selectedLayer < (int)scene.tile_layers.size()) {
-                        scene.tile_layers.erase(scene.tile_layers.begin() + selectedLayer);
+                        scene.tiles_remove_layer((size_t)selectedLayer);
 
                         if (selectedLayer >= (int)scene.tile_layers.size()) {
                             selectedLayer = (int)scene.tile_layers.size() - 1;
@@ -4727,11 +4727,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                     if (!scene.tile_layers.empty() && selectedLayer > 0 && selectedLayer < (int)scene.tile_layers.size()) {
 
-                        // Swap up
-                        TileGrid temp = scene.tile_layers[selectedLayer];
-                        scene.tile_layers[selectedLayer] = scene.tile_layers[selectedLayer - 1];
-                        scene.tile_layers[selectedLayer - 1] = temp;
-
+                        scene.tiles_move_layer((size_t)selectedLayer, (size_t)(selectedLayer - 1));
+                        --selectedLayer;
                     }
 
                 }
@@ -4743,9 +4740,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     if (!scene.tile_layers.empty() && selectedLayer >= 0 && selectedLayer < (int)scene.tile_layers.size() - 1) {
 
                         // Swap down
-                        TileGrid temp = scene.tile_layers[selectedLayer];
-                        scene.tile_layers[selectedLayer] = scene.tile_layers[selectedLayer + 1];
-                        scene.tile_layers[selectedLayer + 1] = temp;
+                        scene.tiles_move_layer((size_t)selectedLayer, (size_t)(selectedLayer + 1));
+                        ++selectedLayer;
 
                     }
                     
@@ -5212,8 +5208,6 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     scene.EDITOR_ONLY_SELECTED_ATLAS = -1;
                     scene.EDITOR_ONLY_SELECTED_PALLET_TILE = -1;
                     scene.EDITOR_ONLY_SELECTED_LAYER = selectedLayer;
-
-                    selectedLayer = 0;
 
                     selectedTileIndex = -1;
 

@@ -318,7 +318,7 @@ bool serial::LoadSceneFromFile(Scene & scene, AssetManager & assets, const std::
 
     for (int l = 0; l < layer_count; l++) {
 
-        scene.tile_layers.push_back(TileGrid());
+        scene.tile_layers.emplace_back();
         TileGrid & layer = scene.tile_layers.back();
 
         int count;

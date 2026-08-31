@@ -25,6 +25,7 @@
 #include <sstream>   // string streams (parsing)
 
 #include <memory>
+#include <utility>
 
 class Scene;
 
@@ -196,12 +197,28 @@ class Scene {
         }
 
 
-        void tiles_push_new_layer () {
+        void tiles_add_layer () {
 
-            tile_layers.push_back(TileGrid());
-            // For now just garbage data them when loading too
+            tile_layers.emplace_back();
 
-            tiles_load_emptydata(tile_layers.size()-1);
+        }
+
+        bool tiles_remove_layer(size_t layer) {
+            if (layer >= tile_layers.size()) {
+                return false;
+            }
+
+            tile_layers.erase(tile_layers.begin() + layer);
+            return true;
+        }
+
+        bool tiles_move_layer(size_t from_layer, size_t to_layer) {
+            if (from_layer >= tile_layers.size() || to_layer >= tile_layers.size()) {
+                return false;
+            }
+
+            std::swap(tile_layers[from_layer], tile_layers[to_layer]);
+            return true;
 
         }
 
