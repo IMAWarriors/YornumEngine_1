@@ -30,6 +30,7 @@ src\Gamefiles\Systems\CameraClampManagerSystem.cpp ^
 src\Gamefiles\Systems\AttackManagerSystem.cpp ^
 src\Gamefiles\Systems\EngineManagerSystem.cpp ^
 src\Gamefiles\Systems\PhysicsBodyMovementSystem.cpp ^
+src\Gamefiles\Systems\HurtboxHandlerSystem.cpp ^
 src\Gamefiles\World\SceneSerialization.cpp ^
 src\Gamefiles\World\TileGrid.cpp ^
 src\Gamefiles\World\Background.cpp ^
