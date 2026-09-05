@@ -223,9 +223,9 @@ void DebugOverlaySystem::update (Registry & registry, float deltatime)  {
         ffdetect_bot_right.y = (bottom_right.y) + hurtbox.foot_dcheck;
 
         G_DEBUGGER.push({"Scene Name: " + scene.loaded_scene_name, {1000, 350}, 18, WHITE});
-        G_DEBUGGER.push({"Foot Detection Bounds ", {1000, 365}, 18, WHITE});
-        G_DEBUGGER.push({"X-Bounds: " + std::to_string((int)ffdetect_top_left.x) + ", " + std::to_string((int)ffdetect_bot_right.x), {1000, 380}, 18, WHITE});
-        G_DEBUGGER.push({"Y-Bounds: " + std::to_string((int)ffdetect_bot_right.y) + ", " + std::to_string((int)ffdetect_top_left.y), {1000, 395}, 18, WHITE});
+        G_DEBUGGER.push({"Foot Detection Bounds ", {1000, 370}, 18, WHITE});
+        G_DEBUGGER.push({"X-Bounds: " + std::to_string((int)ffdetect_top_left.x) + ", " + std::to_string((int)ffdetect_bot_right.x), {1000, 385}, 18, WHITE});
+        G_DEBUGGER.push({"Y-Bounds: " + std::to_string((int)ffdetect_bot_right.y) + ", " + std::to_string((int)ffdetect_top_left.y), {1000, 400}, 18, WHITE});
     }
 
     
