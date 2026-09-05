@@ -1,8 +1,11 @@
 // DebugOverlaySystem.cpp
 
+#include "../../Gamefiles/World/Scene.h"
+
 #include "DebugOverlaySystem.h"
 
 #include "../World/Overhead/Gwconst.h"
+
 
 #include <sstream>
 #include <iomanip>
@@ -186,6 +189,43 @@ void DebugOverlaySystem::update (Registry & registry, float deltatime)  {
 
         
 
+    }
+
+
+
+
+    // Draw Foot Detection for Hurtboxes
+    for (Entity entity : registry.view<comp::HurtboxHandler>()) {
+
+        comp::Transform & transform     = registry.get_component<comp::Transform>(entity);
+        comp::HurtboxHandler & hurtbox  = registry.get_component<comp::HurtboxHandler>(entity);
+
+        Color col_hb = {255, 20, 255, 200};
+
+
+        Vec2 top_left;
+        Vec2 bottom_right;
+
+        comp::PhysicsBody & body        = registry.get_component<comp::PhysicsBody>(entity);
+
+        top_left.x = transform.position.x - (body.size.x / 2.0f);
+        top_left.y = transform.position.y - (body.size.y / 2.0f);
+        bottom_right.x = transform.position.x + (body.size.x / 2.0f);
+        bottom_right.y = transform.position.y + (body.size.y / 2.0f);
+            
+        // -->
+        Vec2 ffdetect_top_left;
+        Vec2 ffdetect_bot_right;
+
+        ffdetect_top_left.x = top_left.x;
+        ffdetect_bot_right.x = top_left.x + body.size.x;
+        ffdetect_top_left.y = (bottom_right.y) - hurtbox.foot_dcheck;
+        ffdetect_bot_right.y = (bottom_right.y) + hurtbox.foot_dcheck;
+
+        G_DEBUGGER.push({"Scene Name: " + scene.loaded_scene_name, {1000, 350}, 18, WHITE});
+        G_DEBUGGER.push({"Foot Detection Bounds ", {1000, 365}, 18, WHITE});
+        G_DEBUGGER.push({"X-Bounds: " + std::to_string((int)ffdetect_top_left.x) + ", " + std::to_string((int)ffdetect_bot_right.x), {1000, 380}, 18, WHITE});
+        G_DEBUGGER.push({"Y-Bounds: " + std::to_string((int)ffdetect_bot_right.y) + ", " + std::to_string((int)ffdetect_top_left.y), {1000, 395}, 18, WHITE});
     }
 
     

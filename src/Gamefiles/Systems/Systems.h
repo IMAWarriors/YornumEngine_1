@@ -16,6 +16,7 @@
 #include "../Systems/AvatarAnimationTickSystem.h"
 #include "../Systems/PlayerAnimationSystem.h"
 #include "../Systems/AttackManagerSystem.h"
+#include "../Systems/HurtboxHandlerSystem.h"
 
 #endif
 

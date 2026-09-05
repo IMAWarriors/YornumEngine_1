@@ -773,7 +773,7 @@ void RenderSystem::update (Registry & registry, float deltatime) {
     // STEP DRAW LOOP: Draw all Hurtboxes, usually attached to entity w/ PhysicsBody and Transform components
     if ((renderSceneEditorUI || debugMode) && G_DEBUGGER.showHurtboxes) {
             
-        for (Entity entity : registry.view<comp::Transform, comp::HurtboxHandler>()) {      // For each iteration of Entity
+        for (Entity entity : registry.view<comp::Transform, comp::HurtboxHandler, comp::PhysicsBody>()) {      // For each iteration of Entity
             comp::Transform & transform     = registry.get_component<comp::Transform>(entity);
             comp::HurtboxHandler & hurtbox  = registry.get_component<comp::HurtboxHandler>(entity);
 
@@ -792,6 +792,36 @@ void RenderSystem::update (Registry & registry, float deltatime) {
                 col_hb,
                 3.0f
             );
+
+            // Draw foot floor detection
+            comp::PhysicsBody & body        = registry.get_component<comp::PhysicsBody>(entity);
+
+            Vec2 bottom_right;
+            
+            top_left.x = transform.position.x - (body.size.x / 2.0f);
+            top_left.y = transform.position.y - (body.size.y / 2.0f);
+            bottom_right.x = transform.position.x + (body.size.x / 2.0f);
+            bottom_right.y = transform.position.y + (body.size.y / 2.0f);
+
+            Vec2 ffdetect_top_left;
+            Vec2 ffdetect_bot_right;
+
+            ffdetect_top_left.x = top_left.x;
+            ffdetect_bot_right.x = top_left.x + body.size.x;
+            ffdetect_top_left.y = (bottom_right.y) - hurtbox.foot_dcheck;
+            ffdetect_bot_right.y = (bottom_right.y) + hurtbox.foot_dcheck;
+
+            Vec2 ffdetect_size = {(ffdetect_bot_right.x - ffdetect_top_left.x), 20.0f};
+
+            renderer.rdraw_wfrect(
+                ffdetect_top_left.x, 
+                ffdetect_top_left.y, 
+                ffdetect_size.x, 
+                ffdetect_size.y, 
+                col_hb,
+                3.0f
+            );
+
 
         }
 
@@ -841,6 +871,11 @@ void RenderSystem::update (Registry & registry, float deltatime) {
 
     
     }
+
+
+    
+
+
 
 }
 

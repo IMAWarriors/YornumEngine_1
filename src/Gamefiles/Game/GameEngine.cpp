@@ -46,7 +46,7 @@ void GameEngine::Initialize(Renderer & _renderer, InputManager & _input, FrameSt
     }
     
     
-    systems.add_system   <DebugOverlaySystem>        (Phases::RENDERING, *renderer, *frame);
+    systems.add_system   <DebugOverlaySystem>        (Phases::RENDERING, scene, *renderer, *frame);
 
     if (CheckFlag(Flags::EDITOR)) {
         AddEditorSystems();

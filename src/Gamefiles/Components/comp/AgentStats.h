@@ -27,6 +27,11 @@ namespace comp {
         int energy_timer = 0;
         int energy_timer_peak = 150;
 
+        // Invincibility Frames + Config
+        int iframes = 0;
+        int stddmg_iframes = 16;
+        int ms_per_iframe = 18; // ms
+
 
 
 

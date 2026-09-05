@@ -69,7 +69,7 @@ class GameEngine {
         // Camera    camera;
         Registry registry;
 
-        // Scene?
+        // Scene loaded in (should be copied per scene transition)
         Scene scene;
 
         AssetManager assets;

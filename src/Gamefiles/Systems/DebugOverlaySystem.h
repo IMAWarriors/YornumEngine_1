@@ -16,19 +16,22 @@
 #include "../../Engine/Core/Overhead/FrameStats.h"
 #include "../../Tooling/Debug/DebugManager.h"
 
+
 #include <string>
 
+class Scene;
 
 class DebugOverlaySystem : public System {
 
     private:
 
+        Scene & scene;
         Renderer & renderer;
         FrameStats & frame;
 
     public: 
 
-        DebugOverlaySystem (Renderer & _renderer, FrameStats & _frame) : renderer(_renderer), frame(_frame) {}
+        DebugOverlaySystem (Scene & _scene, Renderer & _renderer, FrameStats & _frame) : scene(_scene), renderer(_renderer), frame(_frame) {}
         
         void update (Registry & registry, float deltatime) override;
 

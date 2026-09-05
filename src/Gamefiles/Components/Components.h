@@ -19,6 +19,7 @@
 #include "comp/AttackStats.h"
 #include "comp/BodyAttackState.h"
 #include "comp/HurtboxHandler.h"
+#include "comp/AgentStats.h"
 
 #include "tag/Tag_Player.h"
 #include "tag/Tag_EngineManager.h"
