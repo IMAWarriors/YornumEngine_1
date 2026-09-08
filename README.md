@@ -1,9 +1,14 @@
-Version 1.7.0 No matter what anymone else says
+# YORNUM ENGINE
+- - - - - - - - - - - - - - - - - - - - - - - - - - - -
+## Proto-Version 1.9
+=======================================================
+Credited to
+ --> @IMAWarriors
+ --> @CollinXatior
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Licensed under GNU 3.0 pending implementation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Loceseicesce
+Fast and stabile C++ ECS Engine built using Raylib for the Platformer Yornum Project.
 
-Liscencecd 
-
-Licensed under GNU 3.0 pending implementation (its a fucking document to copy and psste ill add it eventually)
-
-you area  bitch
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
