@@ -493,7 +493,7 @@ void RenderSystem::update (Registry & registry, float deltatime) {
 
         static int active_corner = -1;      // 0–3 for player zone, 4–7 for clamp zone
         static CameraClamp* active_clamp = nullptr;
-
+        int iter = 0;
 
         for (CameraClamp & clamp : scene.active_clamps) {
 
@@ -509,18 +509,22 @@ void RenderSystem::update (Registry & registry, float deltatime) {
             float cam_bottom = cam.y + half_h;
 
             if (clamp.player_zone_top_left.x > cam_right) {
+                iter++;
                 continue;
             }
 
             if (clamp.player_zone_bottom_right.x < cam_left) {
+                iter++;
                 continue;
             }
 
             if (clamp.player_zone_top_left.y > cam_bottom) {
+                iter++;
                 continue;
             }
 
             if (clamp.player_zone_bottom_right.y < cam_top) {
+                iter++;
                 continue;
             }
 
@@ -530,8 +534,16 @@ void RenderSystem::update (Registry & registry, float deltatime) {
             float cc_width     = clamp.clamp_bottom_right.x - clamp.clamp_top_left.x;
             float cc_height    = clamp.clamp_bottom_right.y - clamp.clamp_top_left.y;
 
-            Color pz_color = ORANGE;
-            Color cc_color = YELLOW;
+            Color pz_color;
+            Color cc_color;
+
+            if (scene.EDITOR_ONLY_SELECTED_CAMERACLAMP == iter) {
+                pz_color = BLUE;
+                cc_color = VIOLET;
+            } else {
+                pz_color = ORANGE;
+                cc_color = YELLOW;
+            }
 
             renderer.rdraw_wfrect(clamp.player_zone_top_left.x, clamp.player_zone_top_left.y, pz_width, pz_height, pz_color, 3.0f);
             renderer.rdraw_wfrect(clamp.clamp_top_left.x, clamp.clamp_top_left.y, cc_width, cc_height, cc_color, 3.0f);
@@ -555,87 +567,87 @@ void RenderSystem::update (Registry & registry, float deltatime) {
             // a bunch of that?
 
             Vec2 corners[8] = {
-                    clamp.player_zone_top_left,
-                    {clamp.player_zone_bottom_right.x, clamp.player_zone_top_left.y},
-                    clamp.player_zone_bottom_right,
-                    {clamp.player_zone_top_left.x, clamp.player_zone_bottom_right.y},
+                clamp.player_zone_top_left,
+                {clamp.player_zone_bottom_right.x, clamp.player_zone_top_left.y},
+                clamp.player_zone_bottom_right,
+                {clamp.player_zone_top_left.x, clamp.player_zone_bottom_right.y},
 
-                    clamp.clamp_top_left,
-                    {clamp.clamp_bottom_right.x, clamp.clamp_top_left.y},
-                    clamp.clamp_bottom_right,
-                    {clamp.clamp_top_left.x, clamp.clamp_bottom_right.y}
-                };
+                clamp.clamp_top_left,
+                {clamp.clamp_bottom_right.x, clamp.clamp_top_left.y},
+                clamp.clamp_bottom_right,
+                {clamp.clamp_top_left.x, clamp.clamp_bottom_right.y}
+            };
 
-                Vec2 mouse_world = {
-                    cam.x + ((mouse_position.x - config::GAME_WORLD_WIDTH * 0.5f) / zoom),
-                    cam.y + ((mouse_position.y - config::GAME_WORLD_HEIGHT * 0.5f) / zoom)
-                };
+            Vec2 mouse_world = {
+                cam.x + ((mouse_position.x - config::GAME_WORLD_WIDTH * 0.5f) / zoom),
+                cam.y + ((mouse_position.y - config::GAME_WORLD_HEIGHT * 0.5f) / zoom)
+            };
 
-                float min_dist = 15.0f / zoom; // scale with zoom
-                int hovered = -1;
+            float min_dist = 15.0f / zoom; // scale with zoom
+            int hovered = -1;
 
-                for (int i = 0; i < 8; i++) {
-                    if (dist(mouse_world, corners[i]) < min_dist) {
-                        hovered = i;
-                        break;
-                    }
+            for (int i = 0; i < 8; i++) {
+                if (dist(mouse_world, corners[i]) < min_dist) {
+                    hovered = i;
+                    break;
+                }
+            }
+
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && hovered != -1) {
+                active_corner = hovered;
+                active_clamp = &clamp;
+            }
+
+            if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
+                active_corner = -1;
+                active_clamp = nullptr;
+            }
+
+            if (active_clamp == &clamp && active_corner != -1) {
+
+                Vec2* tl;
+                Vec2* br;
+
+                if (active_corner < 4) {
+                    tl = &clamp.player_zone_top_left;
+                    br = &clamp.player_zone_bottom_right;
+                } else {
+                    tl = &clamp.clamp_top_left;
+                    br = &clamp.clamp_bottom_right;
                 }
 
-                if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && hovered != -1) {
-                    active_corner = hovered;
-                    active_clamp = &clamp;
+                int c = active_corner % 4;
+
+                if (c == 0) { // top-left
+                    tl->x = mouse_world.x;
+                    tl->y = mouse_world.y;
                 }
-
-                if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
-                    active_corner = -1;
-                    active_clamp = nullptr;
+                else if (c == 1) { // top-right
+                    br->x = mouse_world.x;
+                    tl->y = mouse_world.y;
                 }
-
-                if (active_clamp == &clamp && active_corner != -1) {
-
-                    Vec2* tl;
-                    Vec2* br;
-
-                    if (active_corner < 4) {
-                        tl = &clamp.player_zone_top_left;
-                        br = &clamp.player_zone_bottom_right;
-                    } else {
-                        tl = &clamp.clamp_top_left;
-                        br = &clamp.clamp_bottom_right;
-                    }
-
-                    int c = active_corner % 4;
-
-                    if (c == 0) { // top-left
-                        tl->x = mouse_world.x;
-                        tl->y = mouse_world.y;
-                    }
-                    else if (c == 1) { // top-right
-                        br->x = mouse_world.x;
-                        tl->y = mouse_world.y;
-                    }
-                    else if (c == 2) { // bottom-right
-                        br->x = mouse_world.x;
-                        br->y = mouse_world.y;
-                    }
-                    else if (c == 3) { // bottom-left
-                        tl->x = mouse_world.x;
-                        br->y = mouse_world.y;
-                    }
+                else if (c == 2) { // bottom-right
+                    br->x = mouse_world.x;
+                    br->y = mouse_world.y;
                 }
-
-
-                for (int i = 0; i < 8; i++) {
-                    renderer.rdraw_wfrect(
-                        corners[i].x - 4,
-                        corners[i].y - 4,
-                        8, 8,
-                        (i == hovered ? RED : BLUE),
-                        2.0f
-                    );
+                else if (c == 3) { // bottom-left
+                    tl->x = mouse_world.x;
+                    br->y = mouse_world.y;
                 }
+            }
 
 
+            for (int i = 0; i < 8; i++) {
+                renderer.rdraw_wfrect(
+                    corners[i].x - 4,
+                    corners[i].y - 4,
+                    8, 8,
+                    (i == hovered ? RED : BLUE),
+                    2.0f
+                );
+            }
+
+            iter++;
 
         }
     }
@@ -648,13 +660,19 @@ void RenderSystem::update (Registry & registry, float deltatime) {
 
 
     // AVATAR DRAW LOOP
-    for (Entity entity : registry.view<comp::Transform, comp::AvatarRenderer>()) {
+    for (Entity entity : registry.view<comp::Transform, comp::AvatarRenderer, comp::AgentStats>()) {
 
+        comp::AgentStats& stats = registry.get_component<comp::AgentStats>(entity);
         comp::AvatarRenderer& avatar_renderer = registry.get_component<comp::AvatarRenderer>(entity);
         comp::Transform& anchor_position = registry.get_component<comp::Transform>(entity);
 
         bool renderer_has_avatar = (avatar_renderer.avatar_to_render != nullptr);
         bool avatar_has_animation = (avatar_renderer.animation_to_play != nullptr);
+        
+        // Quit early as a way to show damage from iframes
+        if (stats.iframes > 0 && (stats.iframes/2) % 2 == 1) {
+            return;
+        }
 
         if (renderer_has_avatar) {
             Avatar& avatar_source = *avatar_renderer.avatar_to_render;
@@ -709,6 +727,10 @@ void RenderSystem::update (Registry & registry, float deltatime) {
 
             }
         }
+
+
+
+
 
     }
 

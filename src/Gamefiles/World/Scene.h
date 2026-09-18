@@ -46,10 +46,12 @@ class Scene {
 
     public:
 
-        // Editor Wiring
+        // Editor Wiring --> should probably update later by adding an EditorScene extension or something with properties as to different
+        // elements int eh world that are selected in editor mode that do not make sense in the normal shipment
         int EDITOR_ONLY_SELECTED_ATLAS = -1;
         int EDITOR_ONLY_SELECTED_PALLET_TILE = -1;
         int EDITOR_ONLY_SELECTED_LAYER = 0;
+        int EDITOR_ONLY_SELECTED_CAMERACLAMP = -1;
         bool EDITOR_ONLY_ACTIVE_TAEDITOR = false;
         bool EDITOR_ONLY_ACTIVE_BACKGROUND_EDITOR = false;
         bool EDITOR_ONLY_BACKGROUND_TAB_SELECTED = false;
@@ -321,6 +323,46 @@ class Scene {
             return gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS;
         }
 
+
+
+        std::vector<CollisionType> get_collisions_rect (Vec2 topleft, Vec2 rectsize) {
+
+            std::vector<CollisionType> collisions;
+
+            for (const TileGrid& grid : tile_layers) {
+
+                std::vector<CollisionType> layer_collisions;
+                layer_collisions = grid.get_tile_coll_rect(*this, topleft, rectsize);
+                
+                for (CollisionType& type : layer_collisions) {
+                    collisions.push_back(type);
+                }
+
+            }
+
+            return collisions;
+            
+        }
+
+        bool is_rect_groundhazard (Vec2 topleft, Vec2 rectsize) {
+
+            
+            for (const TileGrid& grid : tile_layers) {
+
+                std::vector<CollisionType> layer_collisions;
+                layer_collisions = grid.get_tile_coll_rect(*this, topleft, rectsize);
+                
+                for (CollisionType& type : layer_collisions) {
+                    if (type == CollisionType::COLL_GROUND_HAZARD) {
+                        return true;
+                    }
+                }
+
+            }
+            
+            return false;
+            
+        }
 
 
 

@@ -195,14 +195,12 @@ void DebugOverlaySystem::update (Registry & registry, float deltatime)  {
 
 
     // Draw Foot Detection for Hurtboxes
-    for (Entity entity : registry.view<comp::HurtboxHandler>()) {
+    for (Entity entity : registry.view<comp::HurtboxHandler, comp::AgentStats, comp::Transform, comp::PhysicsBody>()) {
 
+        
+        comp::AgentStats & stats        = registry.get_component<comp::AgentStats>(entity);
         comp::Transform & transform     = registry.get_component<comp::Transform>(entity);
         comp::HurtboxHandler & hurtbox  = registry.get_component<comp::HurtboxHandler>(entity);
-
-        Color col_hb = {255, 20, 255, 200};
-
-
         Vec2 top_left;
         Vec2 bottom_right;
 
@@ -226,6 +224,27 @@ void DebugOverlaySystem::update (Registry & registry, float deltatime)  {
         G_DEBUGGER.push({"Foot Detection Bounds ", {1000, 370}, 18, WHITE});
         G_DEBUGGER.push({"X-Bounds: " + std::to_string((int)ffdetect_top_left.x) + ", " + std::to_string((int)ffdetect_bot_right.x), {1000, 385}, 18, WHITE});
         G_DEBUGGER.push({"Y-Bounds: " + std::to_string((int)ffdetect_bot_right.y) + ", " + std::to_string((int)ffdetect_top_left.y), {1000, 400}, 18, WHITE});
+
+        /*
+        enum class CollisionType : uint8_t {
+            COLL_EMPTY = 0,
+            COLL_FULL_SOLID,
+            COLL_PSLOPE1_SOLID,
+            COLL_NSLOPE1_SOLID,
+            COLL_FULL_SEMISOLID,
+            COLL_GROUND_HAZARD
+        };
+
+        */
+
+        if (scene.is_rect_groundhazard(ffdetect_top_left, {body.size.x , (hurtbox.foot_dcheck * 2.0f)})) {
+            G_DEBUGGER.push({"Touching Groundhazard", {1000, 440}, 18, RED});
+        } else {
+            G_DEBUGGER.push({"*no special tile", {1000, 440}, 18, WHITE});
+        }
+
+        G_DEBUGGER.push({"IFRAMES: " + std::to_string(stats.iframes) + ", ", {1000, 500}, 18, WHITE});
+
     }
 
     

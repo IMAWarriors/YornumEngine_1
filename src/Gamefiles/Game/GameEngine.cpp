@@ -33,6 +33,7 @@ void GameEngine::Initialize(Renderer & _renderer, InputManager & _input, FrameSt
     systems.add_system   <PlayerAnimationSystem>     (Phases::SIMULATION);
     systems.add_system   <AvatarAnimationTickSystem> (Phases::SIMULATION, scene, *renderer);
     systems.add_system   <AttackManagerSystem> (Phases::SIMULATION, scene, *renderer);
+    systems.add_system   <HurtboxHandlerSystem>(Phases::SIMULATION, scene);
 
 
     if (CheckFlag(Flags::EDITOR)) { 

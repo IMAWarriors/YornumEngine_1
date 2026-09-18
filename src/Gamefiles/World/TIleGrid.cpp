@@ -157,51 +157,47 @@ CollisionType TileGrid::get_tile_coll_pos (Scene & scene, Vec2 position) const {
 std::vector<CollisionType> TileGrid::get_tile_coll_rect (Scene & scene, Vec2 rect_topleft, Vec2 rect_size) const {
 
     std::vector<CollisionType> collision_container;
-    Vec2 cursor = rect_topleft;
-    float rect_max_x = rect_topleft.x + rect_size.x;
-    float rect_max_y = rect_topleft.y + rect_size.y;
 
-    while (cursor.y < rect_max_y) {
+    int min_col = translate_world_x_col(rect_topleft.x);
+    int max_col = translate_world_x_col(rect_topleft.x + rect_size.x);
+    int min_row = translate_world_y_row(rect_topleft.y);
+    int max_row = translate_world_y_row(rect_topleft.y + rect_size.y);
 
-    while (cursor.x < rect_max_x) {
+    int col_iter = min_col;
+    int row_iter = min_row;
 
-        int col = translate_world_x_col(cursor.x);
-        int row = translate_world_y_row(cursor.y);
+    for (; row_iter <= max_row; ++row_iter) {
+    for (; col_iter <= max_col; ++col_iter) {
 
-        // In tilebounds?
-        if (col < gwconst::WORLD_TILEGRID_X_BOUND_MIN_TILE || col > gwconst::WORLD_TILEGRID_X_BOUND_MAX_TILE ||
-            row < gwconst::WORLD_TILEGRID_Y_BOUND_MIN_TILE || row > gwconst::WORLD_TILEGRID_Y_BOUND_MAX_TILE) {
-            return std::vector<CollisionType>();
+        if ((col_iter < gwconst::WORLD_TILEGRID_X_BOUND_MIN_TILE || col_iter > gwconst::WORLD_TILEGRID_X_BOUND_MAX_TILE ||
+            row_iter < gwconst::WORLD_TILEGRID_Y_BOUND_MIN_TILE || row_iter > gwconst::WORLD_TILEGRID_Y_BOUND_MAX_TILE)
+        ) {
+            collision_container.push_back(CollisionType::COLL_EMPTY);
+            continue;
         }
 
-        const Tile tile_hit = get_tile(col, row);
+        const Tile tile_hit = get_tile(col_iter, row_iter);
+
+        if ((tile_hit.atlas_idx < 0 || tile_hit.tile_idx < 0) || (tile_hit.atlas_idx >= (int)scene.loaded_atlases.size())) {
+            collision_container.push_back(CollisionType::COLL_EMPTY);
+            continue;
+        }
+        
         const TileAtlas & atlas = scene.loaded_atlases[tile_hit.atlas_idx];
 
-        // If INVALID TILE ATLAS or INVALID TILE INDEX, return empty vector
-        if (tile_hit.atlas_idx < 0 || tile_hit.tile_idx < 0) {
-            return std::vector<CollisionType>();
-        }
-
-        if (tile_hit.atlas_idx >= (int)scene.loaded_atlases.size()) {
-            return std::vector<CollisionType>();
-        }
-
         if (tile_hit.tile_idx >= (int)atlas.tile_data.size()) {
-            return std::vector<CollisionType>();
+            collision_container.push_back(CollisionType::COLL_EMPTY);
+            continue;
         }
 
         collision_container.push_back(atlas.tile_data[tile_hit.tile_idx].collision_data);
-        cursor.x += gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS;
 
     }
-
-    cursor.x = rect_topleft.x;
-    cursor.y += gwconst::SCREEN_BASE_TILESIZE_GAMEPIXELS;
-
+    col_iter = min_col;
     }
-
 
     return collision_container;
+
 
 }
 

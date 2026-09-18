@@ -72,8 +72,11 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
     static bool showLayerManager = true;
 
     static int selectedLayer = 0;
+
+    // @TODO: Need to update/sync to the RenderSystem so that it can see what clamp if any is selected according to the editor system
     static int selectedClamp = -1;
 
+    // Selected TIleset INDEX
     static int selectedIndex = -1; // FOR line: if(ImGui::BeginTabItem("Tileset")) {...  // serves to give show selected tile atlas for tile atlas editor
 
     static bool animParamsMatch = true;
@@ -5017,7 +5020,8 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
             ImGui::MenuItem("Show All Debug Vars", nullptr, &G_DEBUGGER.showAllInfo);
             ImGui::MenuItem("Show Coll Outlines", "Permits Tile Editing", &G_DEBUGGER.showTileOutlines);
             ImGui::MenuItem("Show Cam Clamps", nullptr, &G_DEBUGGER.showCameraClamps);
-            ImGui::MenuItem("Show PhysBody HBs", nullptr, &G_DEBUGGER.showPhysicsBodyHitboxes);
+            ImGui::MenuItem("Show PhB Hitboxes", nullptr, &G_DEBUGGER.showPhysicsBodyHitboxes);
+            ImGui::MenuItem("Show PhB Hurtboxes", nullptr, &G_DEBUGGER.showHurtboxes);
             ImGui::EndMenu();
         }
 
@@ -7209,6 +7213,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                     } else if (selectedClamp < 0) {
                         selectedClamp = 0;
                     }
+                    scene.EDITOR_ONLY_SELECTED_CAMERACLAMP = selectedClamp;
 
 
                     const float clampActionButtonWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
@@ -7226,6 +7231,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                         
                         scene.active_clamps.push_back({camera_position.x-200, camera_position.y-100, camera_position.x+200, camera_position.y+100, camera_position.x-100, camera_position.y-50, camera_position.x+100, camera_position.y+50, 8.0f, false});
                         selectedClamp = (int)scene.active_clamps.size() - 1;
+                        scene.EDITOR_ONLY_SELECTED_CAMERACLAMP = selectedClamp;
 
                     }
 
@@ -7240,6 +7246,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             } else if (selectedClamp >= (int)scene.active_clamps.size()) {
                                 selectedClamp = (int)scene.active_clamps.size() - 1;
                             }
+                            scene.EDITOR_ONLY_SELECTED_CAMERACLAMP = selectedClamp;
                         }
                     }
 
@@ -7252,6 +7259,7 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                             std::string clamp_label = "Clamp " + std::to_string(i + 1);
                             if (ImGui::Selectable(clamp_label.c_str(), selectedClamp == i)) {
                                 selectedClamp = i;
+                                scene.EDITOR_ONLY_SELECTED_CAMERACLAMP = selectedClamp;
                             }
                         }
                         ImGui::EndListBox();

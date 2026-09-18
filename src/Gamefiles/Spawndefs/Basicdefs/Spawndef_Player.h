@@ -20,6 +20,7 @@ namespace spawndef {
         registry.apply_component<comp::Transform>       (entity,  comp::Transform(position));
         registry.apply_component<comp::Velocity>        (entity, {0.0f, 0.0f} );
         registry.apply_component<comp::InputState>      (entity, {0, false});
+        registry.apply_component<comp::AgentStats>      (entity, comp::AgentStats());
 
         // Physics body setup
         registry.apply_component<comp::PhysicsBody> (entity, 
