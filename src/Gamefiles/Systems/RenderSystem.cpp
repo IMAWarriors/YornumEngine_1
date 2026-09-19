@@ -331,7 +331,7 @@ void RenderSystem::update (Registry & registry, float deltatime) {
                         
 
                             
-                            if (G_DEBUGGER.showTileOutlines == true) {
+                            if ((debugMode || renderSceneEditorUI) && G_DEBUGGER.showTileOutlines == true) {
 
                                 if (layer.get_tile_coll(scene, world_column, world_row) == CollisionType::COLL_FULL_SOLID) {
 
@@ -489,7 +489,7 @@ void RenderSystem::update (Registry & registry, float deltatime) {
 
 
     
-    if (G_DEBUGGER.showCameraClamps == true) {
+    if ((debugMode || renderSceneEditorUI) && G_DEBUGGER.showCameraClamps == true) {
 
         static int active_corner = -1;      // 0–3 for player zone, 4–7 for clamp zone
         static CameraClamp* active_clamp = nullptr;

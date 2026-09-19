@@ -3217,6 +3217,12 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                                         auto& joint_texture = (*avatar_selected).default_texturing.joints[jointselected];
 
+                                        if (selected_anim_texture_idx >=
+                                            static_cast<int>(joint_texture.animation_texture_library.size())) {
+
+                                            selected_anim_texture_idx = -1;
+                                        }
+
                                         if (ImGui::Button("New")) {
                                             // Open new anim texture pop-up
                                             joint_texture.push_back_new_anim_texture(assets, joint_texture.texturePath);
@@ -3263,7 +3269,9 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                         ImGui::SameLine();
 
                                         if (ImGui::Button("vv")) {
-                                            if (0 <= selected_anim_texture_idx && selected_anim_texture_idx < joint_texture.animation_texture_library.size()-1) {
+                                            if (selected_anim_texture_idx >= 0 &&
+                                                selected_anim_texture_idx + 1 <
+                                                    static_cast<int>(joint_texture.animation_texture_library.size())) {
                                                 
                                                 // --
                                                 std::swap(
@@ -3480,11 +3488,21 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
                                             static Texture2D* currentLoadedJTexture = nullptr;
                                             static std::string currentLoadedPath = "";
 
-                                            assert(selected_anim_texture_idx != -1);
-                                            
-                                            if (currentLoadedPath != joint_text.animation_texture_library[selected_anim_texture_idx].texture_path) {
-                                                currentLoadedJTexture = &assets.LoadTextureAsset(joint_text.animation_texture_library[selected_anim_texture_idx].texture_path);
-                                                currentLoadedPath = joint_text.animation_texture_library[selected_anim_texture_idx].texture_path;
+                                            if (selected_anim_texture_idx >= 0 &&
+                                                selected_anim_texture_idx <
+                                                    static_cast<int>(joint_text.animation_texture_library.size())) {
+
+                                                if (currentLoadedPath !=
+                                                    joint_text.animation_texture_library[selected_anim_texture_idx].texture_path) {
+
+                                                    currentLoadedJTexture =
+                                                        &assets.LoadTextureAsset(
+                                                            joint_text.animation_texture_library[selected_anim_texture_idx].texture_path
+                                                        );
+
+                                                    currentLoadedPath =
+                                                        joint_text.animation_texture_library[selected_anim_texture_idx].texture_path;
+                                                }
                                             }
 
                                             if (currentLoadedJTexture != nullptr && currentLoadedPath != "" && currentLoadedPath != "NONE") {
@@ -3523,7 +3541,11 @@ void EditorUISystem::update (Registry & registry, float deltatime) {
 
                                             // Buttons for controlling
 
-                                            ImGui::BeginDisabled((selectedFileIndex == -1));
+                                            ImGui::BeginDisabled(
+                                                selected_anim_texture_idx < 0 ||
+                                                selected_anim_texture_idx >=
+                                                    static_cast<int>(joint_texture.animation_texture_library.size())
+                                            );
 
                                             if (ImGui::Button("Load Texture", ImVec2(110, 25))) {
 
